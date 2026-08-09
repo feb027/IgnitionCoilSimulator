@@ -209,7 +209,6 @@ void MenuSystem::handleEncoder() {
                         if (nextIndex == 2 && s.pulseMode != PULSE_DWELL) continue;
                         if (nextIndex == 3 && s.pulseMode != PULSE_DUTY) continue;
                     }
-                    if (nextIndex == 10 && s.mode != MODE_SWEEP) continue; // SWEEP TIME
                     
                     break;
                 }
