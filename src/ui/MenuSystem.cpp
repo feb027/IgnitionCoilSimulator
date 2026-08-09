@@ -6,7 +6,13 @@
 #include "pages/MenuPageRPM.h"
 #include "pages/MenuPageDwell.h"
 #include "pages/MenuPageDuty.h"
+#include "pages/MenuPageSpeedoKmh.h"
+#include "pages/MenuPageSpeedoRpm.h"
+#include "pages/MenuPageSpeedoTemp.h"
+#include "pages/MenuPageSpeedoFuel.h"
+#include "pages/MenuPagePulse.h"
 #include "pages/MenuPageMode.h"
+#include "pages/MenuPageSweepTime.h"
 #include "pages/MenuPageExit.h"
 
 #define DEBOUNCE_DELAY_MS 50
@@ -17,7 +23,13 @@ static MenuPageType pageType;
 static MenuPageRPM pageRPM;
 static MenuPageDwell pageDwell;
 static MenuPageDuty pageDuty;
+static MenuPageSpeedoKmh pageSpeedoKmh;
+static MenuPageSpeedoRpm pageSpeedoRpm;
+static MenuPageSpeedoTemp pageSpeedoTemp;
+static MenuPageSpeedoFuel pageSpeedoFuel;
+static MenuPagePulse pagePulse;
 static MenuPageMode pageMode;
+static MenuPageSweepTime pageSweepTime;
 static MenuPageExit pageExit;
 
 MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
@@ -31,8 +43,14 @@ MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
     _pages[1] = &pageRPM;
     _pages[2] = &pageDwell;
     _pages[3] = &pageDuty;
-    _pages[4] = &pageMode;
-    _pages[5] = &pageExit;
+    _pages[4] = &pageSpeedoKmh;
+    _pages[5] = &pageSpeedoRpm;
+    _pages[6] = &pageSpeedoTemp;
+    _pages[7] = &pageSpeedoFuel;
+    _pages[8] = &pagePulse;
+    _pages[9] = &pageMode;
+    _pages[10] = &pageSweepTime;
+    _pages[11] = &pageExit;
     _numPages = NUM_PAGES;
 }
 
@@ -96,8 +114,7 @@ void MenuSystem::handleButton() {
                         _encoder.setCount(0);
                         _lastEncoderCount = 0;
                         _driver.stop(); // Stop firing for safety
-                    } else {
-                        if (_selectedIndex == 5) { // 5 = EXIT
+                        if (_selectedIndex == 11) { // 11 = EXIT
                             _inMenu = false;
                             _isEditing = false;
                             _settingsMgr.save();
@@ -172,8 +189,17 @@ void MenuSystem::handleEncoder() {
                     if (nextIndex < 0) nextIndex += NUM_PAGES;
                     
                     // Skip rules
-                    if (nextIndex == 2 && s.pulseMode != PULSE_DWELL) continue;
-                    if (nextIndex == 3 && s.pulseMode != PULSE_DUTY) continue;
+                    if (s.pulseMode == PULSE_SPEEDO) {
+                        // Skip coil/pwm specific pages
+                        if (nextIndex >= 1 && nextIndex <= 3) continue;
+                    } else {
+                        // Skip speedo specific pages
+                        if (nextIndex >= 4 && nextIndex <= 8) continue;
+                        // Skip Dwell/Duty based on mode
+                        if (nextIndex == 2 && s.pulseMode != PULSE_DWELL) continue;
+                        if (nextIndex == 3 && s.pulseMode != PULSE_DUTY) continue;
+                    }
+                    if (nextIndex == 10 && s.mode != MODE_SWEEP) continue; // SWEEP TIME
                     
                     break;
                 }

@@ -95,14 +95,42 @@ Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (
 - **⚠️ TAPI ADA SYARAT MUTLAK:** Kamu **WAJIB** memasang **Dioda Flyback** berukuran besar (misal: seri `1N5408` atau lebih besar) yang dipasang melintang terbalik di antara Positif dan Negatif Koil.
 - Tanpa dioda ini, tegangan balik 400 Volt dari koil akan **menghancurkan** MOSFET seketika dalam satu kali jepretan, karena MOSFET biasa tidak memiliki perlindungan *Internal Zener Clamp* seperti IGBT otomotif.
 
+### Wiring Pengetesan PWM / Selenoid / Injektor
+Mode `PWM / STEPPER` pada alat ini dirancang untuk mengetes komponen 12V otomotif seperti Katup VVT, Solenoid Purge EVAP, atau Injektor. 
+Karena arus komponen ini cukup besar, Anda memerlukan penguat sinyal (MOSFET N-Channel) tipe Logic-Level seperti **IRLZ44N**.
+
+**Wiring Sederhana MOSFET (Low-Side Switch):**
+1. **Gate (Kiri):** Hubungkan ke **Pin 32 (PIN_SOLENOID)** ESP32 melalui resistor 100 Ohm.
+2. **Drain (Tengah):** Hubungkan ke kabel Negatif (-) Injektor/Selenoid.
+3. **Source (Kanan):** Hubungkan ke Ground (GND) ESP32 dan Negatif Aki 12V.
+4. Kabel Positif (+) Injektor/Selenoid dihubungkan langsung ke Positif (+) Aki 12V.
+*Catatan: Pastikan memasang Dioda Flyback melintang terbalik pada Injektor/Selenoid untuk mengamankan MOSFET.*
+
+### Wiring Pengetesan Speedometer (Full Cluster 4-Jarum)
+Alat ini dapat menyimulasikan 4 jarum speedometer secara bersamaan.
+1. **Jarum Suhu (Temp) & Jarum Bensin (Fuel):** Keduanya membutuhkan Modul Digital Potentiometer X9C103S untuk menyimulasikan hambatan (Ohm). Baca panduan lengkapnya di [WIRING_X9C103S.md](docs/WIRING_X9C103S.md).
+2. **Jarum KM/H & RPM:** Menggunakan frekuensi pulsa (kotak 50% duty cycle). 
+   - **Koneksi Langsung:** Beberapa speedometer modern bisa membaca sinyal 3.3V langsung dari ESP32 (**Pin 2 untuk KM/H**, **Pin 4 untuk RPM**).
+   - **Koneksi Open-Collector (12V):** Speedometer lawas biasanya membutuhkan pulsa 12V. Gunakan Transistor NPN kecil (seperti 2N3904 atau BC547) untuk merubah sinyal ESP32:
+     - **Base (B):** Ke Pin 2 / Pin 4 ESP32 (via Resistor 1k Ohm)
+     - **Emitter (E):** Ke Ground (GND)
+     - **Collector (C):** Sambungkan ke input KMH/RPM Speedometer. Tambahkan juga *Resistor Pull-Up 1K Ohm* dari Collector ke +12V.
+
 ---
 
-## Panduan Pin & Wiring ke ESP32 (Wemos D1 R32)
+## Panduan Pin & Wiring Keseluruhan (Wemos D1 R32)
 
-| Komponen | Pin ESP32 | Keterangan |
+| Fungsi Utama | Pin ESP32 | Keterangan |
 | :--- | :--- | :--- |
-| **Sinyal Ignition Coil** | `Pin 33` | **WAJIB** melewati sirkuit IGBT/TLP250 di atas! |
-| **Tombol Encoder (SW)** | `Pin 25` | Tekan untuk masuk menu / Tahan untuk RUN/STOP |
+| **Ignition Coil Out** | `Pin 33` | Mengendalikan Koil (Gunakan Modul TLP250 / IGBT) |
+| **Solenoid / PWM Out** | `Pin 32` | Mengendalikan Injektor / VVT (Gunakan MOSFET) |
+| **Speedometer RPM** | `Pin 4` | Output Frekuensi Tachometer (Bisa via NPN 12V) |
+| **Speedometer KM/H** | `Pin 2` | Output Frekuensi Odometer/KMH (Bisa via NPN 12V) |
+| **X9C103S (INC)** | `Pin 14` | Pin Step (Digabung untuk modul Suhu & Bensin) |
+| **X9C103S (U/D)** | `Pin 12` | Pin Arah (Digabung untuk modul Suhu & Bensin) |
+| **X9C103S (CS_TEMP)** | `Pin 13` | Chip Select KHUSUS Modul Suhu (Temp) |
+| **X9C103S (CS_FUEL)** | `Pin 15` | Chip Select KHUSUS Modul Bensin (Fuel) |
+| **Tombol Encoder (SW)** | `Pin 25` | Tekan (Menu) / Tahan (Run/Stop) |
 | **Data Encoder (DT)** | `Pin 26` | Putaran Kanan/Kiri (Rotary) |
 | **Clock Encoder (CLK)** | `Pin 27` | Sinkronisasi Putaran (Rotary) |
 | **Data Layar (OLED SDA)** | `Pin 21` | Kabel komunikasi I2C (SDA) |

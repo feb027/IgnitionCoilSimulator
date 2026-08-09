@@ -60,6 +60,36 @@ void DisplayManager::drawDashboard() {
     // Separator Line
     _u8g2.drawLine(0, 14, 128, 14);
 
+    if (s.pulseMode == PULSE_SPEEDO) {
+        // Speedometer 4-line layout
+        _u8g2.setFont(u8g2_font_helvB10_tr);
+        
+        // Line 1: KM/H
+        _u8g2.setCursor(0, 30);
+        _u8g2.print("KM/H : ");
+        _u8g2.print(s.speedoKmh);
+        
+        // Line 2: RPM
+        _u8g2.setCursor(0, 44);
+        _u8g2.print("RPM  : ");
+        _u8g2.print(s.speedoRpm);
+        
+        // Line 3: TEMP
+        _u8g2.setCursor(0, 58);
+        _u8g2.print("TEMP : ");
+        _u8g2.print(s.speedoTempPercent);
+        _u8g2.print("%");
+        
+        // Line 4: FUEL (small at very bottom)
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        _u8g2.setCursor(0, 70);
+        _u8g2.print("BBM   : ");
+        _u8g2.print(s.speedoFuelPercent);
+        _u8g2.print("%");
+        
+        return; // Skip the rest of the old layout
+    }
+
     // ZONE 2: Middle (Giant RPM)
     _u8g2.setFont(u8g2_font_inb21_mr); // Very large number font
     String rpmStr = String(s.rpm);
@@ -70,7 +100,11 @@ void DisplayManager::drawDashboard() {
     
     _u8g2.setFont(u8g2_font_helvB12_tr);
     _u8g2.setCursor(15 + rpmWidth + 5, 45);
-    _u8g2.print("RPM");
+    if (s.pulseMode == PULSE_SPEEDO) {
+        _u8g2.print("km/h");
+    } else {
+        _u8g2.print("RPM");
+    }
 
     // ZONE 3: Bottom (Dwell and Duty Cycle)
     _u8g2.setCursor(0, 64);

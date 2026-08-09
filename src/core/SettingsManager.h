@@ -13,16 +13,23 @@ enum CoilMode {
 
 enum PulseMode {
     PULSE_DWELL,
-    PULSE_DUTY
+    PULSE_DUTY,
+    PULSE_SPEEDO
 };
 
 // Application settings struct
 struct AppSettings {
-    int rpm;               // Output speed in RPM
+    int rpm;               // Output speed in RPM (for Ignition Coil / PWM)
     float dwellMs;         // Dwell time in milliseconds (for coils)
     float dutyCycle;       // Duty cycle in percentage 0.0 - 100.0 (for PWM)
     PulseMode pulseMode;   // Which variable is locked/controlling
     CoilMode mode;         // Current operating mode
+    int sweepTimeSec;      // Time in seconds to reach sweep max
+    int pulsePerKm;        // Pulses per kilometer (calibration for speedo)
+    int speedoKmh;         // Target km/h for speedometer (and sweep max)
+    int speedoRpm;         // Target RPM for speedometer (and sweep max)
+    int speedoTempPercent; // 0-100% for temperature gauge
+    int speedoFuelPercent; // 0-100% for fuel gauge
     bool isRunning;        // Is the driver currently active?
     uint32_t lastFiredMs;  // For visual feedback on display
 };

@@ -12,22 +12,24 @@ public:
         u8g2.setCursor(5 + offX, 48); // We need to handle cursor manually here since we bypass the standard draw string
         if (s.pulseMode == PULSE_DWELL) {
             u8g2.print("IGNITION COIL");
-        } else {
+        } else if (s.pulseMode == PULSE_DUTY) {
             u8g2.print("PWM / STEPPER");
+        } else {
+            u8g2.print("SPEEDOMETER");
         }
     }
     
     float getProgress(const AppSettings& s) const override {
-        return (s.pulseMode == PULSE_DWELL) ? 0.0f : 1.0f;
+        if (s.pulseMode == PULSE_DWELL) return 0.0f;
+        if (s.pulseMode == PULSE_DUTY) return 0.5f;
+        return 1.0f;
     }
     
     void onEdit(int diff, AppSettings& s) override {
         // Toggle if changed
-        if (diff > 0) {
-            s.pulseMode = PULSE_DUTY;
-        } else if (diff < 0) {
-            s.pulseMode = PULSE_DWELL;
-        }
+        int m = ((int)s.pulseMode + diff) % 3;
+        if (m < 0) m += 3;
+        s.pulseMode = (PulseMode)m;
     }
 };
 

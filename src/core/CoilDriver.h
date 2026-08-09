@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "SettingsManager.h"
+#include "DigipotDriver.h"
 
 // Hard safety limits
 #define MAX_DWELL_MS    5.0f
@@ -30,7 +31,15 @@ public:
 
 private:
     SettingsManager& _settingsMgr;
+    DigipotDriver _tempPot;
+    DigipotDriver _fuelPot;
+    
     uint32_t _sweepLastUpdate = 0; // Tracks last sweep increment
+    float _currentSweepVal = 0.0f; // Normalized 0.0 to 1.0
+    bool _sweepUp = true;          // Sweep direction
+    int _targetKmh = 0;
+    int _targetRpm = 0;
+    int _targetRpmNormal = 0;
     
     // Reconfigure the hardware timer based on current settings
     void updateTimerConfig();

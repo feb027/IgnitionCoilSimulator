@@ -1,7 +1,7 @@
 #ifndef MENU_SYSTEM_H
 #define MENU_SYSTEM_H
 
-#define NUM_PAGES 6
+#define NUM_PAGES 12
 
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"

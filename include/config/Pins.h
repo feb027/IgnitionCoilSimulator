@@ -6,9 +6,17 @@
 // ==========================================
 // Board: Wemos D1 R32 (ESP32)
 
-// --- Ignition Coil Output ---
-// Use a safe output pin that does not affect boot
+// --- Output Pins ---
 #define PIN_COIL_OUT 33
+#define PIN_SOLENOID 32
+
+// --- Speedometer Cluster Output Pins ---
+#define PIN_RPM 4       // LEDC Channel 1
+#define PIN_KMH 2       // LEDC Channel 2
+#define PIN_X9C_INC 14      // Digipot Increment
+#define PIN_X9C_UD 12       // Digipot Up/Down
+#define PIN_X9C_CS_TEMP 13  // Digipot CS for Temperature
+#define PIN_X9C_CS_FUEL 15  // Digipot CS for Fuel
 
 // --- Rotary Encoder ---
 #define PIN_ENC_CLK 25

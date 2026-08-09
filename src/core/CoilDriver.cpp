@@ -15,6 +15,7 @@ void IRAM_ATTR onTimer() {
         // Coil is currently ON, so this interrupt means dwell time is over.
         // Turn it off.
         digitalWrite(PIN_COIL_OUT, LOW);
+        digitalWrite(PIN_SOLENOID, LOW);
         isCoilOn = false;
         
         // Feature B: Handle Burst/Single mode limits
@@ -39,18 +40,36 @@ void IRAM_ATTR onTimer() {
         // Coil is currently OFF, so this interrupt means period is over.
         // Turn it ON.
         digitalWrite(PIN_COIL_OUT, HIGH);
+        digitalWrite(PIN_SOLENOID, HIGH);
         isCoilOn = true;
         // Schedule next turn OFF (dwell time)
         timerAlarmWrite(timer, dwellTicks, true);
     }
 }
 
-CoilDriver::CoilDriver(SettingsManager& settingsMgr) : _settingsMgr(settingsMgr) {
+CoilDriver::CoilDriver(SettingsManager& settingsMgr) 
+    : _settingsMgr(settingsMgr),
+      _tempPot(PIN_X9C_INC, PIN_X9C_UD, PIN_X9C_CS_TEMP),
+      _fuelPot(PIN_X9C_INC, PIN_X9C_UD, PIN_X9C_CS_FUEL) {
 }
 
 void CoilDriver::begin() {
     pinMode(PIN_COIL_OUT, OUTPUT);
     digitalWrite(PIN_COIL_OUT, LOW);
+    
+    pinMode(PIN_SOLENOID, OUTPUT);
+    digitalWrite(PIN_SOLENOID, LOW);
+    
+    _tempPot.begin();
+    _fuelPot.begin();
+    
+    ledcSetup(1, 50, 10);
+    ledcAttachPin(PIN_RPM, 1);
+    ledcWrite(1, 0);
+    
+    ledcSetup(2, 50, 10);
+    ledcAttachPin(PIN_KMH, 2);
+    ledcWrite(2, 0);
 
     // Setup timer 0, prescaler 80 -> 1 tick = 1 us
     timer = timerBegin(0, 80, true);
@@ -65,24 +84,55 @@ void CoilDriver::update() {
         s.isRunning = false;
     }
     
-    // Auto-Sweep Logic
+    // Auto-Sweep Logic (Smooth Triangle Wave)
     if (s.mode == MODE_SWEEP && s.isRunning) {
-        if (millis() - _sweepLastUpdate > 100) { // Every 100ms
-            s.rpm += 120; // Increase by 2 Hz equivalent
-            if (s.rpm > MAX_RPM) {
-                s.rpm = 600; // Reset to 600 RPM (10 Hz)
+        uint32_t now = millis();
+        uint32_t dt = now - _sweepLastUpdate;
+        
+        if (dt > 10) { // Update every 10ms for smooth sweep
+            float valPerMs = 1.0f / (s.sweepTimeSec * 1000.0f);
+            
+            if (_sweepUp) {
+                _currentSweepVal += (valPerMs * dt);
+                if (_currentSweepVal >= 1.0f) {
+                    _currentSweepVal = 1.0f;
+                    _sweepUp = false;
+                }
+            } else {
+                _currentSweepVal -= (valPerMs * dt);
+                if (_currentSweepVal <= 0.0f) {
+                    _currentSweepVal = 0.0f;
+                    _sweepUp = true;
+                }
             }
+            
+            if (s.pulseMode == PULSE_SPEEDO) {
+                s.speedoKmh = (int)(_currentSweepVal * _targetKmh);
+                s.speedoRpm = (int)(_currentSweepVal * _targetRpm);
+            } else {
+                s.rpm = (int)(_currentSweepVal * _targetRpmNormal);
+            }
+            
             updateTimerConfig();
-            _sweepLastUpdate = millis();
+            _sweepLastUpdate = now;
         }
     }
 }
 
 void CoilDriver::start() {
     AppSettings& s = _settingsMgr.getSettings();
+    _targetKmh = s.speedoKmh;
+    _targetRpm = s.speedoRpm;
+    _targetRpmNormal = s.rpm;
+    
     updateTimerConfig();
     s.isRunning = true;
     s.lastFiredMs = millis(); // Record for UI visual feedback
+    // Reset sweep state
+    _currentSweepVal = 0.0f;
+    _sweepUp = true;
+    _sweepLastUpdate = millis();
+    
     autoStopped = false;
     
     // Feature B: Configure pulses for mode
@@ -90,18 +140,36 @@ void CoilDriver::start() {
     else if (s.mode == MODE_BURST) pulsesRemaining = 5;
     else pulsesRemaining = 0; // Continuous
     
-    // Start the cycle by turning ON immediately
-    digitalWrite(PIN_COIL_OUT, HIGH);
-    isCoilOn = true;
-    timerAlarmWrite(timer, dwellTicks, true);
-    timerAlarmEnable(timer);
+    // Start the cycle by turning ON immediately for coil mode
+    if (s.pulseMode != PULSE_SPEEDO) {
+        digitalWrite(PIN_COIL_OUT, HIGH);
+        digitalWrite(PIN_SOLENOID, HIGH);
+        isCoilOn = true;
+        timerAlarmWrite(timer, dwellTicks, true);
+        timerAlarmEnable(timer);
+    }
 }
 
 void CoilDriver::stop() {
     timerAlarmDisable(timer);
     digitalWrite(PIN_COIL_OUT, LOW);
+    digitalWrite(PIN_SOLENOID, LOW);
+    ledcWrite(1, 0); // Turn off RPM
+    ledcWrite(2, 0); // Turn off KMH
     isCoilOn = false;
-    _settingsMgr.getSettings().isRunning = false;
+    
+    AppSettings& s = _settingsMgr.getSettings();
+    s.isRunning = false;
+    
+    // Restore targets
+    if (s.mode == MODE_SWEEP) {
+        if (s.pulseMode == PULSE_SPEEDO) {
+            s.speedoKmh = _targetKmh;
+            s.speedoRpm = _targetRpm;
+        } else {
+            s.rpm = _targetRpmNormal;
+        }
+    }
 }
 
 void CoilDriver::trigger() {
@@ -114,6 +182,9 @@ void CoilDriver::emergencyStop() {
         timerAlarmDisable(timer);
     }
     digitalWrite(PIN_COIL_OUT, LOW);
+    digitalWrite(PIN_SOLENOID, LOW);
+    ledcWrite(1, 0);
+    ledcWrite(2, 0);
     isCoilOn = false;
 }
 
@@ -134,6 +205,37 @@ void CoilDriver::updateTimerConfig() {
     }
     
     // Calculate ticks (1 tick = 1 us)
+    if (s.pulseMode == PULSE_SPEEDO) {
+        float hzKmh = ((float)s.speedoKmh * s.pulsePerKm) / 3600.0f;
+        float hzRpm = (float)s.speedoRpm / 30.0f; // 4-cylinder assumption (2 pulses per rev)
+        
+        if (hzKmh > 1.0f) {
+            ledcSetup(2, hzKmh, 10);
+            ledcWrite(2, 512); // 50% duty
+        } else {
+            ledcWrite(2, 0);
+        }
+        
+        if (hzRpm > 1.0f) {
+            ledcSetup(1, hzRpm, 10);
+            ledcWrite(1, 512); // 50% duty
+        } else {
+            ledcWrite(1, 0);
+        }
+        
+        _tempPot.setPercent(s.speedoTempPercent);
+        _fuelPot.setPercent(s.speedoFuelPercent);
+        
+        timerAlarmDisable(timer);
+        digitalWrite(PIN_COIL_OUT, LOW);
+        digitalWrite(PIN_SOLENOID, LOW);
+        isCoilOn = false;
+        
+        s.dutyCycle = 50.0f;
+        s.dwellMs = 0.0f;
+        return;
+    }
+    
     periodTicks = 60000000 / s.rpm;
     
     if (s.pulseMode == PULSE_DWELL) {
