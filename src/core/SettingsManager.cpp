@@ -55,6 +55,9 @@ void SettingsManager::load() {
     _settings.pulseMode = static_cast<PulseMode>(preferences.getUChar("pmode", PULSE_DWELL));
     _settings.mode = static_cast<CoilMode>(preferences.getUChar("mode", MODE_CONTINUOUS));
     _settings.sweepTimeSec = preferences.getInt("s_time", 5);
+    if (_settings.sweepTimeSec < 1) _settings.sweepTimeSec = 1;
+    if (_settings.sweepTimeSec > 60) _settings.sweepTimeSec = 60;
+    
     _settings.pulsePerKm = preferences.getInt("s_ppk", 4000);
     _settings.speedoKmh = preferences.getInt("s_kmh", 120);
     _settings.speedoRpm = preferences.getInt("s_rpm", 4000);

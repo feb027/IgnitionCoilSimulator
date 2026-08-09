@@ -124,9 +124,13 @@ void CoilDriver::update() {
 void CoilDriver::start() {
     AppSettings& s = _settingsMgr.getSettings();
     _targetKmh = s.speedoKmh;
+    if (_targetKmh <= 0) _targetKmh = 120; // Fallback so sweep is always visible
     _targetRpm = s.speedoRpm;
+    if (_targetRpm <= 0) _targetRpm = 4000;
     _targetTemp = s.speedoTempPercent;
+    if (_targetTemp <= 0) _targetTemp = 50;
     _targetFuel = s.speedoFuelPercent;
+    if (_targetFuel <= 0) _targetFuel = 50;
     _targetRpmNormal = s.rpm;
     
     updateTimerConfig();
