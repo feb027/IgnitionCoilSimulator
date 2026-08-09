@@ -119,9 +119,15 @@ void MenuSystem::handleButton() {
                         
                         AppSettings& s = _settingsMgr.getSettings();
                         if (!_inMenu && s.pulseMode == PULSE_SPEEDO) {
-                            // Toggle Dashboard Edit Mode
-                            _dashboardEditMode = !_dashboardEditMode;
-                            _dashboardFocusIndex = 0; // Reset focus to KM/H
+                            if (_dashboardEditMode) {
+                                // Double click to exit Edit Mode
+                                _dashboardEditMode = false;
+                                _settingsMgr.save();
+                            } else {
+                                // Toggle Dashboard Edit Mode
+                                _dashboardEditMode = true;
+                                _dashboardFocusIndex = 0; // Reset focus to KM/H
+                            }
                         }
                     } else {
                         // First click detected, wait for potential second click
@@ -188,6 +194,11 @@ void MenuSystem::handleEncoder() {
                     if (s.pulseMode == PULSE_SPEEDO) {
                         // Skip coil/pwm specific pages
                         if (nextIndex >= 1 && nextIndex <= 3) continue;
+                        
+                        // Hide Speedometer edit pages if NOT in Sweep Mode (since we edit them on dashboard)
+                        if (s.mode != MODE_SWEEP) {
+                            if (nextIndex >= 4 && nextIndex <= 7) continue;
+                        }
                     } else {
                         // Skip speedo specific pages
                         if (nextIndex >= 4 && nextIndex <= 8) continue;
@@ -254,12 +265,10 @@ void MenuSystem::handleEncoder() {
 void MenuSystem::executeSingleClick() {
     if (!_inMenu) {
         if (_dashboardEditMode) {
-            // Cycle through Dashboard fields
+            // Cycle through Dashboard fields infinitely
             _dashboardFocusIndex++;
             if (_dashboardFocusIndex > 3) {
-                // Exit Dashboard Edit Mode
-                _dashboardEditMode = false;
-                _settingsMgr.save();
+                _dashboardFocusIndex = 0; // Wrap around
             }
         } else {
             // Enter Menu
