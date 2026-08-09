@@ -115,7 +115,15 @@ void CoilDriver::update() {
                 s.rpm = (int)(_currentSweepVal * _targetRpmNormal);
             }
             
-            updateTimerConfig();
+            // Rate limit hardware updates for LEDC to prevent phase resets (Speedometer PWM glitching)
+            if (s.pulseMode == PULSE_SPEEDO) {
+                if (now - _lastHardwareUpdate > 150) { // 150ms allows frequencies down to 6.6 Hz to complete a cycle
+                    updateTimerConfig();
+                    _lastHardwareUpdate = now;
+                }
+            } else {
+                updateTimerConfig(); // Safe for Coil mode
+            }
             _sweepLastUpdate = now;
         }
     }
@@ -134,6 +142,7 @@ void CoilDriver::start() {
     _targetRpmNormal = s.rpm;
     
     updateTimerConfig();
+    _lastHardwareUpdate = millis();
     s.isRunning = true;
     s.lastFiredMs = millis(); // Record for UI visual feedback
     // Reset sweep state

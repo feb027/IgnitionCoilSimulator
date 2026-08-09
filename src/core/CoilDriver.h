@@ -35,6 +35,7 @@ private:
     DigipotDriver _fuelPot;
     
     uint32_t _sweepLastUpdate = 0; // Tracks last sweep increment
+    uint32_t _lastHardwareUpdate = 0; // Tracks last hardware PWM update to prevent phase resets
     float _currentSweepVal = 0.0f; // Normalized 0.0 to 1.0
     bool _sweepUp = true;          // Sweep direction
     int _targetKmh = 0;
