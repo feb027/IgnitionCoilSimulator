@@ -105,7 +105,7 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("KM/H");
         _u8g2.setFont(u8g2_font_helvB10_tr);
         _u8g2.setCursor(2, 37);
-        _u8g2.print(s.speedoKmh);
+        _u8g2.print(s.currentSpeedoKmh);
 
         // Top Right: RPM (Idx 2)
         drawHighlight(2, 65, 16, 63, 23);
@@ -114,7 +114,7 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("RPM");
         _u8g2.setFont(u8g2_font_helvB10_tr);
         _u8g2.setCursor(68, 37);
-        _u8g2.print(s.speedoRpm);
+        _u8g2.print(s.currentSpeedoRpm);
 
         // Bottom Left: TEMP (Idx 3)
         drawHighlight(3, 0, 40, 63, 24);
@@ -123,7 +123,7 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("TEMP");
         _u8g2.setFont(u8g2_font_helvB10_tr);
         _u8g2.setCursor(2, 61);
-        _u8g2.print(s.speedoTempPercent);
+        _u8g2.print(s.currentSpeedoTempPercent);
         _u8g2.print("%");
 
         // Bottom Right: FUEL (Idx 4)
@@ -133,7 +133,7 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("FUEL");
         _u8g2.setFont(u8g2_font_helvB10_tr);
         _u8g2.setCursor(68, 61);
-        _u8g2.print(s.speedoFuelPercent);
+        _u8g2.print(s.currentSpeedoFuelPercent);
         _u8g2.print("%");
         
         _u8g2.setDrawColor(1); // Restore default draw color

@@ -30,6 +30,10 @@ struct AppSettings {
     int speedoRpm;         // Target RPM for speedometer (and sweep max)
     int speedoTempPercent; // 0-100% for temperature gauge
     int speedoFuelPercent; // 0-100% for fuel gauge
+    int currentSpeedoKmh;  // Live km/h (for sweep display)
+    int currentSpeedoRpm;  // Live RPM
+    int currentSpeedoTempPercent; // Live temp
+    int currentSpeedoFuelPercent; // Live fuel
     bool isRunning;        // Is the driver currently active?
     uint32_t lastFiredMs;  // For visual feedback on display
 };

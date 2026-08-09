@@ -78,10 +78,23 @@ void CoilDriver::begin() {
 
 void CoilDriver::update() {
     AppSettings& s = _settingsMgr.getSettings();
+    
+    // Always sync current display values to target unless we are actively sweeping
+    if (!s.isRunning || s.mode != MODE_SWEEP) {
+        s.currentSpeedoKmh = s.speedoKmh;
+        s.currentSpeedoRpm = s.speedoRpm;
+        s.currentSpeedoTempPercent = s.speedoTempPercent;
+        s.currentSpeedoFuelPercent = s.speedoFuelPercent;
+    }
+
     // Sync auto-stop state from ISR to UI
     if (autoStopped) {
         autoStopped = false;
         s.isRunning = false;
+    }
+
+    if (!s.isRunning) {
+        return;
     }
     
     // Auto-Sweep Logic (Smooth Triangle Wave)
@@ -107,10 +120,10 @@ void CoilDriver::update() {
             }
             
             if (s.pulseMode == PULSE_SPEEDO) {
-                s.speedoKmh = (int)(_currentSweepVal * _targetKmh);
-                s.speedoRpm = (int)(_currentSweepVal * _targetRpm);
-                s.speedoTempPercent = (int)(_currentSweepVal * _targetTemp);
-                s.speedoFuelPercent = (int)(_currentSweepVal * _targetFuel);
+                s.currentSpeedoKmh = (int)(_currentSweepVal * _targetKmh);
+                s.currentSpeedoRpm = (int)(_currentSweepVal * _targetRpm);
+                s.currentSpeedoTempPercent = (int)(_currentSweepVal * _targetTemp);
+                s.currentSpeedoFuelPercent = (int)(_currentSweepVal * _targetFuel);
             } else {
                 s.rpm = (int)(_currentSweepVal * _targetRpmNormal);
             }
@@ -212,8 +225,9 @@ void CoilDriver::updateTimerConfig() {
     
     // Handle Speedometer mode first to bypass coil RPM limits
     if (s.pulseMode == PULSE_SPEEDO) {
-        float hzKmh = ((float)s.speedoKmh * s.pulsePerKm) / 3600.0f;
-        float hzRpm = (float)s.speedoRpm / 30.0f; // 4-cylinder assumption
+        // Speedometer calculation
+        float hzKmh = ((float)s.currentSpeedoKmh * s.pulsePerKm) / 3600.0f;
+        float hzRpm = (float)s.currentSpeedoRpm / 30.0f; // 4-cylinder assumption
         
         if (hzKmh > 1.0f) {
             ledcWriteTone(2, hzKmh);
@@ -229,8 +243,8 @@ void CoilDriver::updateTimerConfig() {
             ledcWrite(1, 0);
         }
         
-        _tempPot.setPercent(s.speedoTempPercent);
-        _fuelPot.setPercent(s.speedoFuelPercent);
+        _tempPot.setPercent(s.currentSpeedoTempPercent);
+        _fuelPot.setPercent(s.currentSpeedoFuelPercent);
         
         timerAlarmDisable(timer);
         digitalWrite(PIN_COIL_OUT, LOW);

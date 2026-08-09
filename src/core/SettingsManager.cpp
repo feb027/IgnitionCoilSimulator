@@ -63,6 +63,14 @@ void SettingsManager::load() {
     _settings.speedoRpm = preferences.getInt("s_rpm", 4000);
     _settings.speedoTempPercent = preferences.getInt("s_tmp", 50);
     _settings.speedoFuelPercent = preferences.getInt("s_fuel", 50);
+    
+    // Initialize current/live values to match target
+    _settings.currentSpeedoKmh = _settings.speedoKmh;
+    _settings.currentSpeedoRpm = _settings.speedoRpm;
+    _settings.currentSpeedoTempPercent = _settings.speedoTempPercent;
+    _settings.currentSpeedoFuelPercent = _settings.speedoFuelPercent;
+    
+    // Setup fallback defaults just in case
     _settings.isRunning = false; // Always start stopped for safety
     
     // Sync saved state
