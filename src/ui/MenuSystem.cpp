@@ -84,9 +84,11 @@ void MenuSystem::update() {
     }
     
     // Handle Double Click Timeout
-    if (_awaitingDoubleClick && (now - _lastClickTime > 250)) {
-        _awaitingDoubleClick = false;
-        executeSingleClick();
+    if (_awaitingDoubleClick && (now - _lastClickTime > 350)) {
+        if (_stableButtonState == HIGH) { // Ensure button is not currently held down
+            _awaitingDoubleClick = false;
+            executeSingleClick();
+        }
     }
 }
 
@@ -195,10 +197,8 @@ void MenuSystem::handleEncoder() {
                         // Skip coil/pwm specific pages
                         if (nextIndex >= 1 && nextIndex <= 3) continue;
                         
-                        // Hide Speedometer edit pages if NOT in Sweep Mode (since we edit them on dashboard)
-                        if (s.mode != MODE_SWEEP) {
-                            if (nextIndex >= 4 && nextIndex <= 7) continue;
-                        }
+                        // Always hide Speedometer edit pages from main menu (we edit them on dashboard)
+                        if (nextIndex >= 4 && nextIndex <= 7) continue;
                     } else {
                         // Skip speedo specific pages
                         if (nextIndex >= 4 && nextIndex <= 8) continue;
