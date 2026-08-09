@@ -2,13 +2,23 @@
 #include "config/Pins.h"
 #include "../core/CoilDriver.h"
 
-#include "pages/MenuPageFreq.h"
+#include "pages/MenuPageType.h"
+#include "pages/MenuPageRPM.h"
 #include "pages/MenuPageDwell.h"
+#include "pages/MenuPageDuty.h"
 #include "pages/MenuPageMode.h"
 #include "pages/MenuPageExit.h"
 
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_MS 1000
+
+// Instantiate pages statically
+static MenuPageType pageType;
+static MenuPageRPM pageRPM;
+static MenuPageDwell pageDwell;
+static MenuPageDuty pageDuty;
+static MenuPageMode pageMode;
+static MenuPageExit pageExit;
 
 MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
     : _settingsMgr(settingsMgr), _driver(driver), 
@@ -17,11 +27,13 @@ MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
       _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false),
       _scrollOffset(0.0f), _lastActivityMs(0) {
       
-    _pages[0] = new MenuPageFreq();
-    _pages[1] = new MenuPageDwell();
-    _pages[2] = new MenuPageMode();
-    _pages[3] = new MenuPageExit();
-    _numPages = 4;
+    _pages[0] = &pageType;
+    _pages[1] = &pageRPM;
+    _pages[2] = &pageDwell;
+    _pages[3] = &pageDuty;
+    _pages[4] = &pageMode;
+    _pages[5] = &pageExit;
+    _numPages = NUM_PAGES;
 }
 
 void MenuSystem::begin() {
@@ -79,13 +91,13 @@ void MenuSystem::handleButton() {
                     if (!_inMenu) {
                         // Enter Menu
                         _inMenu = true;
-                        _selectedIndex = 0;
+                        _selectedIndex = 0; // Always start at TYPE
                         _isEditing = false;
                         _encoder.setCount(0);
                         _lastEncoderCount = 0;
                         _driver.stop(); // Stop firing for safety
                     } else {
-                        if (_selectedIndex == 3) { // 3 = EXIT
+                        if (_selectedIndex == 5) { // 5 = EXIT
                             _inMenu = false;
                             _isEditing = false;
                             _settingsMgr.save();
@@ -94,6 +106,9 @@ void MenuSystem::handleButton() {
                             _isEditing = !_isEditing;
                             if (!_isEditing) {
                                 _settingsMgr.save(); // Save after edit
+                                
+                                // Special handling: If they just changed TYPE, we want to update the dashboard display correctly if they exit
+                                // But also, if they are on Dwell/Duty and change TYPE, that can't happen because they can only change type on TYPE menu.
                             } else {
                                 _encoder.setCount(0);
                                 _lastEncoderCount = 0;
@@ -145,9 +160,26 @@ void MenuSystem::handleEncoder() {
         if (!_isEditing) {
             _lastSelectedIndex = _selectedIndex; // Store before changing
             
-            // Scroll pages (0=FREQ, 1=DWELL, 2=MODE, 3=EXIT) with wrap-around
-            _selectedIndex = (_selectedIndex + diff) % 4;
-            if (_selectedIndex < 0) _selectedIndex += 4;
+            // Scroll pages with wrap-around and dynamic skipping
+            int nextIndex = _selectedIndex;
+            int steps = abs(diff);
+            int dir = (diff > 0) ? 1 : -1;
+            
+            // Loop for each step of the encoder
+            for (int i = 0; i < steps; i++) {
+                while (true) {
+                    nextIndex = (nextIndex + dir) % NUM_PAGES;
+                    if (nextIndex < 0) nextIndex += NUM_PAGES;
+                    
+                    // Skip rules
+                    if (nextIndex == 2 && s.pulseMode != PULSE_DWELL) continue;
+                    if (nextIndex == 3 && s.pulseMode != PULSE_DUTY) continue;
+                    
+                    break;
+                }
+            }
+            
+            _selectedIndex = nextIndex;
             
             // Animation
             if (diff > 0) _scrollOffset = 128.0f;
@@ -157,11 +189,11 @@ void MenuSystem::handleEncoder() {
             _pages[_selectedIndex]->onEdit(diff, s);
         }
     } else {
-        // Optional: fine tune frequency directly from Dashboard
+        // Optional: fine tune RPM directly from Dashboard
         if (s.isRunning && s.mode == MODE_CONTINUOUS) {
-            s.frequencyHz += diff;
-            if (s.frequencyHz < 1) s.frequencyHz = 1;
-            if (s.frequencyHz > MAX_FREQ_HZ) s.frequencyHz = MAX_FREQ_HZ;
+            s.rpm += (diff * 10);
+            if (s.rpm < 0) s.rpm = 0;
+            if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
             // Restart driver safely to apply new limits immediately
             _driver.stop();
             _driver.start();

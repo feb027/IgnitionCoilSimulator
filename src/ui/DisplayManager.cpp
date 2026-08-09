@@ -60,49 +60,54 @@ void DisplayManager::drawDashboard() {
     // Separator Line
     _u8g2.drawLine(0, 14, 128, 14);
 
-    // ZONE 2: Middle (Giant Frequency)
+    // ZONE 2: Middle (Giant RPM)
     _u8g2.setFont(u8g2_font_inb21_mr); // Very large number font
-    String freqStr = String(s.frequencyHz);
-    int freqWidth = _u8g2.getStrWidth(freqStr.c_str());
+    String rpmStr = String(s.rpm);
+    int rpmWidth = _u8g2.getStrWidth(rpmStr.c_str());
     
     _u8g2.setCursor(15, 45);
-    _u8g2.print(freqStr);
+    _u8g2.print(rpmStr);
     
     _u8g2.setFont(u8g2_font_helvB12_tr);
-    _u8g2.setCursor(15 + freqWidth + 5, 45);
-    _u8g2.print("Hz");
+    _u8g2.setCursor(15 + rpmWidth + 5, 45);
+    _u8g2.print("RPM");
 
     // ZONE 3: Bottom (Dwell and Duty Cycle)
-    // Dwell (Left aligned)
-    _u8g2.setFont(u8g2_font_helvB12_tr); 
     _u8g2.setCursor(0, 64);
-    String dwellStr = String(s.dwellMs, 1);
-    _u8g2.print(dwellStr);
     
-    int dwellWidth = _u8g2.getStrWidth(dwellStr.c_str());
-    _u8g2.setFont(u8g2_font_helvB08_tr);
-    _u8g2.setCursor(dwellWidth + 2, 64);
-    _u8g2.print("ms");
+    String dwellStr = String(s.dwellMs, 1) + " ms";
+    String dutyStr = String(s.dutyCycle, 1) + "% DC";
     
-    // Duty Cycle (Right aligned)
-    float periodMs = 1000.0f / s.frequencyHz;
-    int duty = (int)((s.dwellMs / periodMs) * 100.0f);
-    
-    _u8g2.setFont(u8g2_font_helvB08_tr);
-    String dutyStr = String(duty) + "% DC";
-    int dutyW = _u8g2.getStrWidth(dutyStr.c_str());
-    
-    // Feature 3: Visual Overheat Warning
-    if (duty > 60 && (millis() / 250) % 2 == 0) {
+    if (s.pulseMode == PULSE_DWELL) {
+        // Dwell is the master (bold, left)
+        _u8g2.setFont(u8g2_font_helvB12_tr); 
+        _u8g2.print(dwellStr);
+        
+        // Duty is secondary (small, right)
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        int dutyW = _u8g2.getStrWidth(dutyStr.c_str());
+        
+        // Feature 3: Visual Overheat Warning
+        if (s.dutyCycle > 60.0f && (millis() / 250) % 2 == 0) {
+            _u8g2.setDrawColor(1);
+            _u8g2.drawBox(128 - dutyW - 2, 64 - 10, dutyW + 4, 12);
+            _u8g2.setDrawColor(0);
+            _u8g2.setFontMode(1);
+        }
+        _u8g2.setCursor(128 - dutyW, 64);
+        _u8g2.print(dutyStr);
         _u8g2.setDrawColor(1);
-        _u8g2.drawBox(128 - dutyW - 2, 64 - 10, dutyW + 4, 12);
-        _u8g2.setDrawColor(0);
-        _u8g2.setFontMode(1);
+    } else {
+        // Duty is the master (bold, left)
+        _u8g2.setFont(u8g2_font_helvB12_tr); 
+        _u8g2.print(dutyStr);
+        
+        // Dwell is secondary (small, right)
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        int dwellW = _u8g2.getStrWidth(dwellStr.c_str());
+        _u8g2.setCursor(128 - dwellW, 64);
+        _u8g2.print(dwellStr);
     }
-    
-    _u8g2.setCursor(128 - dutyW, 64);
-    _u8g2.print(dutyStr);
-    _u8g2.setDrawColor(1); // Reset
 }
 
 void DisplayManager::drawMenu(MenuSystem& menu) {

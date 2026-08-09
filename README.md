@@ -42,9 +42,22 @@ Berikut adalah panduan *wiring* yang ringkas dan aman:
 
 ### Level Up: Keamanan Ekstra & Alternatif (Opsional)
 
-**1. Industrial Safe (100% Aman dari Konslet)**
-Lingkungan mesin sangat bising akan gangguan elektromagnetik (EMI). Untuk mencegah layar mati/nge-blank atau ESP32 me-reset sendiri karena radiasi koil, tambahkan **Optocoupler (misal: PC817)**. 
-- Optocoupler memisahkan sirkuit ESP32 dan sirkuit tegangan tinggi menggunakan "cahaya". ESP32 menyalakan LED di dalam optocoupler, lalu cahayanya memicu IGBT. Nol koneksi kabel listrik!
+**1. Industrial Safe (100% Aman dari Konslet via Optocoupler)**
+Lingkungan mesin sangat bising akan gangguan elektromagnetik (EMI). Untuk mencegah layar mati/nge-blank atau ESP32 me-reset sendiri karena radiasi koil, gunakan **Optocoupler**. 
+
+* **PC817 vs TLP250:** 
+  - **PC817** adalah optocoupler standar. Sangat murah, tapi lambat dan arusnya kecil. Bisa dipakai, tapi gerbang (Gate) IGBT berpotensi agak panas di putaran tinggi.
+  - **TLP250** adalah **Optocoupler Khusus Gate Driver**. Ini adalah **PILIHAN TERBAIK**. TLP250 dirancang khusus untuk mendobrak gerbang IGBT/MOSFET dengan arus hingga 1.5A dan sangat cepat.
+
+* **Wiring TLP250 ke ESP32 & IGBT:**
+  - **Sisi ESP32 (Aman):**
+    1. **Pin 33 ESP32** -> Resistor 330 Ohm -> **Pin 2 (Anode) TLP250**
+    2. **GND ESP32** -> **Pin 3 (Cathode) TLP250**
+  - **Sisi Tegangan Tinggi (Aki/Koil):**
+    1. **Pin 8 (VCC) TLP250** -> Positif Aki 12V
+    2. **Pin 5 (GND) TLP250** -> Negatif Aki 12V (dan sambungkan juga ke Emitter IGBT)
+    3. **Pin 6 (VO) TLP250** -> Resistor 10-47 Ohm -> **Gate (Pin 1) IGBT**
+  *Dengan skema ini, jika koil meledak atau korslet, yang rusak maksimal hanya TLP250. ESP32 mu akan 100% selamat!*
 
 **2. Alternatif Jika Tidak Ada IGBT**
 Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (seperti N-Channel `IRF540N` atau `IRFZ44N`). 
@@ -57,7 +70,7 @@ Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (
 
 | Komponen | Pin ESP32 | Keterangan |
 | :--- | :--- | :--- |
-| **Sinyal Ignition Coil** | `Pin 33` | **WAJIB** melewati sirkuit IGBT/Transistor di atas! |
+| **Sinyal Ignition Coil** | `Pin 33` | **WAJIB** melewati sirkuit IGBT/TLP250 di atas! |
 | **Tombol Encoder (SW)** | `Pin 25` | Tekan untuk masuk menu / Tahan untuk RUN/STOP |
 | **Data Encoder (DT)** | `Pin 26` | Putaran Kanan/Kiri (Rotary) |
 | **Clock Encoder (CLK)** | `Pin 27` | Sinkronisasi Putaran (Rotary) |
@@ -68,12 +81,15 @@ Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (
 
 ## Cara Penggunaan
 
-1. **Layar Utama (Dashboard):** Layar awal ini akan menampilkan status menyala/berhenti, mode, Frekuensi (raksasa), Dwell, dan Duty Cycle (%).
-2. **Menyalakan Sinyal (Start/Stop):** Saat berada di Dashboard, **Tekan dan Tahan** tombol encoder selama 1 detik. Layar akan menampilkan tulisan `[FIRING] |` di pojok kiri atas. Tahan lagi 1 detik untuk `[STOP]`.
-3. **Masuk ke Menu Pengaturan:** Saat di Dashboard, **Tekan Sekali (Klik Cepat)** tombol encoder. Layar akan menampilkan menu raksasa satu per satu. (Catatan: Masuk ke menu akan otomatis menghentikan koil demi keamanan).
-4. **Navigasi Menu:** Putar encoder ke kanan atau kiri untuk berganti halaman (`SET FREQ` -> `SET DWELL` -> `SET MODE` -> `EXIT`). Putaran ini bisa terus melingkar (tanpa batas).
-5. **Mengubah Nilai:** Klik sekali pada pengaturan yang ingin diubah (contoh: DWELL). Tanda bintang `*` akan berkedip. Putar encoder untuk menaik-turunkan angka. Klik sekali lagi untuk menyimpan.
-6. **Keluar & Simpan:** Putar ke halaman `EXIT MENU` lalu klik. Pengaturan barumu tidak akan ditulis ke *Flash Memory* secara buta, melainkan hanya disimpan secara cerdas jika memang ada nilai yang kamu ganti (membuat memori awet!).
+1. **Layar Utama (Dashboard):** Layar awal ini menampilkan status, mode, **RPM** (angka raksasa), dan nilai Dwell (ms) atau Duty Cycle (%).
+2. **Menyalakan Sinyal (Start/Stop):** Saat di Dashboard, **Tekan dan Tahan** tombol encoder selama 1 detik. Layar akan menampilkan tulisan `[FIRING]`. Tahan lagi 1 detik untuk `[STOP]`.
+3. **Masuk ke Menu:** **Tekan Sekali (Klik Cepat)** tombol encoder.
+4. **Sistem Tipe Cerdas (Dual Personality):** 
+   - Di menu `SET TYPE`, pilih **IGNITION COIL** jika ayahmu ingin mengetes koil. Sistem hanya akan memunculkan menu `SET DWELL (ms)`.
+   - Pilih **PWM / STEPPER** jika ingin mengetes komponen lain (Injektor, kipas, dinamo). Sistem hanya akan memunculkan menu `SET DUTY (%)`.
+5. **Navigasi Menu:** Putar encoder untuk berpindah halaman (`SET TYPE` -> `SET RPM` -> `SET DWELL/DUTY` -> `SET MODE` -> `EXIT`). 
+6. **Mengubah Nilai:** Klik sekali pada pengaturan yang ingin diubah. Background tulisan akan terbalik (inverse). Putar encoder untuk menaik-turunkan angka. Klik sekali lagi untuk menyimpan.
+7. **Keluar & Simpan:** Putar ke halaman `EXIT` lalu klik. Pengaturan akan tersimpan abadi ke memori NVS ESP32.
 
 ## Cara Mengisi Program (Upload)
 Proyek ini dibangun secara modular menggunakan lingkungan pengembangan **PlatformIO**.

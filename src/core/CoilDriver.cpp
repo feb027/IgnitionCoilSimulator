@@ -68,9 +68,9 @@ void CoilDriver::update() {
     // Auto-Sweep Logic
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (millis() - _sweepLastUpdate > 100) { // Every 100ms
-            s.frequencyHz += 2; // Increase by 2 Hz
-            if (s.frequencyHz > MAX_FREQ_HZ) {
-                s.frequencyHz = 10; // Reset to 10 Hz when max is reached
+            s.rpm += 120; // Increase by 2 Hz equivalent
+            if (s.rpm > MAX_RPM) {
+                s.rpm = 600; // Reset to 600 RPM (10 Hz)
             }
             updateTimerConfig();
             _sweepLastUpdate = millis();
@@ -121,17 +121,41 @@ void CoilDriver::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     
     // Enforce safety limits
-    if (s.dwellMs > MAX_DWELL_MS) s.dwellMs = MAX_DWELL_MS;
-    if (s.frequencyHz > MAX_FREQ_HZ) s.frequencyHz = MAX_FREQ_HZ;
-    if (s.frequencyHz < 1) s.frequencyHz = 1;
+    if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
+    if (s.rpm < 0) s.rpm = 0; 
+    
+    // Safety handle for 0 RPM (engine off)
+    if (s.rpm == 0) {
+        periodTicks = 1000000; // Arbitrary 1 sec period
+        dwellTicks = 0;        // No dwell, coil will not turn on
+        s.dutyCycle = 0.0f;
+        s.dwellMs = 0.0f;
+        return;
+    }
     
     // Calculate ticks (1 tick = 1 us)
-    dwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
-    periodTicks = 1000000 / s.frequencyHz;
+    periodTicks = 60000000 / s.rpm;
     
-    // Duty cycle protection: Dwell cannot exceed 80% of period to prevent coil meltdown
-    uint32_t maxDwellForFreq = (uint32_t)(periodTicks * 0.8f);
-    if (dwellTicks > maxDwellForFreq) {
-        dwellTicks = maxDwellForFreq;
+    if (s.pulseMode == PULSE_DWELL) {
+        if (s.dwellMs > MAX_DWELL_MS) s.dwellMs = MAX_DWELL_MS;
+        dwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+        
+        // Duty cycle protection for coil: Dwell cannot exceed 80% of period
+        uint32_t maxDwellForFreq = (uint32_t)(periodTicks * 0.8f);
+        if (dwellTicks > maxDwellForFreq) {
+            dwellTicks = maxDwellForFreq;
+        }
+        
+        // Sync dutyCycle for display (so UI shows correct calculated DC)
+        s.dutyCycle = ((float)dwellTicks / periodTicks) * 100.0f;
+    } else {
+        // PULSE_DUTY mode (e.g., Stepper / PWM)
+        if (s.dutyCycle > 100.0f) s.dutyCycle = 100.0f;
+        if (s.dutyCycle < 0.0f) s.dutyCycle = 0.0f;
+        
+        dwellTicks = (uint32_t)(periodTicks * (s.dutyCycle / 100.0f));
+        
+        // Sync dwellMs for display (so UI shows correct calculated Dwell)
+        s.dwellMs = (float)dwellTicks / 1000.0f;
     }
 }

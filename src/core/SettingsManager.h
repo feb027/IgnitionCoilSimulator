@@ -11,10 +11,17 @@ enum CoilMode {
     MODE_SWEEP
 };
 
+enum PulseMode {
+    PULSE_DWELL,
+    PULSE_DUTY
+};
+
 // Application settings struct
 struct AppSettings {
-    uint16_t frequencyHz;  // Output frequency in Hz
-    float dwellMs;         // Dwell time in milliseconds
+    int rpm;               // Output speed in RPM
+    float dwellMs;         // Dwell time in milliseconds (for coils)
+    float dutyCycle;       // Duty cycle in percentage 0.0 - 100.0 (for PWM)
+    PulseMode pulseMode;   // Which variable is locked/controlling
     CoilMode mode;         // Current operating mode
     bool isRunning;        // Is the driver currently active?
     uint32_t lastFiredMs;  // For visual feedback on display

@@ -6,7 +6,7 @@
 
 // Hard safety limits
 #define MAX_DWELL_MS    5.0f
-#define MAX_FREQ_HZ     200
+#define MAX_RPM         12000
 
 class CoilDriver {
 public:

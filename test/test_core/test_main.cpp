@@ -14,27 +14,25 @@ void tearDown(void) {
     // clean stuff up here
 }
 
-void test_settings_frequency_limits(void) {
+void test_settings_rpm_limits(void) {
     AppSettings& s = sm.getSettings();
     
-    // Test lower limit
-    s.frequencyHz = 0;
-    TEST_ASSERT_EQUAL(0, s.frequencyHz); // Just checking assignment
+    // Test assignment
+    s.rpm = 0;
+    TEST_ASSERT_EQUAL(0, s.rpm); 
     
-    // Simulating what MenuSystem does on limit (usually UI constrained, but let's test CoilDriver limits)
-    // Actually SettingsManager doesn't enforce limits on struct direct access,
-    // so we just test that the struct holds values correctly and driver parses them.
-    s.frequencyHz = 100;
-    TEST_ASSERT_EQUAL(100, s.frequencyHz);
+    s.rpm = 6000;
+    TEST_ASSERT_EQUAL(6000, s.rpm);
 }
 
 void test_driver_duty_cycle_calculation(void) {
     AppSettings& s = sm.getSettings();
-    s.frequencyHz = 100; // 100 Hz = 10ms period
+    s.rpm = 6000; // 6000 RPM = 100 Hz = 10ms period
     s.dwellMs = 3.0f;    // 3ms dwell
+    s.pulseMode = PULSE_DWELL;
     
     // We expect duty cycle to be 30%
-    float periodMs = 1000.0f / s.frequencyHz;
+    float periodMs = 1000.0f / (s.rpm / 60.0f);
     float duty = (s.dwellMs / periodMs) * 100.0f;
     
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 30.0f, duty);
@@ -46,7 +44,7 @@ void setup() {
     delay(2000);
 
     UNITY_BEGIN();
-    RUN_TEST(test_settings_frequency_limits);
+    RUN_TEST(test_settings_rpm_limits);
     RUN_TEST(test_driver_duty_cycle_calculation);
     UNITY_END();
 }

@@ -1,6 +1,8 @@
 #ifndef MENU_SYSTEM_H
 #define MENU_SYSTEM_H
 
+#define NUM_PAGES 6
+
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"
 
@@ -45,7 +47,7 @@ private:
     bool _isEditing;
     int32_t _lastEncoderCount;
     
-    MenuPage* _pages[4];
+    MenuPage* _pages[NUM_PAGES];
     int _numPages;
     
     float _scrollOffset;
