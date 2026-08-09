@@ -55,6 +55,7 @@ void DisplayManager::drawDashboard() {
         case MODE_CONTINUOUS: _u8g2.print("CONTINUOUS"); break;
         case MODE_BURST: _u8g2.print("BURST"); break;
         case MODE_SINGLE: _u8g2.print("SINGLE"); break;
+        case MODE_SWEEP: _u8g2.print("SWEEP"); break;
     }
     
     // Separator Line

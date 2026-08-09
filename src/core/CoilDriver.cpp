@@ -197,34 +197,21 @@ void CoilDriver::emergencyStop() {
 void CoilDriver::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     
-    // Enforce safety limits
-    if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
-    if (s.rpm < 0) s.rpm = 0; 
-    
-    // Safety handle for 0 RPM (engine off)
-    if (s.rpm == 0) {
-        periodTicks = 1000000; // Arbitrary 1 sec period
-        dwellTicks = 0;        // No dwell, coil will not turn on
-        s.dutyCycle = 0.0f;
-        s.dwellMs = 0.0f;
-        return;
-    }
-    
-    // Calculate ticks (1 tick = 1 us)
+    // Handle Speedometer mode first to bypass coil RPM limits
     if (s.pulseMode == PULSE_SPEEDO) {
         float hzKmh = ((float)s.speedoKmh * s.pulsePerKm) / 3600.0f;
-        float hzRpm = (float)s.speedoRpm / 30.0f; // 4-cylinder assumption (2 pulses per rev)
+        float hzRpm = (float)s.speedoRpm / 30.0f; // 4-cylinder assumption
         
         if (hzKmh > 1.0f) {
             ledcSetup(2, hzKmh, 10);
-            ledcWrite(2, 512); // 50% duty
+            ledcWrite(2, 512);
         } else {
             ledcWrite(2, 0);
         }
         
         if (hzRpm > 1.0f) {
             ledcSetup(1, hzRpm, 10);
-            ledcWrite(1, 512); // 50% duty
+            ledcWrite(1, 512);
         } else {
             ledcWrite(1, 0);
         }
@@ -238,6 +225,19 @@ void CoilDriver::updateTimerConfig() {
         isCoilOn = false;
         
         s.dutyCycle = 50.0f;
+        s.dwellMs = 0.0f;
+        return;
+    }
+    
+    // Enforce safety limits
+    if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
+    if (s.rpm < 0) s.rpm = 0; 
+    
+    // Safety handle for 0 RPM (engine off)
+    if (s.rpm == 0) {
+        periodTicks = 1000000; // Arbitrary 1 sec period
+        dwellTicks = 0;        // No dwell, coil will not turn on
+        s.dutyCycle = 0.0f;
         s.dwellMs = 0.0f;
         return;
     }
