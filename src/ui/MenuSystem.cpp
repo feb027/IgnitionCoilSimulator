@@ -2,14 +2,26 @@
 #include "config/Pins.h"
 #include "../core/CoilDriver.h"
 
+#include "pages/MenuPageFreq.h"
+#include "pages/MenuPageDwell.h"
+#include "pages/MenuPageMode.h"
+#include "pages/MenuPageExit.h"
+
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_MS 1000
 
 MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
     : _settingsMgr(settingsMgr), _driver(driver), 
-      _inMenu(false), _selectedIndex(0), _isEditing(false), 
+      _inMenu(false), _selectedIndex(0), _lastSelectedIndex(0), _isEditing(false), 
       _rawButtonState(HIGH), _stableButtonState(HIGH), 
-      _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false) {
+      _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false),
+      _scrollOffset(0.0f), _lastActivityMs(0) {
+      
+    _pages[0] = new MenuPageFreq();
+    _pages[1] = new MenuPageDwell();
+    _pages[2] = new MenuPageMode();
+    _pages[3] = new MenuPageExit();
+    _numPages = 4;
 }
 
 void MenuSystem::begin() {
@@ -19,11 +31,25 @@ void MenuSystem::begin() {
     _encoder.attachHalfQuad(PIN_ENC_DT, PIN_ENC_CLK);
     _encoder.setCount(0);
     _lastEncoderCount = 0;
+    _lastActivityMs = millis();
 }
 
 void MenuSystem::update() {
     handleButton();
     handleEncoder();
+    
+    static uint32_t lastAnimTime = 0;
+    uint32_t now = millis();
+    
+    // Decay scroll offset smoothly towards 0 for animation (only every 16ms, ~60FPS)
+    if (now - lastAnimTime > 16) {
+        lastAnimTime = now;
+        if (abs(_scrollOffset) > 1.0f) {
+            _scrollOffset *= 0.7f; // Adjust 0.7 for speed (lower is faster)
+        } else {
+            _scrollOffset = 0.0f;
+        }
+    }
 }
 
 void MenuSystem::handleButton() {
@@ -34,6 +60,7 @@ void MenuSystem::handleButton() {
     if (reading != _rawButtonState) {
         _lastDebounceTime = now;
         _rawButtonState = reading;
+        _lastActivityMs = now;
     }
 
     // Check if state has been stable for longer than debounce delay
@@ -107,6 +134,8 @@ void MenuSystem::handleEncoder() {
     
     if (currentCount == _lastEncoderCount) return;
     
+    _lastActivityMs = millis();
+    
     int32_t diff = currentCount - _lastEncoderCount;
     _lastEncoderCount = currentCount;
     
@@ -114,24 +143,18 @@ void MenuSystem::handleEncoder() {
 
     if (_inMenu) {
         if (!_isEditing) {
+            _lastSelectedIndex = _selectedIndex; // Store before changing
+            
             // Scroll pages (0=FREQ, 1=DWELL, 2=MODE, 3=EXIT) with wrap-around
             _selectedIndex = (_selectedIndex + diff) % 4;
             if (_selectedIndex < 0) _selectedIndex += 4;
+            
+            // Animation
+            if (diff > 0) _scrollOffset = 128.0f;
+            else _scrollOffset = -128.0f;
         } else {
-            // Edit the value for the selected page
-            if (_selectedIndex == 0) { // Freq
-                s.frequencyHz += (diff * 10);
-                if (s.frequencyHz < 1) s.frequencyHz = 1;
-                if (s.frequencyHz > MAX_FREQ_HZ) s.frequencyHz = MAX_FREQ_HZ;
-            } else if (_selectedIndex == 1) { // Dwell
-                s.dwellMs += (diff * 0.1f);
-                if (s.dwellMs < 0.1f) s.dwellMs = 0.1f;
-                if (s.dwellMs > MAX_DWELL_MS) s.dwellMs = MAX_DWELL_MS;
-            } else if (_selectedIndex == 2) { // Mode
-                int m = ((int)s.mode + diff) % 4; // 4 modes now
-                if (m < 0) m += 4;
-                s.mode = (CoilMode)m;
-            }
+            // Edit the value for the selected page using polymorphism
+            _pages[_selectedIndex]->onEdit(diff, s);
         }
     } else {
         // Optional: fine tune frequency directly from Dashboard

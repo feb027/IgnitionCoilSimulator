@@ -6,6 +6,7 @@
 
 // Forward declaration of MenuSystem to avoid circular dependency
 class MenuSystem; 
+class MenuPage;
 
 class DisplayManager {
 public:
@@ -25,6 +26,8 @@ private:
 
     void drawDashboard();
     void drawMenu(MenuSystem& menu);
+    void drawMenuPage(MenuPage* page, int offX, bool editing);
+    void drawScreenSaver();
 };
 
 #endif // DISPLAY_MANAGER_H

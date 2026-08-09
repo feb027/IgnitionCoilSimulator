@@ -4,6 +4,8 @@
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"
 
+#include "pages/MenuPage.h"
+
 class CoilDriver;
 
 class MenuSystem {
@@ -15,7 +17,13 @@ public:
     
     bool isInMenu() const { return _inMenu; }
     int getSelectedIndex() const { return _selectedIndex; }
+    int getPreviousSelectedIndex() const { return _lastSelectedIndex; }
     bool isEditing() const { return _isEditing; }
+    float getScrollOffset() const { return _scrollOffset; }
+    uint32_t getLastActivityMs() const { return _lastActivityMs; }
+
+    MenuPage* getCurrentPage() const { return _pages[_selectedIndex]; }
+    MenuPage* getPreviousPage() const { return _pages[_lastSelectedIndex]; }
 
 private:
     SettingsManager& _settingsMgr;
@@ -32,9 +40,16 @@ private:
 
     // Menu state
     bool _inMenu;
-    int _selectedIndex; // 0=Freq, 1=Dwell, 2=Mode, 3=Exit
+    int _selectedIndex; 
+    int _lastSelectedIndex;
     bool _isEditing;
     int32_t _lastEncoderCount;
+    
+    MenuPage* _pages[4];
+    int _numPages;
+    
+    float _scrollOffset;
+    uint32_t _lastActivityMs;
     
     void handleButton();
     void handleEncoder();

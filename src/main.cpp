@@ -1,3 +1,5 @@
+#ifndef UNIT_TEST
+
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 #include "core/SettingsManager.h"
@@ -40,10 +42,12 @@ void loop() {
     // 2. Process coil driver state (if any dynamic checks are needed outside ISR)
     coilDriver.update();
     
-    // 3. Update display at a reasonable frame rate (e.g., 20 Hz)
+    // 3. Update display at a higher frame rate (e.g., 33 Hz / 30ms) for smooth animations
     uint32_t now = millis();
-    if (now - lastDisplayUpdate > 50) {
+    if (now - lastDisplayUpdate > 30) {
         displayMgr.update(menuSys);
         lastDisplayUpdate = now;
     }
 }
+
+#endif // UNIT_TEST
