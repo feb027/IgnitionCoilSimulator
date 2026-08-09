@@ -113,7 +113,10 @@ void MenuSystem::handleButton() {
                         _isEditing = false;
                         _encoder.setCount(0);
                         _lastEncoderCount = 0;
-                        _driver.stop(); // Stop firing for safety
+                        AppSettings& s = _settingsMgr.getSettings();
+                        if (s.pulseMode != PULSE_SPEEDO) {
+                            _driver.stop(); // Stop firing for safety
+                        }
                     } else {
                         if (_selectedIndex == 11) { // 11 = EXIT
                             _inMenu = false;
@@ -211,6 +214,11 @@ void MenuSystem::handleEncoder() {
         } else {
             // Edit the value for the selected page using polymorphism
             _pages[_selectedIndex]->onEdit(diff, s);
+            
+            // Live update for Speedometer
+            if (s.isRunning && s.pulseMode == PULSE_SPEEDO) {
+                _driver.trigger();
+            }
         }
     } else {
         // Optional: fine tune RPM directly from Dashboard
