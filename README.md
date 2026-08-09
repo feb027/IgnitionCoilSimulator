@@ -86,7 +86,9 @@ Lingkungan mesin sangat bising akan gangguan elektromagnetik (EMI). Untuk menceg
 
 *Dengan skema optocoupler ini, jika koil meledak atau IGBT korslet, yang rusak maksimal hanya TLP250. ESP32 mu akan 100% selamat!*
 
-👉 **PENTING:** Jika Anda menggunakan koil aktif 3-pin (Smart Coil) seperti milik Honda CRV, skema wiring-nya berbeda (tidak perlu IGBT besar). Baca selengkapnya di [WIRING_TLP250_CRV.md](docs/WIRING_TLP250_CRV.md).
+👉 **PENTING:** Jika Anda menggunakan koil aktif (Smart Coil), skema wiring-nya berbeda (tidak perlu IGBT besar):
+- Untuk **Honda (3-Pin)**, baca: [WIRING_TLP250_CRV.md](docs/WIRING_TLP250_CRV.md)
+- Untuk **Toyota (4-Pin)**, baca: [WIRING_TLP250_TOYOTA.md](docs/WIRING_TLP250_TOYOTA.md)
 
 **2. Alternatif Jika Tidak Ada IGBT**
 Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (seperti N-Channel `IRF540N` atau `IRFZ44N`). 
