@@ -203,16 +203,16 @@ void CoilDriver::updateTimerConfig() {
         float hzRpm = (float)s.speedoRpm / 30.0f; // 4-cylinder assumption
         
         if (hzKmh > 1.0f) {
-            ledcSetup(2, hzKmh, 10);
-            ledcWrite(2, 512);
+            ledcWriteTone(2, hzKmh);
         } else {
+            ledcWriteTone(2, 0);
             ledcWrite(2, 0);
         }
         
         if (hzRpm > 1.0f) {
-            ledcSetup(1, hzRpm, 10);
-            ledcWrite(1, 512);
+            ledcWriteTone(1, hzRpm);
         } else {
+            ledcWriteTone(1, 0);
             ledcWrite(1, 0);
         }
         

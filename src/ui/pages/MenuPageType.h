@@ -30,6 +30,17 @@ public:
         int m = ((int)s.pulseMode + diff) % 3;
         if (m < 0) m += 3;
         s.pulseMode = (PulseMode)m;
+        
+        // Enforce valid modes
+        if (s.pulseMode == PULSE_SPEEDO) {
+            // Automatically set to SWEEP mode because users expect the speedometer to sweep!
+            s.mode = MODE_SWEEP;
+        } else {
+            // Restore to CONTINUOUS if coming from speedo
+            if (s.mode == MODE_SWEEP) {
+                s.mode = MODE_CONTINUOUS;
+            }
+        }
     }
 };
 
