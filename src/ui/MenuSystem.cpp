@@ -128,7 +128,7 @@ void MenuSystem::handleButton() {
                             } else {
                                 // Toggle Dashboard Edit Mode
                                 _dashboardEditMode = true;
-                                _dashboardFocusIndex = 0; // Reset focus to KM/H
+                                _dashboardFocusIndex = 0; // Reset focus to MODE
                             }
                         }
                     } else {
@@ -199,6 +199,9 @@ void MenuSystem::handleEncoder() {
                         
                         // Always hide Speedometer edit pages from main menu (we edit them on dashboard)
                         if (nextIndex >= 4 && nextIndex <= 7) continue;
+                        
+                        // Hide Mode page from main menu (edited on dashboard)
+                        if (nextIndex == 9) continue;
                     } else {
                         // Skip speedo specific pages
                         if (nextIndex >= 4 && nextIndex <= 8) continue;
@@ -228,24 +231,30 @@ void MenuSystem::handleEncoder() {
         }
     } else {
         if (_dashboardEditMode) {
-            if (_dashboardFocusIndex == 0) { // KMH
+            if (_dashboardFocusIndex == 0) { // MODE
+                if (diff > 0 && s.mode < 3) s.mode = (CoilMode)(s.mode + 1);
+                else if (diff < 0 && s.mode > 0) s.mode = (CoilMode)(s.mode - 1);
+                
+                // Stop running when mode changes for safety
+                if (s.isRunning && diff != 0) _driver.stop();
+            } else if (_dashboardFocusIndex == 1) { // KMH
                 s.speedoKmh += (diff * 10);
                 if (s.speedoKmh < 0) s.speedoKmh = 0;
                 if (s.speedoKmh > 300) s.speedoKmh = 300;
-            } else if (_dashboardFocusIndex == 1) { // RPM
+            } else if (_dashboardFocusIndex == 2) { // RPM
                 s.speedoRpm += (diff * 500);
                 if (s.speedoRpm < 0) s.speedoRpm = 0;
                 if (s.speedoRpm > 15000) s.speedoRpm = 15000;
-            } else if (_dashboardFocusIndex == 2) { // TEMP
+            } else if (_dashboardFocusIndex == 3) { // TEMP
                 s.speedoTempPercent += (diff * 5);
                 if (s.speedoTempPercent < 0) s.speedoTempPercent = 0;
                 if (s.speedoTempPercent > 100) s.speedoTempPercent = 100;
-            } else if (_dashboardFocusIndex == 3) { // FUEL
+            } else if (_dashboardFocusIndex == 4) { // FUEL
                 s.speedoFuelPercent += (diff * 5);
                 if (s.speedoFuelPercent < 0) s.speedoFuelPercent = 0;
                 if (s.speedoFuelPercent > 100) s.speedoFuelPercent = 100;
             }
-            if (s.isRunning) {
+            if (s.isRunning && _dashboardFocusIndex > 0) {
                 _driver.trigger();
             }
         } else {
@@ -267,7 +276,7 @@ void MenuSystem::executeSingleClick() {
         if (_dashboardEditMode) {
             // Cycle through Dashboard fields infinitely
             _dashboardFocusIndex++;
-            if (_dashboardFocusIndex > 3) {
+            if (_dashboardFocusIndex > 4) {
                 _dashboardFocusIndex = 0; // Wrap around
             }
         } else {

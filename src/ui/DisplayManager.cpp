@@ -51,6 +51,23 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("[STOP] | ");
     }
 
+    bool editMode = false;
+    int focusIdx = -1;
+    if (s.pulseMode == PULSE_SPEEDO) {
+        editMode = menu.isDashboardEditMode();
+        focusIdx = menu.getDashboardFocusIndex();
+    }
+    
+    // Highlight MODE if it's the current focus
+    if (editMode && focusIdx == 0) {
+        _u8g2.setDrawColor(1);
+        _u8g2.drawBox(48, 0, 80, 14); // Box around mode text area
+        _u8g2.setDrawColor(0);
+    } else {
+        _u8g2.setDrawColor(1);
+    }
+    
+    _u8g2.setCursor(50, 10);
     switch(s.mode) {
         case MODE_CONTINUOUS: _u8g2.print("CONTINUOUS"); break;
         case MODE_BURST: _u8g2.print("BURST"); break;
@@ -58,13 +75,13 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         case MODE_SWEEP: _u8g2.print("SWEEP"); break;
     }
     
+    _u8g2.setDrawColor(1); // Restore default color
+
+    
     _u8g2.drawLine(0, 15, 128, 15);
 
     if (s.pulseMode == PULSE_SPEEDO) {
         // 2x2 Grid Layout
-        
-        bool editMode = menu.isDashboardEditMode();
-        int focusIdx = menu.getDashboardFocusIndex();
         
         auto drawHighlight = [&](int idx, int x, int y, int w, int h) {
             if (editMode && focusIdx == idx) {
@@ -81,8 +98,8 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         // Horizontal center line
         _u8g2.drawLine(0, 39, 128, 39);
 
-        // Top Left: KM/H (Idx 0)
-        drawHighlight(0, 0, 16, 63, 23);
+        // Top Left: KM/H (Idx 1)
+        drawHighlight(1, 0, 16, 63, 23);
         _u8g2.setFont(u8g2_font_helvB08_tr);
         _u8g2.setCursor(2, 25);
         _u8g2.print("KM/H");
@@ -90,8 +107,8 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.setCursor(2, 37);
         _u8g2.print(s.speedoKmh);
 
-        // Top Right: RPM (Idx 1)
-        drawHighlight(1, 65, 16, 63, 23);
+        // Top Right: RPM (Idx 2)
+        drawHighlight(2, 65, 16, 63, 23);
         _u8g2.setFont(u8g2_font_helvB08_tr);
         _u8g2.setCursor(68, 25);
         _u8g2.print("RPM");
@@ -99,8 +116,8 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.setCursor(68, 37);
         _u8g2.print(s.speedoRpm);
 
-        // Bottom Left: TEMP (Idx 2)
-        drawHighlight(2, 0, 40, 63, 24);
+        // Bottom Left: TEMP (Idx 3)
+        drawHighlight(3, 0, 40, 63, 24);
         _u8g2.setFont(u8g2_font_helvB08_tr);
         _u8g2.setCursor(2, 49);
         _u8g2.print("TEMP");
@@ -109,8 +126,8 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print(s.speedoTempPercent);
         _u8g2.print("%");
 
-        // Bottom Right: FUEL (Idx 3)
-        drawHighlight(3, 65, 40, 63, 24);
+        // Bottom Right: FUEL (Idx 4)
+        drawHighlight(4, 65, 40, 63, 24);
         _u8g2.setFont(u8g2_font_helvB08_tr);
         _u8g2.setCursor(68, 49);
         _u8g2.print("FUEL");
