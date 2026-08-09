@@ -34,9 +34,11 @@ static MenuPageExit pageExit;
 
 MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
     : _settingsMgr(settingsMgr), _driver(driver), 
-      _inMenu(false), _selectedIndex(0), _lastSelectedIndex(0), _isEditing(false), 
+      _inMenu(false), _dashboardEditMode(false), _dashboardFocusIndex(0), 
+      _selectedIndex(0), _lastSelectedIndex(0), _isEditing(false), 
       _rawButtonState(HIGH), _stableButtonState(HIGH), 
       _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false),
+      _lastClickTime(0), _awaitingDoubleClick(false),
       _scrollOffset(0.0f), _lastActivityMs(0) {
       
     _pages[0] = &pageType;
@@ -80,6 +82,12 @@ void MenuSystem::update() {
             _scrollOffset = 0.0f;
         }
     }
+    
+    // Handle Double Click Timeout
+    if (_awaitingDoubleClick && (now - _lastClickTime > 250)) {
+        _awaitingDoubleClick = false;
+        executeSingleClick();
+    }
 }
 
 void MenuSystem::handleButton() {
@@ -105,33 +113,20 @@ void MenuSystem::handleButton() {
             } else {
                 // Button Released (Rising edge)
                 if (!_buttonLongPressed) {
-                    // Short Press Action
-                    if (!_inMenu) {
-                        // Enter Menu
-                        _inMenu = true;
-                        _selectedIndex = 0; // Always start at TYPE
-                        _isEditing = false;
-                        _encoder.setCount(0);
-                        _lastEncoderCount = 0;
+                    if (_awaitingDoubleClick) {
+                        // Double Click detected!
+                        _awaitingDoubleClick = false;
+                        
                         AppSettings& s = _settingsMgr.getSettings();
-                        if (s.pulseMode != PULSE_SPEEDO) {
-                            _driver.stop(); // Stop firing for safety
+                        if (!_inMenu && s.pulseMode == PULSE_SPEEDO) {
+                            // Toggle Dashboard Edit Mode
+                            _dashboardEditMode = !_dashboardEditMode;
+                            _dashboardFocusIndex = 0; // Reset focus to KM/H
                         }
                     } else {
-                        if (_selectedIndex == 11) { // 11 = EXIT
-                            _inMenu = false;
-                            _isEditing = false;
-                            _settingsMgr.save();
-                        } else {
-                            // Toggle Edit Mode
-                            _isEditing = !_isEditing;
-                            if (!_isEditing) {
-                                _settingsMgr.save(); // Save after edit
-                            } else {
-                                _encoder.setCount(0);
-                                _lastEncoderCount = 0;
-                            }
-                        }
+                        // First click detected, wait for potential second click
+                        _awaitingDoubleClick = true;
+                        _lastClickTime = now;
                     }
                 }
             }
@@ -221,14 +216,77 @@ void MenuSystem::handleEncoder() {
             }
         }
     } else {
-        // Optional: fine tune RPM directly from Dashboard
-        if (s.isRunning && s.mode == MODE_CONTINUOUS) {
-            s.rpm += (diff * 10);
-            if (s.rpm < 0) s.rpm = 0;
-            if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
-            // Restart driver safely to apply new limits immediately
-            _driver.stop();
-            _driver.start();
+        if (_dashboardEditMode) {
+            if (_dashboardFocusIndex == 0) { // KMH
+                s.speedoKmh += (diff * 10);
+                if (s.speedoKmh < 0) s.speedoKmh = 0;
+                if (s.speedoKmh > 300) s.speedoKmh = 300;
+            } else if (_dashboardFocusIndex == 1) { // RPM
+                s.speedoRpm += (diff * 500);
+                if (s.speedoRpm < 0) s.speedoRpm = 0;
+                if (s.speedoRpm > 15000) s.speedoRpm = 15000;
+            } else if (_dashboardFocusIndex == 2) { // TEMP
+                s.speedoTempPercent += (diff * 5);
+                if (s.speedoTempPercent < 0) s.speedoTempPercent = 0;
+                if (s.speedoTempPercent > 100) s.speedoTempPercent = 100;
+            } else if (_dashboardFocusIndex == 3) { // FUEL
+                s.speedoFuelPercent += (diff * 5);
+                if (s.speedoFuelPercent < 0) s.speedoFuelPercent = 0;
+                if (s.speedoFuelPercent > 100) s.speedoFuelPercent = 100;
+            }
+            if (s.isRunning) {
+                _driver.trigger();
+            }
+        } else {
+            // Optional: fine tune RPM directly from Dashboard (for Coil mode)
+            if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
+                s.rpm += (diff * 10);
+                if (s.rpm < 0) s.rpm = 0;
+                if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
+                // Restart driver safely to apply new limits immediately
+                _driver.stop();
+                _driver.start();
+            }
+        }
+    }
+}
+
+void MenuSystem::executeSingleClick() {
+    if (!_inMenu) {
+        if (_dashboardEditMode) {
+            // Cycle through Dashboard fields
+            _dashboardFocusIndex++;
+            if (_dashboardFocusIndex > 3) {
+                // Exit Dashboard Edit Mode
+                _dashboardEditMode = false;
+                _settingsMgr.save();
+            }
+        } else {
+            // Enter Menu
+            _inMenu = true;
+            _selectedIndex = 0; // Always start at TYPE
+            _isEditing = false;
+            _encoder.setCount(0);
+            _lastEncoderCount = 0;
+            AppSettings& s = _settingsMgr.getSettings();
+            if (s.pulseMode != PULSE_SPEEDO) {
+                _driver.stop(); // Stop firing for safety
+            }
+        }
+    } else {
+        if (_selectedIndex == 11) { // 11 = EXIT
+            _inMenu = false;
+            _isEditing = false;
+            _settingsMgr.save();
+        } else {
+            // Toggle Edit Mode
+            _isEditing = !_isEditing;
+            if (!_isEditing) {
+                _settingsMgr.save(); // Save after edit
+            } else {
+                _encoder.setCount(0);
+                _lastEncoderCount = 0;
+            }
         }
     }
 }

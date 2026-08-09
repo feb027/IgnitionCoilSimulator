@@ -17,7 +17,11 @@ public:
     void begin();
     void update();
     
+    // Display getters
     bool isInMenu() const { return _inMenu; }
+    bool isDashboardEditMode() const { return _dashboardEditMode; }
+    int getDashboardFocusIndex() const { return _dashboardFocusIndex; }
+    void drawMenu(U8G2& u8g2) const;
     int getSelectedIndex() const { return _selectedIndex; }
     int getPreviousSelectedIndex() const { return _lastSelectedIndex; }
     bool isEditing() const { return _isEditing; }
@@ -39,9 +43,15 @@ private:
     uint32_t _lastDebounceTime;
     uint32_t _buttonPressTime;
     bool _buttonLongPressed;
+    
+    // Double click state
+    uint32_t _lastClickTime;
+    bool _awaitingDoubleClick;
 
     // Menu state
     bool _inMenu;
+    bool _dashboardEditMode;
+    int _dashboardFocusIndex;
     int _selectedIndex; 
     int _lastSelectedIndex;
     bool _isEditing;
@@ -55,6 +65,7 @@ private:
     
     void handleButton();
     void handleEncoder();
+    void executeSingleClick();
 };
 
 #endif // MENU_SYSTEM_H

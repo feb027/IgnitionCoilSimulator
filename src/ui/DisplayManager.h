@@ -24,7 +24,7 @@ private:
     // You can change SSD1306_128X64_NONAME to your specific OLED type if needed
     U8G2_SSD1306_128X64_NONAME_F_HW_I2C _u8g2;
 
-    void drawDashboard();
+    void drawDashboard(MenuSystem& menu);
     void drawMenu(MenuSystem& menu);
     void drawMenuPage(MenuPage* page, int offX, bool editing);
     void drawScreenSaver();
