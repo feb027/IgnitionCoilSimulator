@@ -57,7 +57,34 @@ Lingkungan mesin sangat bising akan gangguan elektromagnetik (EMI). Untuk menceg
     1. **Pin 8 (VCC) TLP250** -> Positif Aki 12V
     2. **Pin 5 (GND) TLP250** -> Negatif Aki 12V (dan sambungkan juga ke Emitter IGBT)
     3. **Pin 6 (VO) TLP250** -> Resistor 10-47 Ohm -> **Gate (Pin 1) IGBT**
-  *Dengan skema ini, jika koil meledak atau korslet, yang rusak maksimal hanya TLP250. ESP32 mu akan 100% selamat!*
+
+**Skema Teks (TLP250 + IGBT 60N60):**
+```text
+ +---------------+                     +---------------+                  +------------------+
+ |               |                     |               |                  |                  |
+ |  ESP32 Board  |      R 330 Ohm      |    TLP250     |                  |    IGBT 60N60    |
+ |               |                     | Optocoupler   |    R 47 Ohm      |                  |
+ |       PIN 33  |-------[===]-------->| (Pin 2) Anode |                  |                  |
+ |               |                     |               |                  |                  |
+ |          GND  |-------------------->| (Pin 3) Cath  |                  |                  |
+ |               |                     |               |                  |                  |
+ +---------------+                     |  (Pin 8) VCC  |---(+ 12V AKI)    |                  |
+                                       |               |                  |                  |
+                                       |   (Pin 6) VO  |-----[===]------->| (Pin 1) Gate     |
+                                       |               |                  |                  |
+   (+ 12V AKI )------------------------|  (Pin 5) GND  |----------------->| (Pin 3) Emitter  |
+                                       |               |                  |                  |
+                                       +---------------+                  | (Pin 2) Collector|
+                                                                          |        |         |
+                                                                          +--------|---------+
+                                                                                   |
+                                                                                   V
+                                                                        ( - ) Koil Pengapian
+                                                                        ( + ) Koil -> + 12V AKI
+```
+*(Catatan Khusus 60N60: IGBT ini sebenarnya BISA dipakai, namun karena ia biasanya didesain untuk Inverter (bukan spesifik otomotif), ia mungkin **TIDAK MEMILIKI** proteksi Zener Clamp Internal. Sangat disarankan untuk memasang Dioda Flyback besar secara terbalik sejajar dengan koil, agar lonjakan voltase tinggi tidak merusak IGBT).*
+
+*Dengan skema optocoupler ini, jika koil meledak atau IGBT korslet, yang rusak maksimal hanya TLP250. ESP32 mu akan 100% selamat!*
 
 **2. Alternatif Jika Tidak Ada IGBT**
 Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (seperti N-Channel `IRF540N` atau `IRFZ44N`). 
