@@ -232,11 +232,14 @@ void MenuSystem::handleEncoder() {
     } else {
         if (_dashboardEditMode) {
             if (_dashboardFocusIndex == 0) { // MODE
-                if (diff > 0 && s.mode < 3) s.mode = (CoilMode)(s.mode + 1);
-                else if (diff < 0 && s.mode > 0) s.mode = (CoilMode)(s.mode - 1);
-                
-                // Stop running when mode changes for safety
-                if (s.isRunning && diff != 0) _driver.stop();
+                if (diff != 0) {
+                    // Speedometer only supports Continuous and Sweep
+                    if (s.mode == MODE_CONTINUOUS) s.mode = MODE_SWEEP;
+                    else s.mode = MODE_CONTINUOUS;
+                    
+                    // Stop running when mode changes for safety
+                    if (s.isRunning) _driver.stop();
+                }
             } else if (_dashboardFocusIndex == 1) { // KMH
                 s.speedoKmh += (diff * 10);
                 if (s.speedoKmh < 0) s.speedoKmh = 0;

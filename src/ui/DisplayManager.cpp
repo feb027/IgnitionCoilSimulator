@@ -45,10 +45,10 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.drawLine(2, 8, 8, 8);
         _u8g2.drawLine(8, 8, 4, 14);
         _u8g2.setCursor(12, 10);
-        _u8g2.print("FIRING | ");
+        _u8g2.print("ON | ");
     } else {
         _u8g2.setCursor(0, 10);
-        _u8g2.print("[STOP] | ");
+        _u8g2.print("OFF | ");
     }
 
     bool editMode = false;
