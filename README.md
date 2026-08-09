@@ -19,21 +19,18 @@ Sebuah alat *tester* dan *simulator* koil pengapian (Ignition Coil) yang sangat 
 **JANGAN PERNAH MENYAMBUNGKAN PIN ESP32 LANGSUNG KE IGNITION COIL!**
 Ignition Coil menghasilkan tegangan hingga puluhan ribu volt. Saat medan magnet di dalam koil runtuh, ia akan mengirimkan lonjakan tegangan balik (*Back-EMF*) yang sangat masif melalui kabel pemicunya (*trigger*). Jika kabel ini terhubung langsung ke ESP32, mikrokontrolermu akan **meledak atau rusak total secara instan**.
 
-### Komponen Wajib untuk Rangkaian *Driver*:
-Untuk menyalakan koil dengan aman (terutama koil bodoh/2-kabel non-injeksi), kamu **wajib** menggunakan Transistor IGBT (*Insulated-Gate Bipolar Transistor*) yang memang dirancang khusus untuk menahan tegangan kejut koil otomotif (biasanya tahan hingga 400 Volt).
+### Topologi Rangkaian (Low-Side Switch)
+Untuk menyalakan koil 2-pin konvensional, gunakan **IGBT** (contoh: `IRGB14C40L`, sanggup menahan lonjakan induktif otomotif ratusan volt).
 
-**Rekomendasi IGBT Otomotif (Paling Aman):**
-- `IRGB14C40L` (Sangat disarankan karena memiliki fitur *Logic Level Gate*, langsung bisa dipicu oleh ESP32)
-- `ISL9V5036P3`
-- `FGD3136AS`
+IGBT umumnya memiliki 3 kaki (dilihat dari depan, kiri ke kanan): **1. Gate, 2. Collector, 3. Emitter**.
+Berikut adalah panduan *wiring* yang ringkas dan aman:
 
-**Cara Menyambung Rangkaian (Konsep Dasar):**
-1. **Pin 33 (ESP32)** -> Resistor 100 Ohm -> **Gate (Pin 1 IGBT)**
-2. **GND (ESP32)** -> **Emitter (Pin 3 IGBT)** sekaligus digabungkan ke **Negatif (-) Aki/Baterai 12V**
-3. **Collector (Pin 2 IGBT)** -> **Negatif (-) Ignition Coil**
-4. **Positif (+) Aki/Baterai 12V** -> **Positif (+) Ignition Coil**
+1. **Gate (Pin 1 IGBT)** dihubungkan ke **Pin 33 ESP32** melalui sebuah **Resistor 100 Ohm** (sebagai pembatas arus gerbang).
+2. **Emitter (Pin 3 IGBT)** dihubungkan menjadi satu ke **GND ESP32** *DAN* **GND (Negatif) Aki 12V**.
+3. **Collector (Pin 2 IGBT)** dihubungkan ke pin **Negatif (-)** pada Ignition Coil.
+4. Pin **Positif (+)** pada Ignition Coil dihubungkan langsung ke **Positif (+)** Aki 12V.
 
-*(Opsional tapi sangat disarankan: Tambahkan resistor "pull-down" 10k Ohm yang menjembatani antara **Gate IGBT** dan **GND**. Ini mencegah koil memercik sendiri secara liar saat ESP32 baru dinyalakan/booting).*
+*(Praktik Terbaik: Tambahkan resistor "pull-down" 10k Ohm yang menjembatani antara **Gate** dan **GND** agar koil tidak memercik liar saat ESP32 sedang proses booting).*
 
 ---
 
