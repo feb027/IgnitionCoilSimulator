@@ -39,6 +39,8 @@ private:
     bool _sweepUp = true;          // Sweep direction
     int _targetKmh = 0;
     int _targetRpm = 0;
+    int _targetTemp = 0;
+    int _targetFuel = 0;
     int _targetRpmNormal = 0;
     
     // Reconfigure the hardware timer based on current settings

@@ -114,6 +114,7 @@ void MenuSystem::handleButton() {
                         _encoder.setCount(0);
                         _lastEncoderCount = 0;
                         _driver.stop(); // Stop firing for safety
+                    } else {
                         if (_selectedIndex == 11) { // 11 = EXIT
                             _inMenu = false;
                             _isEditing = false;
@@ -123,9 +124,6 @@ void MenuSystem::handleButton() {
                             _isEditing = !_isEditing;
                             if (!_isEditing) {
                                 _settingsMgr.save(); // Save after edit
-                                
-                                // Special handling: If they just changed TYPE, we want to update the dashboard display correctly if they exit
-                                // But also, if they are on Dwell/Duty and change TYPE, that can't happen because they can only change type on TYPE menu.
                             } else {
                                 _encoder.setCount(0);
                                 _lastEncoderCount = 0;

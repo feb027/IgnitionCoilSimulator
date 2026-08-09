@@ -109,6 +109,8 @@ void CoilDriver::update() {
             if (s.pulseMode == PULSE_SPEEDO) {
                 s.speedoKmh = (int)(_currentSweepVal * _targetKmh);
                 s.speedoRpm = (int)(_currentSweepVal * _targetRpm);
+                s.speedoTempPercent = (int)(_currentSweepVal * _targetTemp);
+                s.speedoFuelPercent = (int)(_currentSweepVal * _targetFuel);
             } else {
                 s.rpm = (int)(_currentSweepVal * _targetRpmNormal);
             }
@@ -123,6 +125,8 @@ void CoilDriver::start() {
     AppSettings& s = _settingsMgr.getSettings();
     _targetKmh = s.speedoKmh;
     _targetRpm = s.speedoRpm;
+    _targetTemp = s.speedoTempPercent;
+    _targetFuel = s.speedoFuelPercent;
     _targetRpmNormal = s.rpm;
     
     updateTimerConfig();
@@ -166,6 +170,8 @@ void CoilDriver::stop() {
         if (s.pulseMode == PULSE_SPEEDO) {
             s.speedoKmh = _targetKmh;
             s.speedoRpm = _targetRpm;
+            s.speedoTempPercent = _targetTemp;
+            s.speedoFuelPercent = _targetFuel;
         } else {
             s.rpm = _targetRpmNormal;
         }

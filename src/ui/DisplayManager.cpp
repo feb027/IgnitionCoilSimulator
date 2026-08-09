@@ -61,33 +61,48 @@ void DisplayManager::drawDashboard() {
     _u8g2.drawLine(0, 14, 128, 14);
 
     if (s.pulseMode == PULSE_SPEEDO) {
-        // Speedometer 4-line layout
+        // 2x2 Grid Layout
+        
+        // Vertical center line
+        _u8g2.drawLine(64, 15, 64, 64);
+        // Horizontal center line
+        _u8g2.drawLine(0, 39, 128, 39);
+
+        // Top Left: KM/H
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        _u8g2.setCursor(2, 25);
+        _u8g2.print("KM/H");
         _u8g2.setFont(u8g2_font_helvB10_tr);
-        
-        // Line 1: KM/H
-        _u8g2.setCursor(0, 30);
-        _u8g2.print("KM/H : ");
+        _u8g2.setCursor(2, 37);
         _u8g2.print(s.speedoKmh);
-        
-        // Line 2: RPM
-        _u8g2.setCursor(0, 44);
-        _u8g2.print("RPM  : ");
+
+        // Top Right: RPM
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        _u8g2.setCursor(68, 25);
+        _u8g2.print("RPM");
+        _u8g2.setFont(u8g2_font_helvB10_tr);
+        _u8g2.setCursor(68, 37);
         _u8g2.print(s.speedoRpm);
-        
-        // Line 3: TEMP
-        _u8g2.setCursor(0, 58);
-        _u8g2.print("TEMP : ");
+
+        // Bottom Left: TEMP
+        _u8g2.setFont(u8g2_font_helvB08_tr);
+        _u8g2.setCursor(2, 49);
+        _u8g2.print("TEMP");
+        _u8g2.setFont(u8g2_font_helvB10_tr);
+        _u8g2.setCursor(2, 61);
         _u8g2.print(s.speedoTempPercent);
         _u8g2.print("%");
-        
-        // Line 4: FUEL (small at very bottom)
+
+        // Bottom Right: FUEL
         _u8g2.setFont(u8g2_font_helvB08_tr);
-        _u8g2.setCursor(0, 70);
-        _u8g2.print("BBM   : ");
+        _u8g2.setCursor(68, 49);
+        _u8g2.print("FUEL");
+        _u8g2.setFont(u8g2_font_helvB10_tr);
+        _u8g2.setCursor(68, 61);
         _u8g2.print(s.speedoFuelPercent);
         _u8g2.print("%");
         
-        return; // Skip the rest of the old layout
+        return;
     }
 
     // ZONE 2: Middle (Giant RPM)

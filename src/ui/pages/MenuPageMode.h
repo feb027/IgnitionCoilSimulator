@@ -20,9 +20,20 @@ public:
     }
     
     void onEdit(int diff, AppSettings& s) override {
-        int m = ((int)s.mode + diff) % 4;
-        if (m < 0) m += 4;
-        s.mode = (CoilMode)m;
+        if (s.pulseMode == PULSE_SPEEDO) {
+            // Speedometer only supports Continuous and Sweep
+            if (s.mode == MODE_CONTINUOUS && diff != 0) {
+                s.mode = MODE_SWEEP;
+            } else if (s.mode == MODE_SWEEP && diff != 0) {
+                s.mode = MODE_CONTINUOUS;
+            } else if (s.mode != MODE_CONTINUOUS && s.mode != MODE_SWEEP) {
+                s.mode = MODE_CONTINUOUS; // fallback
+            }
+        } else {
+            int m = ((int)s.mode + diff) % 4;
+            if (m < 0) m += 4;
+            s.mode = (CoilMode)m;
+        }
     }
 };
 
