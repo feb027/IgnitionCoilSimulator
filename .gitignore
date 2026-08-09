@@ -1,0 +1,9 @@
+# PlatformIO Build directories
+.pio/
+
+# AI Agent custom configuration directories
+.agents/
+
+# Standard Ignores
+.vscode/
+.DS_Store
