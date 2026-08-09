@@ -31,21 +31,25 @@ Untuk menyalakan koil 2-pin konvensional, gunakan **IGBT** yang sanggup menahan 
 | `FGD3136AS`  | Logic Level Gate | Bagus untuk sistem pengapian. |
 
 IGBT umumnya memiliki 3 kaki (dilihat dari depan, kiri ke kanan): **1. Gate, 2. Collector, 3. Emitter**.
-Berikut adalah diagram *wiring* yang ringkas dan aman:
+Berikut adalah panduan *wiring* yang ringkas dan aman:
 
-```mermaid
-graph TD
-    ESP32[ESP32: Pin 33] -- Resistor 100Ω --> Gate[IGBT: Gate Pin 1]
-    
-    ESP32_GND[ESP32: GND] --> Emitter[IGBT: Emitter Pin 3]
-    Aki_Min[Aki 12V: Negatif -] --> Emitter
-    
-    Collector[IGBT: Collector Pin 2] --> Coil_Min[Koil: Negatif -]
-    
-    Aki_Plus[Aki 12V: Positif +] --> Coil_Plus[Koil: Positif +]
-```
+1. **Gate (Pin 1 IGBT)** dihubungkan ke **Pin 33 ESP32** melalui sebuah **Resistor 100 Ohm** (sebagai pembatas arus gerbang).
+2. **Emitter (Pin 3 IGBT)** dihubungkan menjadi satu ke **GND ESP32** *DAN* **GND (Negatif) Aki 12V**.
+3. **Collector (Pin 2 IGBT)** dihubungkan ke pin **Negatif (-)** pada Ignition Coil.
+4. Pin **Positif (+)** pada Ignition Coil dihubungkan langsung ke **Positif (+)** Aki 12V.
 
 *(Praktik Terbaik: Tambahkan resistor "pull-down" 10k Ohm yang menjembatani antara **Gate** dan **GND** agar koil tidak memercik liar saat ESP32 sedang proses booting).*
+
+### Level Up: Keamanan Ekstra & Alternatif (Opsional)
+
+**1. Industrial Safe (100% Aman dari Konslet)**
+Lingkungan mesin sangat bising akan gangguan elektromagnetik (EMI). Untuk mencegah layar mati/nge-blank atau ESP32 me-reset sendiri karena radiasi koil, tambahkan **Optocoupler (misal: PC817)**. 
+- Optocoupler memisahkan sirkuit ESP32 dan sirkuit tegangan tinggi menggunakan "cahaya". ESP32 menyalakan LED di dalam optocoupler, lalu cahayanya memicu IGBT. Nol koneksi kabel listrik!
+
+**2. Alternatif Jika Tidak Ada IGBT**
+Jika kamu kesulitan mencari IGBT, kamu **BISA** menggunakan Power MOSFET biasa (seperti N-Channel `IRF540N` atau `IRFZ44N`). 
+- **⚠️ TAPI ADA SYARAT MUTLAK:** Kamu **WAJIB** memasang **Dioda Flyback** berukuran besar (misal: seri `1N5408` atau lebih besar) yang dipasang melintang terbalik di antara Positif dan Negatif Koil.
+- Tanpa dioda ini, tegangan balik 400 Volt dari koil akan **menghancurkan** MOSFET seketika dalam satu kali jepretan, karena MOSFET biasa tidak memiliki perlindungan *Internal Zener Clamp* seperti IGBT otomotif.
 
 ---
 
