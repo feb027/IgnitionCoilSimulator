@@ -98,20 +98,24 @@ function App() {
             <div class="panel-main" style=${isStepper ? "display: flex; justify-content: space-between; gap: 20px; align-items: stretch; padding: 30px;" : ""}>
                 ${isStepper ? html`
                     <button 
-                        class="btn"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color);"
-                        onClick=${() => sendAction('stepperJog', -1)}
-                        disabled=${!state.connected || state.isRunning}
+                        class="btn btn-jog"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                        onPointerDown=${() => sendAction('stepperSpin', -1)}
+                        onPointerUp=${() => sendAction('stepperSpin', 0)}
+                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
+                        disabled=${!state.connected}
                     >
-                        ⬅️ TURN LEFT
+                        PUTAR KIRI
                     </button>
                     <button 
-                        class="btn"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color);"
-                        onClick=${() => sendAction('stepperJog', 1)}
-                        disabled=${!state.connected || state.isRunning}
+                        class="btn btn-jog"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                        onPointerDown=${() => sendAction('stepperSpin', 1)}
+                        onPointerUp=${() => sendAction('stepperSpin', 0)}
+                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
+                        disabled=${!state.connected}
                     >
-                        TURN RIGHT ➡️
+                        PUTAR KANAN
                     </button>
                 ` : html`
                     <${Dial} 
@@ -120,7 +124,7 @@ function App() {
                         unit=${isSpeedo ? "KM/H" : "RPM"}
                         min=${isSpeedo ? 0 : 0}
                         max=${isSpeedo ? 300 : 16000}
-                        step=${isSpeedo ? 10 : 100}
+                        step=${isSpeedo ? 10 : state.rpmStep}
                         onChange=${(val) => sendAction(isSpeedo ? 'setSpeedoKmh' : 'setRpm', val)}
                         disabled=${!state.connected}
                     />
@@ -207,14 +211,16 @@ function App() {
                 />
                 
                 <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: 16px;">
-                    <button 
-                        class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
-                        onClick=${() => sendAction('toggleRun')}
-                        disabled=${!state.connected}
-                        style="box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
-                    >
-                        ${state.isRunning ? 'RUNNING' : 'STANDBY'}
-                    </button>
+                    ${!isStepper ? html`
+                        <button 
+                            class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
+                            onClick=${() => sendAction('toggleRun')}
+                            disabled=${!state.connected}
+                            style="box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
+                        >
+                            ${state.isRunning ? 'RUNNING' : 'STANDBY'}
+                        </button>
+                    ` : ''}
                 </div>
                 
                 <details class="panel" style="margin-top: 16px;">

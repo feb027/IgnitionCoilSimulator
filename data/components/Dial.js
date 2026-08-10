@@ -60,13 +60,16 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
                 <div 
                     class="fader-track" 
                     ref=${trackRef}
-                    onPointerDown=${handlePointerDown}
                     onPointerMove=${handlePointerMove}
                     onPointerUp=${handlePointerUp}
                     onPointerCancel=${handlePointerUp}
                 >
                     <div class="fader-fill" style="width: ${percentage}%"></div>
-                    <div class="fader-thumb" style="left: ${percentage}%"></div>
+                    <div 
+                        class="fader-thumb" 
+                        style="left: ${percentage}%; cursor: grab;"
+                        onPointerDown=${handlePointerDown}
+                    ></div>
                 </div>
             </div>
         </div>

@@ -213,3 +213,15 @@ header {
     border-color: var(--neon-red);
     color: var(--bg-base);
 }
+
+.btn-jog {
+    transition: all 0.1s ease-out;
+    box-shadow: 0 4px 0 var(--border-sharp);
+}
+.btn-jog:active {
+    transform: translateY(4px) !important;
+    box-shadow: 0 0 0 var(--border-sharp) !important;
+    background: var(--text-primary) !important;
+    color: var(--bg-base) !important;
+    border-color: var(--text-primary) !important;
+}

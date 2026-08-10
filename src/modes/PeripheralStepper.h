@@ -24,6 +24,7 @@ public:
     
     // Stepper specific actions
     void step(int direction); // 1 for forward, -1 for backward
+    void setSpinDirection(int direction);
     
 private:
     SettingsManager& _settingsMgr;
@@ -31,6 +32,9 @@ private:
     
     int _currentStep;
     uint32_t _lastStepTime;
+    
+    int _autoDirection; // 1 for right, -1 for left, 0 for stop
+    float _fanAngle; // 0 to 360 for animation
     
     void updateTimerConfig();
     void writeStep(int stepIndex);

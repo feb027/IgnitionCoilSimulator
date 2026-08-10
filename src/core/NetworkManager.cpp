@@ -176,9 +176,17 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     } else if (action == "setStepperSpeed") {
         s.stepperSpeed = doc["value"].as<int>();
         changed = true;
-    } else if (action == "stepperJog") {
+    } else if (action == "stepperSpin") {
         if (s.pulseMode == PULSE_STEPPER && _peripheralMgr.getActive() != nullptr) {
-            ((PeripheralStepper*)_peripheralMgr.getActive())->step(doc["value"].as<int>());
+            int dir = doc["value"].as<int>();
+            ((PeripheralStepper*)_peripheralMgr.getActive())->setSpinDirection(dir);
+            bool wantRun = (dir != 0);
+            if (wantRun != s.isRunning) {
+                s.isRunning = wantRun;
+                if (s.isRunning) _peripheralMgr.start();
+                else _peripheralMgr.stop();
+            }
+            changed = true;
         }
     } else if (action == "trigger") {
         // We need a way to pass trigger event, maybe we add a flag in settings
