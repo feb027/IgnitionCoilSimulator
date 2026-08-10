@@ -86,20 +86,14 @@ header {
     gap: var(--space-md);
 }
 
-.panel-main, .panel-side-top {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-}
-
 @media (min-width: 768px) {
     .bento-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-auto-rows: minmax(min-content, max-content);
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: auto auto;
     }
-    .panel-main { display: contents; }
-    .panel-side-top { display: contents; }
-    .panel-side-bottom { grid-column: span 2; }
+    .panel-main { grid-column: span 8; grid-row: span 2; }
+    .panel-side-top { grid-column: span 4; }
+    .panel-side-bottom { grid-column: span 4; }
 }
 
 /* Matte Panel Architecture (No Glass) */
@@ -230,4 +224,42 @@ header {
     background: var(--text-primary) !important;
     color: var(--bg-base) !important;
     border-color: var(--text-primary) !important;
+}
+/* Drawer Styles for Mobile */
+.drawer-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 1000;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+.btn-mode-drawer {
+    display: none;
+}
+
+.drawer-only-header {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    .drawer-only-header {
+        display: flex !important;
+    }
+    
+    .mode-container {
+        position: fixed; bottom: 0; left: 0; width: 100%;
+        background: var(--surface-matte); border-top: 1px solid var(--border-sharp);
+        border-radius: 12px 12px 0 0; padding: 24px 16px; z-index: 1001;
+        transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    }
+    .mode-container.open { transform: translateY(0); }
+    
+    .btn-mode-drawer {
+        display: flex; justify-content: space-between; align-items: center;
+        width: 100%; padding: 16px; margin-bottom: 16px;
+        background: var(--surface-matte); border: 1px solid var(--border-sharp);
+        font-weight: bold; font-size: 1.1rem; border-radius: 4px;
+        color: var(--text-color); cursor: pointer;
+    }
 }

@@ -57,11 +57,15 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
     int focusIdx = menu.getDashboardFocusIndex();
     
     String modeStr;
-    switch(s.mode) {
-        case MODE_CONTINUOUS: modeStr = "CONTINUOUS"; break;
-        case MODE_BURST: modeStr = "BURST"; break;
-        case MODE_SINGLE: modeStr = "SINGLE"; break;
-        case MODE_SWEEP: modeStr = "SWEEP"; break;
+    if (s.pulseMode == PULSE_STEPPER) {
+        modeStr = "STEPPER";
+    } else {
+        switch(s.mode) {
+            case MODE_CONTINUOUS: modeStr = "CONTINUOUS"; break;
+            case MODE_BURST: modeStr = "BURST"; break;
+            case MODE_SINGLE: modeStr = "SINGLE"; break;
+            case MODE_SWEEP: modeStr = "SWEEP"; break;
+        }
     }
     
     int modeWidth = _u8g2.getStrWidth(modeStr.c_str());

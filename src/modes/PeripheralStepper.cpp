@@ -59,8 +59,8 @@ void PeripheralStepper::update() {
     
     if (s.isRunning && _autoDirection != 0) {
         uint32_t now = millis();
-        uint32_t delayMs = map(s.stepperSpeed, 1, 100, 50, 2);
-        if (delayMs < 2) delayMs = 2; // Mechanical limit
+        uint32_t delayMs = map(s.stepperSpeed, 1, 100, 50, 10);
+        if (delayMs < 10) delayMs = 10; // Mechanical limit to avoid stalling
         
         if (now - _lastStepTime >= delayMs) {
             _lastStepTime = now;
@@ -68,11 +68,13 @@ void PeripheralStepper::update() {
         }
     } else {
         // If not running, ensure coils are powered off to prevent overheating
-        // (Unless we want holding torque, but for IACV we usually turn off to avoid burning)
-        digitalWrite(PIN_STEP_A_PLUS, LOW);
-        digitalWrite(PIN_STEP_A_MINUS, LOW);
-        digitalWrite(PIN_STEP_B_PLUS, LOW);
-        digitalWrite(PIN_STEP_B_MINUS, LOW);
+        // Keep energized for a fraction of a second after stopping for jogging
+        if (millis() - s.lastFiredMs > 200) {
+            digitalWrite(PIN_STEP_A_PLUS, LOW);
+            digitalWrite(PIN_STEP_A_MINUS, LOW);
+            digitalWrite(PIN_STEP_B_PLUS, LOW);
+            digitalWrite(PIN_STEP_B_MINUS, LOW);
+        }
     }
 }
 
