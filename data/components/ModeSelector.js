@@ -50,7 +50,7 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                                 <span style="font-size: 0.85rem; opacity: 0.7;">${m.desc}</span>
                             </button>
                             
-                            ${mode === m.id ? html`
+                            ${(mode === m.id && m.id !== 3) ? html`
                                 <div style="display: flex; gap: 4px; margin-top: 4px; margin-bottom: 4px;">
                                     ${runModes.map(rm => html`
                                         <button 

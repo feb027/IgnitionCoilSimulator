@@ -149,7 +149,7 @@ void PeripheralStepper::handleEncoder(int diff, int focusIndex) {
     
     // If we are NOT in edit mode and the dashboard is just focused, 
     // rotating the encoder directly steps the motor!
-    if (focusIndex == 0 && diff != 0 && !s.isRunning) {
+    if (focusIndex == 0 && diff != 0) {
         // Physical jogging
         step(diff > 0 ? 1 : -1);
         return;

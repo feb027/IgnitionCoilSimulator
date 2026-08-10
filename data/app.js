@@ -95,28 +95,30 @@ function App() {
         </header>
 
         <main class="bento-grid">
-            <div class="panel-main" style=${isStepper ? "display: flex; justify-content: space-between; gap: 20px; align-items: stretch; padding: 30px;" : ""}>
+            <div class="panel-main">
                 ${isStepper ? html`
-                    <button 
-                        class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
-                        onPointerDown=${() => sendAction('stepperSpin', -1)}
-                        onPointerUp=${() => sendAction('stepperSpin', 0)}
-                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
-                        disabled=${!state.connected}
-                    >
-                        PUTAR KIRI
-                    </button>
-                    <button 
-                        class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
-                        onPointerDown=${() => sendAction('stepperSpin', 1)}
-                        onPointerUp=${() => sendAction('stepperSpin', 0)}
-                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
-                        disabled=${!state.connected}
-                    >
-                        PUTAR KANAN
-                    </button>
+                    <div class="panel" style="display: flex; gap: 20px; align-items: stretch; justify-content: center; min-height: 200px;">
+                        <button 
+                            class="btn btn-jog"
+                            style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                            onPointerDown=${() => sendAction('stepperSpin', -1)}
+                            onPointerUp=${() => sendAction('stepperSpin', 0)}
+                            onPointerLeave=${() => sendAction('stepperSpin', 0)}
+                            disabled=${!state.connected}
+                        >
+                            PUTAR KIRI
+                        </button>
+                        <button 
+                            class="btn btn-jog"
+                            style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                            onPointerDown=${() => sendAction('stepperSpin', 1)}
+                            onPointerUp=${() => sendAction('stepperSpin', 0)}
+                            onPointerLeave=${() => sendAction('stepperSpin', 0)}
+                            disabled=${!state.connected}
+                        >
+                            PUTAR KANAN
+                        </button>
+                    </div>
                 ` : html`
                     <${Dial} 
                         label=${isSpeedo ? (isSweep ? "TARGET SPEED" : "ACTUAL SPEED") : "ENGINE SPEED"}
@@ -131,7 +133,7 @@ function App() {
                 `}
             </div>
             
-            <div class="panel-side-top" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="panel-side-top">
                 ${state.pulseMode === 0 ? html`
                     <${Dial} 
                         label="DWELL TIME"

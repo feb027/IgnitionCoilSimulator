@@ -3,22 +3,26 @@ import { html, useRef, useEffect } from '../preact.mjs';
 export function Dial({ label, value, unit, min, max, step, onChange, disabled }) {
     const trackRef = useRef(null);
 
+    const thumbRef = useRef(null);
+
     const handlePointerDown = (e) => {
         if (disabled) return;
         updateValueFromEvent(e);
-        trackRef.current.setPointerCapture(e.pointerId);
+        thumbRef.current.setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e) => {
         if (disabled) return;
-        if (trackRef.current.hasPointerCapture(e.pointerId)) {
+        if (thumbRef.current && thumbRef.current.hasPointerCapture(e.pointerId)) {
             updateValueFromEvent(e);
         }
     };
 
     const handlePointerUp = (e) => {
         if (disabled) return;
-        trackRef.current.releasePointerCapture(e.pointerId);
+        if (thumbRef.current && thumbRef.current.hasPointerCapture(e.pointerId)) {
+            thumbRef.current.releasePointerCapture(e.pointerId);
+        }
     };
 
     const numMin = Number(min);
@@ -60,15 +64,17 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
                 <div 
                     class="fader-track" 
                     ref=${trackRef}
-                    onPointerMove=${handlePointerMove}
-                    onPointerUp=${handlePointerUp}
-                    onPointerCancel=${handlePointerUp}
+                    style="pointer-events: none;"
                 >
                     <div class="fader-fill" style="width: ${percentage}%"></div>
                     <div 
                         class="fader-thumb" 
-                        style="left: ${percentage}%; cursor: grab;"
+                        ref=${thumbRef}
+                        style="left: ${percentage}%; cursor: grab; pointer-events: auto; touch-action: none;"
                         onPointerDown=${handlePointerDown}
+                        onPointerMove=${handlePointerMove}
+                        onPointerUp=${handlePointerUp}
+                        onPointerCancel=${handlePointerUp}
                     ></div>
                 </div>
             </div>
