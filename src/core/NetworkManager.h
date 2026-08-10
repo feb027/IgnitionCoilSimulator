@@ -5,10 +5,11 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include "SettingsManager.h"
+#include "PeripheralManager.h"
 
 class NetworkManager {
 public:
-    NetworkManager(SettingsManager& settingsMgr);
+    NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr);
     
     // Initialize WiFi AP, LittleFS, and Web Server
     void begin();
@@ -21,6 +22,7 @@ public:
 
 private:
     SettingsManager& _settingsMgr;
+    PeripheralManager& _peripheralMgr;
     AsyncWebServer _server;
     AsyncWebSocket _ws;
     

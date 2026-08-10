@@ -2,8 +2,8 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 
-NetworkManager::NetworkManager(SettingsManager& settingsMgr) 
-    : _settingsMgr(settingsMgr), _server(80), _ws("/ws"), _lastBroadcastMs(0) {
+NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr) 
+    : _settingsMgr(settingsMgr), _peripheralMgr(peripheralMgr), _server(80), _ws("/ws"), _lastBroadcastMs(0) {
 }
 
 void NetworkManager::begin() {
@@ -52,6 +52,7 @@ void NetworkManager::update() {
         // Simple dirty check (compare a few key values)
         bool dirty = (current.isRunning != _lastBroadcastedState.isRunning) ||
                      (current.pulseMode != _lastBroadcastedState.pulseMode) ||
+                     (current.mode != _lastBroadcastedState.mode) ||
                      (current.rpm != _lastBroadcastedState.rpm) ||
                      (current.dwellMs != _lastBroadcastedState.dwellMs) ||
                      (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh);
@@ -73,6 +74,7 @@ void NetworkManager::broadcastState() {
     doc["type"] = "state";
     doc["isRunning"] = s.isRunning;
     doc["pulseMode"] = (int)s.pulseMode;
+    doc["runMode"] = (int)s.mode;
     doc["rpm"] = s.rpm;
     doc["rpmStep"] = s.rpmStep;
     doc["dwellMs"] = s.dwellMs;
@@ -122,9 +124,17 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     
     if (action == "toggleRun") {
         s.isRunning = !s.isRunning;
+        if (s.isRunning) {
+            _peripheralMgr.start();
+        } else {
+            _peripheralMgr.stop();
+        }
         changed = true;
     } else if (action == "setMode") {
         s.pulseMode = static_cast<PulseMode>(doc["value"].as<int>());
+        changed = true;
+    } else if (action == "setRunMode") {
+        s.mode = static_cast<CoilMode>(doc["value"].as<int>());
         changed = true;
     } else if (action == "setRpm") {
         s.rpm = doc["value"].as<int>();
@@ -137,6 +147,12 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         changed = true;
     } else if (action == "setSpeedoRpm") {
         s.speedoRpm = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoTemp") {
+        s.speedoTempPercent = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoFuel") {
+        s.speedoFuelPercent = doc["value"].as<int>();
         changed = true;
     } else if (action == "trigger") {
         // We need a way to pass trigger event, maybe we add a flag in settings

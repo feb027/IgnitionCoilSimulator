@@ -6,9 +6,13 @@ function App() {
     const [state, setState] = useState({
         isRunning: false,
         pulseMode: 0,
+        runMode: 0,
         rpm: 1000,
         dwellMs: 3.0,
         speedoKmh: 120,
+        speedoRpm: 4000,
+        speedoTempPercent: 50,
+        speedoFuelPercent: 50,
         currentSpeedoKmh: 0,
         connected: false
     });
@@ -18,7 +22,6 @@ function App() {
 
     const connectWebSocket = () => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // Fallback to local testing if not on device
         const host = window.location.hostname || '192.168.4.1';
         ws.current = new WebSocket(`${protocol}//${host}/ws`);
 
@@ -29,7 +32,6 @@ function App() {
 
         ws.current.onclose = () => {
             setState(s => ({ ...s, connected: false }));
-            // Attempt to reconnect every 2 seconds
             reconnectTimeout.current = setTimeout(connectWebSocket, 2000);
         };
 
@@ -59,8 +61,13 @@ function App() {
             // Optimistic UI update
             if (action === 'toggleRun') setState(s => ({ ...s, isRunning: !s.isRunning }));
             if (action === 'setMode') setState(s => ({ ...s, pulseMode: value }));
+            if (action === 'setRunMode') setState(s => ({ ...s, runMode: value }));
             if (action === 'setRpm') setState(s => ({ ...s, rpm: value }));
             if (action === 'setDwell') setState(s => ({ ...s, dwellMs: value }));
+            if (action === 'setSpeedoKmh') setState(s => ({ ...s, speedoKmh: value }));
+            if (action === 'setSpeedoRpm') setState(s => ({ ...s, speedoRpm: value }));
+            if (action === 'setSpeedoTemp') setState(s => ({ ...s, speedoTempPercent: value }));
+            if (action === 'setSpeedoFuel') setState(s => ({ ...s, speedoFuelPercent: value }));
         }
     };
 
@@ -89,23 +96,58 @@ function App() {
                 />
             </div>
             
-            <div class="panel-side-top">
-                <${Dial} 
-                    label="DWELL TIME"
-                    value=${state.dwellMs}
-                    unit="MS"
-                    min="0.5"
-                    max="10.0"
-                    step="0.1"
-                    onChange=${(val) => sendAction('setDwell', val)}
-                    disabled=${!state.connected || isSpeedo}
-                />
+            <div class="panel-side-top" style="display: flex; flex-direction: column; gap: 16px;">
+                ${!isSpeedo ? html`
+                    <${Dial} 
+                        label="DWELL TIME"
+                        value=${state.dwellMs}
+                        unit="MS"
+                        min="0.5"
+                        max="10.0"
+                        step="0.1"
+                        onChange=${(val) => sendAction('setDwell', val)}
+                        disabled=${!state.connected}
+                    />
+                ` : html`
+                    <${Dial} 
+                        label="TARGET TACHO"
+                        value=${state.speedoRpm}
+                        unit="RPM"
+                        min="0"
+                        max="16000"
+                        step="100"
+                        onChange=${(val) => sendAction('setSpeedoRpm', val)}
+                        disabled=${!state.connected}
+                    />
+                    <${Dial} 
+                        label="TEMPERATURE"
+                        value=${state.speedoTempPercent}
+                        unit="%"
+                        min="0"
+                        max="100"
+                        step="1"
+                        onChange=${(val) => sendAction('setSpeedoTemp', val)}
+                        disabled=${!state.connected}
+                    />
+                    <${Dial} 
+                        label="FUEL LEVEL"
+                        value=${state.speedoFuelPercent}
+                        unit="%"
+                        min="0"
+                        max="100"
+                        step="1"
+                        onChange=${(val) => sendAction('setSpeedoFuel', val)}
+                        disabled=${!state.connected}
+                    />
+                `}
             </div>
 
             <div class="panel-side-bottom">
                 <${ModeSelector} 
                     mode=${state.pulseMode}
+                    runMode=${state.runMode}
                     onSelect=${(val) => sendAction('setMode', val)}
+                    onSelectRunMode=${(val) => sendAction('setRunMode', val)}
                     disabled=${!state.connected || state.isRunning}
                 />
                 
@@ -114,7 +156,7 @@ function App() {
                     onClick=${() => sendAction('toggleRun')}
                     disabled=${!state.connected}
                 >
-                    ${state.isRunning ? 'EMERGENCY STOP' : 'ENGAGE SYS'}
+                    ${state.isRunning ? 'OFF' : 'ON'}
                 </button>
             </div>
         </main>
