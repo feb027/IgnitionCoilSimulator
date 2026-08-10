@@ -21,18 +21,22 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
         trackRef.current.releasePointerCapture(e.pointerId);
     };
 
+    const numMin = Number(min);
+    const numMax = Number(max);
+    const numStep = Number(step);
+
     const updateValueFromEvent = (e) => {
         const rect = trackRef.current.getBoundingClientRect();
         let percentage = (e.clientX - rect.left) / rect.width;
         percentage = Math.max(0, Math.min(1, percentage));
         
-        const rawValue = (percentage * (max - min)) + min;
+        const rawValue = (percentage * (numMax - numMin)) + numMin;
         
         // Apply step
-        const steppedValue = Math.round(rawValue / step) * step;
+        const steppedValue = Math.round(rawValue / numStep) * numStep;
         
         // Handle floating point precision issues for small steps (e.g. 0.1)
-        const decimals = (step.toString().split('.')[1] || '').length;
+        const decimals = (numStep.toString().split('.')[1] || '').length;
         const finalValue = Number(steppedValue.toFixed(decimals));
         
         if (finalValue !== value) {
@@ -40,7 +44,7 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
         }
     };
 
-    const percentage = ((value - min) / (max - min)) * 100;
+    const percentage = ((value - numMin) / (numMax - numMin)) * 100;
 
     return html`
         <div class="panel">
@@ -51,6 +55,7 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
             <div class="huge-value">
                 ${value}<span class="value-unit">${unit}</span>
             </div>
+            ${arguments[0].subInfo ? html`<div style="font-size: 0.8em; color: #888; text-align: center; margin-top: -8px; margin-bottom: 8px;">${arguments[0].subInfo}</div>` : ''}
             <div class="slider-container" style="opacity: ${disabled ? 0.3 : 1}; pointer-events: ${disabled ? 'none' : 'auto'};">
                 <div 
                     class="fader-track" 

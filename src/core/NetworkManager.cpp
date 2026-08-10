@@ -80,6 +80,9 @@ void NetworkManager::broadcastState() {
     doc["rpm"] = s.rpm;
     doc["rpmStep"] = s.rpmStep;
     doc["dwellMs"] = s.dwellMs;
+    doc["dutyCycle"] = s.dutyCycle;
+    doc["sweepTimeSec"] = s.sweepTimeSec;
+    doc["pulsePerKm"] = s.pulsePerKm;
     doc["speedoKmh"] = s.speedoKmh;
     doc["speedoRpm"] = s.speedoRpm;
     doc["speedoTempPercent"] = s.speedoTempPercent;
@@ -144,6 +147,18 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     } else if (action == "setDwell") {
         s.dwellMs = doc["value"].as<float>();
         changed = true;
+    } else if (action == "setDuty") {
+        s.dutyCycle = doc["value"].as<float>();
+        changed = true;
+    } else if (action == "setSweepTime") {
+        s.sweepTimeSec = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setRpmStep") {
+        s.rpmStep = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setPulsePerKm") {
+        s.pulsePerKm = doc["value"].as<int>();
+        changed = true;
     } else if (action == "setSpeedoKmh") {
         s.speedoKmh = doc["value"].as<int>();
         changed = true;
@@ -163,6 +178,12 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     
     if (changed || action == "trigger") {
         _menuSys.wakeUp(); // Wake up the screensaver
+        
+        if (s.isRunning && s.mode == MODE_CONTINUOUS) {
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+        }
     }
     
     if (changed) {

@@ -11,6 +11,7 @@ public:
     
     void begin() override;
     void update() override;
+    void syncHardware() override;
     
     void start() override;
     void stop() override;

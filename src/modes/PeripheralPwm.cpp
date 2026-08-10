@@ -70,6 +70,10 @@ void PeripheralPwm::update() {
     }
 }
 
+void PeripheralPwm::syncHardware() {
+    updateTimerConfig();
+}
+
 void PeripheralPwm::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.rpm > 12000) s.rpm = 12000;

@@ -13,6 +13,9 @@ public:
     // Regular update loop
     virtual void update() = 0;
     
+    // Force sync hardware timers
+    virtual void syncHardware() {}
+    
     // Execution control
     virtual void start() = 0;
     virtual void stop() = 0;

@@ -70,6 +70,10 @@ void PeripheralCoil::update() {
     }
 }
 
+void PeripheralCoil::syncHardware() {
+    updateTimerConfig();
+}
+
 void PeripheralCoil::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.rpm > 12000) s.rpm = 12000;

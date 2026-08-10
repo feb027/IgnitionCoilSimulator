@@ -14,6 +14,10 @@ function App() {
         speedoTempPercent: 50,
         speedoFuelPercent: 50,
         currentSpeedoKmh: 0,
+        dutyCycle: 15.0,
+        sweepTimeSec: 5,
+        pulsePerKm: 4000,
+        rpmStep: 100,
         connected: false
     });
 
@@ -68,6 +72,10 @@ function App() {
             if (action === 'setSpeedoRpm') setState(s => ({ ...s, speedoRpm: value }));
             if (action === 'setSpeedoTemp') setState(s => ({ ...s, speedoTempPercent: value }));
             if (action === 'setSpeedoFuel') setState(s => ({ ...s, speedoFuelPercent: value }));
+            if (action === 'setDuty') setState(s => ({ ...s, dutyCycle: value }));
+            if (action === 'setSweepTime') setState(s => ({ ...s, sweepTimeSec: value }));
+            if (action === 'setPulsePerKm') setState(s => ({ ...s, pulsePerKm: value }));
+            if (action === 'setRpmStep') setState(s => ({ ...s, rpmStep: value }));
         }
     };
 
@@ -98,15 +106,28 @@ function App() {
             </div>
             
             <div class="panel-side-top" style="display: flex; flex-direction: column; gap: 16px;">
-                ${!isSpeedo ? html`
+                ${state.pulseMode === 0 ? html`
                     <${Dial} 
                         label="DWELL TIME"
                         value=${state.dwellMs}
                         unit="MS"
                         min="0.5"
-                        max="10.0"
+                        max="5.0"
                         step="0.1"
+                        subInfo=${"Calculated Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
                         onChange=${(val) => sendAction('setDwell', val)}
+                        disabled=${!state.connected}
+                    />
+                ` : state.pulseMode === 1 ? html`
+                    <${Dial} 
+                        label="DUTY CYCLE"
+                        value=${state.dutyCycle}
+                        unit="%"
+                        min="0"
+                        max="100"
+                        step="1"
+                        subInfo=${"Calculated Dwell: " + (state.dwellMs ? state.dwellMs.toFixed(1) : "0.0") + "ms"}
+                        onChange=${(val) => sendAction('setDuty', val)}
                         disabled=${!state.connected}
                     />
                 ` : html`
@@ -159,6 +180,46 @@ function App() {
                 >
                     ${state.isRunning ? 'OFF' : 'ON'}
                 </button>
+                
+                <div class="panel" style="margin-top: 16px;">
+                    <div class="panel-header">
+                        <span>ADVANCED SETTINGS</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <${Dial} 
+                            label="SWEEP TIME"
+                            value=${state.sweepTimeSec}
+                            unit="SEC"
+                            min="1"
+                            max="60"
+                            step="1"
+                            onChange=${(val) => sendAction('setSweepTime', val)}
+                            disabled=${!state.connected}
+                        />
+                        <${Dial} 
+                            label="RPM STEP"
+                            value=${state.rpmStep}
+                            unit="RPM"
+                            min="10"
+                            max="1000"
+                            step="10"
+                            onChange=${(val) => sendAction('setRpmStep', val)}
+                            disabled=${!state.connected}
+                        />
+                        ${isSpeedo ? html`
+                            <${Dial} 
+                                label="PULSES / KM"
+                                value=${state.pulsePerKm}
+                                unit="P/KM"
+                                min="1000"
+                                max="10000"
+                                step="100"
+                                onChange=${(val) => sendAction('setPulsePerKm', val)}
+                                disabled=${!state.connected}
+                            />
+                        ` : ''}
+                    </div>
+                </div>
             </div>
         </main>
     `;
