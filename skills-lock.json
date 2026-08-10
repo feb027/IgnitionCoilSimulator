@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "embed-ai-tool": {
+      "source": "leokemp223/embed-ai-tool",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1ff5f5f279f882bcdca2a2bccf69cc267d05b1d6bbdc93398e23a577a7d7271b"
+    },
+    "esp32-firmware-engineer": {
+      "source": "adamlipecz/esp32-firmware-engineer-skill",
+      "sourceType": "github",
+      "skillPath": "esp32-firmware-engineer/SKILL.md",
+      "computedHash": "648876c56ccba5f8c2fd37979e3d254745e4c4d5fd76572a2c790af90fa2a2f5"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
+    }
+  }
+}

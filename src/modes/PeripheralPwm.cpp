@@ -1,5 +1,6 @@
 #include "PeripheralPwm.h"
 #include "config/Pins.h"
+#include <esp_arduino_version.h>
 
 static hw_timer_t * pwm_timer = NULL;
 static volatile bool isPwmOn = false;
@@ -10,8 +11,8 @@ static volatile bool pwm_autoStopped = false;
 
 static void IRAM_ATTR onPwmTimer() {
     if (isPwmOn) {
-        digitalWrite(PIN_COIL_OUT, LOW);
-        digitalWrite(PIN_SOLENOID, LOW);
+        // Fast direct register write for GPIO 32 & 33
+        GPIO.out1_w1tc.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
         isPwmOn = false;
         
         if (pwm_pulsesRemaining > 0) {
@@ -29,8 +30,8 @@ static void IRAM_ATTR onPwmTimer() {
             timerAlarmWrite(pwm_timer, 1000, true); 
         }
     } else {
-        digitalWrite(PIN_COIL_OUT, HIGH);
-        digitalWrite(PIN_SOLENOID, HIGH);
+        // Fast direct register write for GPIO 32 & 33
+        GPIO.out1_w1ts.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
         isPwmOn = true;
         timerAlarmWrite(pwm_timer, pwm_dwellTicks, true);
     }
@@ -47,7 +48,12 @@ void PeripheralPwm::begin() {
     
     // Timer 0
     if (pwm_timer == NULL) {
-        pwm_timer = timerBegin(0, 80, true);
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+        pwm_timer = timerBegin(1000000); // 1MHz frequency API (ESP-IDF 5)
+#else
+        pwm_timer = timerBegin(0, 80, true); // 80 prescaler API (ESP-IDF 4)
+#endif
+        timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
     }
 }
 

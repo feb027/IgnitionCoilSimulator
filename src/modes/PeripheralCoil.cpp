@@ -1,5 +1,6 @@
 #include "PeripheralCoil.h"
 #include "config/Pins.h"
+#include <esp_arduino_version.h>
 
 static hw_timer_t * coil_timer = NULL;
 static volatile bool isCoilOn = false;
@@ -10,8 +11,8 @@ static volatile bool coil_autoStopped = false;
 
 static void IRAM_ATTR onCoilTimer() {
     if (isCoilOn) {
-        digitalWrite(PIN_COIL_OUT, LOW);
-        digitalWrite(PIN_SOLENOID, LOW);
+        // Fast direct register write for GPIO 32 & 33 (1 CPU cycle)
+        GPIO.out1_w1tc.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
         isCoilOn = false;
         
         if (coil_pulsesRemaining > 0) {
@@ -29,8 +30,8 @@ static void IRAM_ATTR onCoilTimer() {
             timerAlarmWrite(coil_timer, 1000, true); 
         }
     } else {
-        digitalWrite(PIN_COIL_OUT, HIGH);
-        digitalWrite(PIN_SOLENOID, HIGH);
+        // Fast direct register write for GPIO 32 & 33 (1 CPU cycle)
+        GPIO.out1_w1ts.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
         isCoilOn = true;
         timerAlarmWrite(coil_timer, coil_dwellTicks, true);
     }
@@ -47,7 +48,11 @@ void PeripheralCoil::begin() {
     
     // Timer 0 for Coil
     if (coil_timer == NULL) {
-        coil_timer = timerBegin(0, 80, true);
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+        coil_timer = timerBegin(1000000); // 1MHz frequency API (ESP-IDF 5)
+#else
+        coil_timer = timerBegin(0, 80, true); // 80 prescaler API (ESP-IDF 4)
+#endif
         timerAttachInterrupt(coil_timer, &onCoilTimer, true);
     }
 }
