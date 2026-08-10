@@ -16,6 +16,8 @@ public:
     
     // Process math. Returns true if hardware should be updated
     bool update();
+    
+    bool isSweepingUp() const { return _sweepUp; }
 
 private:
     SettingsManager& _settingsMgr;

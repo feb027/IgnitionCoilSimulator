@@ -7,6 +7,7 @@
 #include "../modes/PeripheralCoil.h"
 #include "../modes/PeripheralPwm.h"
 #include "../modes/PeripheralSpeedo.h"
+#include "../modes/PeripheralStepper.h"
 
 class PeripheralManager {
 public:
@@ -29,8 +30,9 @@ private:
     PeripheralCoil _coil;
     PeripheralPwm _pwm;
     PeripheralSpeedo _speedo;
+    PeripheralStepper _stepper;
     
-    IPeripheral* _peripherals[3];
+    IPeripheral* _peripherals[4];
 };
 
 #endif // PERIPHERAL_MANAGER_H

@@ -4,19 +4,20 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
     const modes = [
         { id: 0, label: 'COIL', desc: 'Direct Dwell Control' },
         { id: 1, label: 'PWM', desc: 'Solenoid Duty Cycle' },
-        { id: 2, label: 'SPEEDO', desc: 'Dashboard Sweep' }
+        { id: 2, label: 'SPEEDO', desc: 'Dashboard Sweep' },
+        { id: 3, label: 'STEP MOTOR', desc: '4-Pin IACV Tester' }
     ];
 
-    // mode 2 is Speedo. Speedo only supports Cont and Sweep.
+    // mode 2 is Speedo, mode 3 is Stepper. Both only support Cont and Sweep.
     // other modes support Cont, Burst, Single, Sweep.
-    const isSpeedo = mode === 2;
+    const isLimitedRunMode = (mode === 2 || mode === 3);
     
     let runModes = [
         { id: 0, label: 'CONT' },
         { id: 3, label: 'SWEEP' }
     ];
     
-    if (!isSpeedo) {
+    if (!isLimitedRunMode) {
         runModes = [
             { id: 0, label: 'CONT' },
             { id: 1, label: 'BURST' },
@@ -38,7 +39,7 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                                 class="btn ${mode === m.id ? 'btn-active' : ''}"
                                 onClick=${() => {
                                     onSelect(m.id);
-                                    if (m.id === 2 && (runMode === 1 || runMode === 2)) {
+                                    if ((m.id === 2 || m.id === 3) && (runMode === 1 || runMode === 2)) {
                                         onSelectRunMode(0); // Reset to CONT
                                     }
                                 }}

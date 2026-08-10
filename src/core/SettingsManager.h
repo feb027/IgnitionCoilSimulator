@@ -14,7 +14,8 @@ enum CoilMode {
 enum PulseMode {
     PULSE_DWELL,
     PULSE_DUTY,
-    PULSE_SPEEDO
+    PULSE_SPEEDO,
+    PULSE_STEPPER
 };
 
 // Application settings struct
@@ -35,6 +36,7 @@ struct AppSettings {
     int currentSpeedoRpm;  // Live RPM
     int currentSpeedoTempPercent; // Live temp
     int currentSpeedoFuelPercent; // Live fuel
+    int stepperSpeed;      // Speed for stepper motor (RPM or delay)
     bool isRunning;        // Is the driver currently active?
     uint32_t lastFiredMs;  // For visual feedback on display
 };

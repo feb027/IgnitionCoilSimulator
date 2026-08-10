@@ -1,6 +1,7 @@
 #include "NetworkManager.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include "../modes/PeripheralStepper.h"
 
 #include "../ui/MenuSystem.h"
 
@@ -85,8 +86,9 @@ void NetworkManager::broadcastState() {
     doc["pulsePerKm"] = s.pulsePerKm;
     doc["speedoKmh"] = s.speedoKmh;
     doc["speedoRpm"] = s.speedoRpm;
-    doc["speedoTempPercent"] = s.speedoTempPercent;
-    doc["speedoFuelPercent"] = s.speedoFuelPercent;
+    doc["speedoTemp"] = s.speedoTempPercent;
+    doc["speedoFuel"] = s.speedoFuelPercent;
+    doc["stepperSpeed"] = s.stepperSpeed;
     
     // Read-only values for speedo sweeping
     doc["currentSpeedoKmh"] = s.currentSpeedoKmh;
@@ -171,6 +173,13 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     } else if (action == "setSpeedoFuel") {
         s.speedoFuelPercent = doc["value"].as<int>();
         changed = true;
+    } else if (action == "setStepperSpeed") {
+        s.stepperSpeed = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "stepperJog") {
+        if (s.pulseMode == PULSE_STEPPER && _peripheralMgr.getActive() != nullptr) {
+            ((PeripheralStepper*)_peripheralMgr.getActive())->step(doc["value"].as<int>());
+        }
     } else if (action == "trigger") {
         // We need a way to pass trigger event, maybe we add a flag in settings
         // For now, we will just ignore or add it later if needed

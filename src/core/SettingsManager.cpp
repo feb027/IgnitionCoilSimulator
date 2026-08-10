@@ -30,7 +30,8 @@ void SettingsManager::save() {
         _settings.speedoKmh != _savedSettings.speedoKmh ||
         _settings.speedoRpm != _savedSettings.speedoRpm ||
         _settings.speedoTempPercent != _savedSettings.speedoTempPercent ||
-        _settings.speedoFuelPercent != _savedSettings.speedoFuelPercent) {
+        _settings.speedoFuelPercent != _savedSettings.speedoFuelPercent ||
+        _settings.stepperSpeed != _savedSettings.stepperSpeed) {
         
         preferences.putInt("rpm", _settings.rpm);
         preferences.putInt("rpm_s", _settings.rpmStep);
@@ -44,6 +45,7 @@ void SettingsManager::save() {
         preferences.putInt("s_rpm", _settings.speedoRpm);
         preferences.putInt("s_tmp", _settings.speedoTempPercent);
         preferences.putInt("s_fuel", _settings.speedoFuelPercent);
+        preferences.putInt("st_spd", _settings.stepperSpeed);
         
         // Sync saved state
         _savedSettings = _settings;
@@ -66,6 +68,7 @@ void SettingsManager::load() {
     _settings.speedoRpm = preferences.getInt("s_rpm", 4000);
     _settings.speedoTempPercent = preferences.getInt("s_tmp", 50);
     _settings.speedoFuelPercent = preferences.getInt("s_fuel", 50);
+    _settings.stepperSpeed = preferences.getInt("st_spd", 50);
     
     // Initialize current/live values to match target
     _settings.currentSpeedoKmh = _settings.speedoKmh;
@@ -93,5 +96,6 @@ void SettingsManager::resetToDefaults() {
     _settings.speedoRpm = 4000;
     _settings.speedoTempPercent = 50;
     _settings.speedoFuelPercent = 50;
+    _settings.stepperSpeed = 50;
     _settings.isRunning = false;
 }

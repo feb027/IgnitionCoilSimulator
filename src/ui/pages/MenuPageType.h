@@ -13,22 +13,25 @@ public:
         if (s.pulseMode == PULSE_DWELL) {
             u8g2.print("IGNITION COIL");
         } else if (s.pulseMode == PULSE_DUTY) {
-            u8g2.print("PWM / STEPPER");
-        } else {
+            u8g2.print("PWM (SOLENOID)");
+        } else if (s.pulseMode == PULSE_SPEEDO) {
             u8g2.print("SPEEDOMETER");
+        } else {
+            u8g2.print("STEP MOTOR");
         }
     }
     
     float getProgress(const AppSettings& s) const override {
         if (s.pulseMode == PULSE_DWELL) return 0.0f;
-        if (s.pulseMode == PULSE_DUTY) return 0.5f;
+        if (s.pulseMode == PULSE_DUTY) return 0.33f;
+        if (s.pulseMode == PULSE_SPEEDO) return 0.66f;
         return 1.0f;
     }
     
     void onEdit(int diff, AppSettings& s) override {
         // Toggle if changed
-        int m = ((int)s.pulseMode + diff) % 3;
-        if (m < 0) m += 3;
+        int m = ((int)s.pulseMode + diff) % 4;
+        if (m < 0) m += 4;
         s.pulseMode = (PulseMode)m;
         
         // Enforce valid modes

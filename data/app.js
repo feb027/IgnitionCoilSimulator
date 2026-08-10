@@ -18,6 +18,7 @@ function App() {
         sweepTimeSec: 5,
         pulsePerKm: 4000,
         rpmStep: 100,
+        stepperSpeed: 50,
         connected: false
     });
 
@@ -76,10 +77,12 @@ function App() {
             if (action === 'setSweepTime') setState(s => ({ ...s, sweepTimeSec: value }));
             if (action === 'setPulsePerKm') setState(s => ({ ...s, pulsePerKm: value }));
             if (action === 'setRpmStep') setState(s => ({ ...s, rpmStep: value }));
+            if (action === 'setStepperSpeed') setState(s => ({ ...s, stepperSpeed: value }));
         }
     };
 
     const isSpeedo = state.pulseMode === 2;
+    const isStepper = state.pulseMode === 3;
     const isSweep = state.runMode === 3;
 
     return html`
@@ -92,17 +95,36 @@ function App() {
         </header>
 
         <main class="bento-grid">
-            <div class="panel-main">
-                <${Dial} 
-                    label=${isSpeedo ? (isSweep ? "TARGET SPEED" : "ACTUAL SPEED") : "ENGINE SPEED"}
-                    value=${isSpeedo ? state.speedoKmh : state.rpm}
-                    unit=${isSpeedo ? "KM/H" : "RPM"}
-                    min=${isSpeedo ? 0 : 0}
-                    max=${isSpeedo ? 300 : 16000}
-                    step=${isSpeedo ? 10 : 100}
-                    onChange=${(val) => sendAction(isSpeedo ? 'setSpeedoKmh' : 'setRpm', val)}
-                    disabled=${!state.connected}
-                />
+            <div class="panel-main" style=${isStepper ? "display: flex; justify-content: space-between; gap: 20px; align-items: stretch; padding: 30px;" : ""}>
+                ${isStepper ? html`
+                    <button 
+                        class="btn"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color);"
+                        onClick=${() => sendAction('stepperJog', -1)}
+                        disabled=${!state.connected || state.isRunning}
+                    >
+                        ⬅️ TURN LEFT
+                    </button>
+                    <button 
+                        class="btn"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color);"
+                        onClick=${() => sendAction('stepperJog', 1)}
+                        disabled=${!state.connected || state.isRunning}
+                    >
+                        TURN RIGHT ➡️
+                    </button>
+                ` : html`
+                    <${Dial} 
+                        label=${isSpeedo ? (isSweep ? "TARGET SPEED" : "ACTUAL SPEED") : "ENGINE SPEED"}
+                        value=${isSpeedo ? state.speedoKmh : state.rpm}
+                        unit=${isSpeedo ? "KM/H" : "RPM"}
+                        min=${isSpeedo ? 0 : 0}
+                        max=${isSpeedo ? 300 : 16000}
+                        step=${isSpeedo ? 10 : 100}
+                        onChange=${(val) => sendAction(isSpeedo ? 'setSpeedoKmh' : 'setRpm', val)}
+                        disabled=${!state.connected}
+                    />
+                `}
             </div>
             
             <div class="panel-side-top" style="display: flex; flex-direction: column; gap: 16px;">
@@ -128,6 +150,17 @@ function App() {
                         step="1"
                         subInfo=${"Calculated Dwell: " + (state.dwellMs ? state.dwellMs.toFixed(1) : "0.0") + "ms"}
                         onChange=${(val) => sendAction('setDuty', val)}
+                        disabled=${!state.connected}
+                    />
+                ` : isStepper ? html`
+                    <${Dial} 
+                        label="STEPPER SPEED"
+                        value=${state.stepperSpeed}
+                        unit="%"
+                        min="1"
+                        max="100"
+                        step="5"
+                        onChange=${(val) => sendAction('setStepperSpeed', val)}
                         disabled=${!state.connected}
                     />
                 ` : html`
