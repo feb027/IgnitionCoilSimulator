@@ -7,7 +7,6 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
         { id: 2, label: 'SPEEDO', desc: 'Dashboard Sweep' },
         { id: 3, label: 'STEP MOTOR', desc: '4-Pin IACV Tester' }
     ];
-    ];
 
     return html`
         <div style="display: flex; flex-direction: column; gap: var(--space-md);">
@@ -21,11 +20,11 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                             <button 
                                 class="btn ${mode === m.id ? 'btn-active' : ''}"
                                 onClick=${() => {
-                                    onSelect(m.id);
-                                    if ((m.id === 2 || m.id === 3) && (runMode === 1 || runMode === 2)) {
-                                        onSelectRunMode(0); // Reset to CONT
-                                    }
-                                }}
+            onSelect(m.id);
+            if ((m.id === 2 || m.id === 3) && (runMode === 1 || runMode === 2)) {
+                onSelectRunMode(0); // Reset to CONT
+            }
+        }}
                                 disabled=${disabled}
                                 style="text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 16px 12px;"
                             >
