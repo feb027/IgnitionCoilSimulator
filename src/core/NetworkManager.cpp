@@ -179,10 +179,8 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     if (changed || action == "trigger") {
         _menuSys.wakeUp(); // Wake up the screensaver
         
-        if (s.isRunning && s.mode == MODE_CONTINUOUS) {
-            if (_peripheralMgr.getActive() != nullptr) {
-                _peripheralMgr.getActive()->syncHardware();
-            }
+        if (_peripheralMgr.getActive() != nullptr) {
+            _peripheralMgr.getActive()->syncHardware();
         }
     }
     

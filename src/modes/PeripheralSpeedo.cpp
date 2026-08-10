@@ -51,14 +51,14 @@ void PeripheralSpeedo::updateTimerConfig() {
     float hzKmh = ((float)s.currentSpeedoKmh * s.pulsePerKm) / 3600.0f;
     float hzRpm = (float)s.currentSpeedoRpm / 30.0f; // 4-cylinder assumption
     
-    if (hzKmh > 1.0f) {
+    if (s.isRunning && hzKmh > 1.0f) {
         ledcWriteTone(2, hzKmh);
     } else {
         ledcWriteTone(2, 0);
         ledcWrite(2, 0);
     }
     
-    if (hzRpm > 1.0f) {
+    if (s.isRunning && hzRpm > 1.0f) {
         ledcWriteTone(1, hzRpm);
     } else {
         ledcWriteTone(1, 0);

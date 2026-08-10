@@ -132,34 +132,34 @@ function App() {
                     />
                 ` : html`
                     <${Dial} 
-                        label=${isSweep ? "TARGET TACHO" : "ACTUAL TACHO"}
-                        value=${state.speedoRpm}
+                        label=${(isSweep && state.isRunning) ? "SWEEPING TACHO..." : (isSweep ? "TARGET TACHO" : "ACTUAL TACHO")}
+                        value=${(isSweep && state.isRunning) ? state.rpm : state.speedoRpm}
                         unit="RPM"
                         min="0"
                         max="16000"
                         step="100"
                         onChange=${(val) => sendAction('setSpeedoRpm', val)}
-                        disabled=${!state.connected}
+                        disabled=${!state.connected || (isSweep && state.isRunning)}
                     />
                     <${Dial} 
-                        label=${isSweep ? "TARGET TEMP" : "ACTUAL TEMP"}
-                        value=${state.speedoTempPercent}
+                        label=${(isSweep && state.isRunning) ? "SWEEPING TEMP..." : (isSweep ? "TARGET TEMP" : "ACTUAL TEMP")}
+                        value=${(isSweep && state.isRunning) ? state.currentSpeedoTempPercent : state.speedoTempPercent}
                         unit="%"
                         min="0"
                         max="100"
                         step="1"
                         onChange=${(val) => sendAction('setSpeedoTemp', val)}
-                        disabled=${!state.connected}
+                        disabled=${!state.connected || (isSweep && state.isRunning)}
                     />
                     <${Dial} 
-                        label=${isSweep ? "TARGET FUEL" : "ACTUAL FUEL"}
-                        value=${state.speedoFuelPercent}
+                        label=${(isSweep && state.isRunning) ? "SWEEPING FUEL..." : (isSweep ? "TARGET FUEL" : "ACTUAL FUEL")}
+                        value=${(isSweep && state.isRunning) ? state.currentSpeedoFuelPercent : state.speedoFuelPercent}
                         unit="%"
                         min="0"
                         max="100"
                         step="1"
                         onChange=${(val) => sendAction('setSpeedoFuel', val)}
-                        disabled=${!state.connected}
+                        disabled=${!state.connected || (isSweep && state.isRunning)}
                     />
                 `}
             </div>
@@ -173,19 +173,22 @@ function App() {
                     disabled=${!state.connected || state.isRunning}
                 />
                 
-                <button 
-                    class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
-                    onClick=${() => sendAction('toggleRun')}
-                    disabled=${!state.connected}
-                >
-                    ${state.isRunning ? 'OFF' : 'ON'}
-                </button>
+                <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: 16px;">
+                    <button 
+                        class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
+                        onClick=${() => sendAction('toggleRun')}
+                        disabled=${!state.connected}
+                        style="box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
+                    >
+                        ${state.isRunning ? 'RUNNING' : 'STANDBY'}
+                    </button>
+                </div>
                 
-                <div class="panel" style="margin-top: 16px;">
-                    <div class="panel-header">
+                <details class="panel" style="margin-top: 16px;">
+                    <summary class="panel-header">
                         <span>ADVANCED SETTINGS</span>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                    </summary>
+                    <div style="display: flex; flex-direction: column; gap: 16px; padding-top: 16px;">
                         <${Dial} 
                             label="SWEEP TIME"
                             value=${state.sweepTimeSec}
@@ -219,7 +222,7 @@ function App() {
                             />
                         ` : ''}
                     </div>
-                </div>
+                </details>
             </div>
         </main>
     `;
