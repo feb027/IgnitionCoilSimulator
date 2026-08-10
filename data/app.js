@@ -61,6 +61,14 @@ function App() {
         };
     }, []);
 
+    useEffect(() => {
+        if (state.isDrawerOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }, [state.isDrawerOpen]);
+
     const sendAction = (action, value) => {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
             ws.current.send(JSON.stringify({ action, value }));
@@ -105,12 +113,34 @@ function App() {
             <span>▼</span>
         </button>
 
+        ${!isStepper ? html`
+            <div style="display: flex; gap: 8px; margin-bottom: 24px;">
+                ${[
+                    { id: 0, label: 'CONT' },
+                    ...(isSpeedo ? [] : [
+                        { id: 1, label: 'BURST' },
+                        { id: 2, label: 'SINGLE' }
+                    ]),
+                    { id: 3, label: 'SWEEP' }
+                ].map(rm => html`
+                    <button 
+                        class="btn ${state.runMode === rm.id ? 'btn-active' : ''}"
+                        onClick=${() => sendAction('setRunMode', rm.id)}
+                        disabled=${!state.connected || state.isRunning}
+                        style="flex: 1; padding: 12px 4px; font-size: 0.9rem; font-weight: bold; border-radius: 6px;"
+                    >
+                        ${rm.label}
+                    </button>
+                `)}
+            </div>
+        ` : null}
+
         <main class="bento-grid">
             <div class="panel-main" style=${isStepper ? "display: flex; justify-content: space-between; gap: 20px; align-items: stretch; padding: 30px;" : ""}>
                 ${isStepper ? html`
                     <button 
                         class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === -1 ? 'var(--primary-color)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === -1 ? 'var(--bg-base)' : 'var(--text-color)'}; border: 2px solid var(--border-color); user-select: none;"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === -1 ? 'var(--text-primary)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === -1 ? 'var(--bg-base)' : 'var(--text-primary)'}; border: 2px solid var(--border-sharp); user-select: none;"
                         onPointerDown=${() => sendAction('stepperSpin', -1)}
                         onPointerUp=${() => sendAction('stepperSpin', 0)}
                         onPointerLeave=${() => sendAction('stepperSpin', 0)}
@@ -120,7 +150,7 @@ function App() {
                     </button>
                     <button 
                         class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === 1 ? 'var(--primary-color)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === 1 ? 'var(--bg-base)' : 'var(--text-color)'}; border: 2px solid var(--border-color); user-select: none;"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === 1 ? 'var(--text-primary)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === 1 ? 'var(--bg-base)' : 'var(--text-primary)'}; border: 2px solid var(--border-sharp); user-select: none;"
                         onPointerDown=${() => sendAction('stepperSpin', 1)}
                         onPointerUp=${() => sendAction('stepperSpin', 0)}
                         onPointerLeave=${() => sendAction('stepperSpin', 0)}

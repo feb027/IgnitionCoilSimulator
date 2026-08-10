@@ -7,24 +7,7 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
         { id: 2, label: 'SPEEDO', desc: 'Dashboard Sweep' },
         { id: 3, label: 'STEP MOTOR', desc: '4-Pin IACV Tester' }
     ];
-
-    // mode 2 is Speedo, mode 3 is Stepper. Both only support Cont and Sweep.
-    // other modes support Cont, Burst, Single, Sweep.
-    const isLimitedRunMode = (mode === 2 || mode === 3);
-    
-    let runModes = [
-        { id: 0, label: 'CONT' },
-        { id: 3, label: 'SWEEP' }
     ];
-    
-    if (!isLimitedRunMode) {
-        runModes = [
-            { id: 0, label: 'CONT' },
-            { id: 1, label: 'BURST' },
-            { id: 2, label: 'SINGLE' },
-            { id: 3, label: 'SWEEP' }
-        ];
-    }
 
     return html`
         <div style="display: flex; flex-direction: column; gap: var(--space-md);">
@@ -49,21 +32,6 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                                 <span style="font-size: 1.1rem; font-weight: bold;">${m.label}</span>
                                 <span style="font-size: 0.85rem; opacity: 0.7;">${m.desc}</span>
                             </button>
-                            
-                            ${(mode === m.id && m.id !== 3) ? html`
-                                <div style="display: flex; gap: 4px; margin-top: 4px; margin-bottom: 4px;">
-                                    ${runModes.map(rm => html`
-                                        <button 
-                                            class="btn ${runMode === rm.id ? 'btn-active' : ''}"
-                                            onClick=${() => onSelectRunMode(rm.id)}
-                                            disabled=${disabled}
-                                            style="flex: 1; padding: 12px 4px; font-size: 0.85rem; font-weight: bold;"
-                                        >
-                                            ${rm.label}
-                                        </button>
-                                    `)}
-                                </div>
-                            ` : ''}
                         </div>
                     `)}
                 </div>
