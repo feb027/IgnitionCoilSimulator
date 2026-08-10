@@ -72,6 +72,7 @@ function App() {
     };
 
     const isSpeedo = state.pulseMode === 2;
+    const isSweep = state.runMode === 3;
 
     return html`
         <header>
@@ -85,7 +86,7 @@ function App() {
         <main class="bento-grid">
             <div class="panel-main">
                 <${Dial} 
-                    label=${isSpeedo ? "TARGET SPEED" : "ENGINE SPEED"}
+                    label=${isSpeedo ? (isSweep ? "TARGET SPEED" : "ACTUAL SPEED") : "ENGINE SPEED"}
                     value=${isSpeedo ? state.speedoKmh : state.rpm}
                     unit=${isSpeedo ? "KM/H" : "RPM"}
                     min=${isSpeedo ? 0 : 0}
@@ -110,7 +111,7 @@ function App() {
                     />
                 ` : html`
                     <${Dial} 
-                        label="TARGET TACHO"
+                        label=${isSweep ? "TARGET TACHO" : "ACTUAL TACHO"}
                         value=${state.speedoRpm}
                         unit="RPM"
                         min="0"
@@ -120,7 +121,7 @@ function App() {
                         disabled=${!state.connected}
                     />
                     <${Dial} 
-                        label="TEMPERATURE"
+                        label=${isSweep ? "TARGET TEMP" : "ACTUAL TEMP"}
                         value=${state.speedoTempPercent}
                         unit="%"
                         min="0"
@@ -130,7 +131,7 @@ function App() {
                         disabled=${!state.connected}
                     />
                     <${Dial} 
-                        label="FUEL LEVEL"
+                        label=${isSweep ? "TARGET FUEL" : "ACTUAL FUEL"}
                         value=${state.speedoFuelPercent}
                         unit="%"
                         min="0"

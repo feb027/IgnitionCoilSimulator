@@ -28,6 +28,7 @@ public:
     bool isEditing() const { return _isEditing; }
     float getScrollOffset() const { return _scrollOffset; }
     uint32_t getLastActivityMs() const { return _lastActivityMs; }
+    void wakeUp() { _lastActivityMs = millis(); }
 
     MenuPage* getCurrentPage() const { return _pages[_selectedIndex]; }
     MenuPage* getPreviousPage() const { return _pages[_lastSelectedIndex]; }

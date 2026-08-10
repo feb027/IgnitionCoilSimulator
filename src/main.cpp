@@ -14,7 +14,7 @@ SettingsManager settingsMgr;
 PeripheralManager peripheralMgr(settingsMgr);
 DisplayManager displayMgr(settingsMgr, peripheralMgr);
 MenuSystem menuSys(settingsMgr, peripheralMgr);
-NetworkManager networkMgr(settingsMgr, peripheralMgr);
+NetworkManager networkMgr(settingsMgr, peripheralMgr, menuSys);
 
 uint32_t lastDisplayUpdate = 0;
 

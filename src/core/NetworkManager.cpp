@@ -2,8 +2,10 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 
-NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr) 
-    : _settingsMgr(settingsMgr), _peripheralMgr(peripheralMgr), _server(80), _ws("/ws"), _lastBroadcastMs(0) {
+#include "../ui/MenuSystem.h"
+
+NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr, MenuSystem& menuSys) 
+    : _settingsMgr(settingsMgr), _peripheralMgr(peripheralMgr), _menuSys(menuSys), _server(80), _ws("/ws"), _lastBroadcastMs(0) {
 }
 
 void NetworkManager::begin() {
@@ -157,6 +159,10 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
     } else if (action == "trigger") {
         // We need a way to pass trigger event, maybe we add a flag in settings
         // For now, we will just ignore or add it later if needed
+    }
+    
+    if (changed || action == "trigger") {
+        _menuSys.wakeUp(); // Wake up the screensaver
     }
     
     if (changed) {

@@ -26,6 +26,22 @@ void PeripheralSpeedo::update() {
         if (_sweepController.update()) {
             updateTimerConfig();
         }
+    } else if (s.mode == MODE_CONTINUOUS) {
+        // Direct sync
+        bool changed = (s.currentSpeedoKmh != s.speedoKmh) ||
+                       (s.currentSpeedoRpm != s.speedoRpm) ||
+                       (s.currentSpeedoTempPercent != s.speedoTempPercent) ||
+                       (s.currentSpeedoFuelPercent != s.speedoFuelPercent);
+                       
+        if (changed) {
+            s.currentSpeedoKmh = s.speedoKmh;
+            s.currentSpeedoRpm = s.speedoRpm;
+            s.currentSpeedoTempPercent = s.speedoTempPercent;
+            s.currentSpeedoFuelPercent = s.speedoFuelPercent;
+            if (s.isRunning) {
+                updateTimerConfig();
+            }
+        }
     }
 }
 

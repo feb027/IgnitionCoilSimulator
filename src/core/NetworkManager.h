@@ -7,9 +7,11 @@
 #include "SettingsManager.h"
 #include "PeripheralManager.h"
 
+class MenuSystem;
+
 class NetworkManager {
 public:
-    NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr);
+    NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr, MenuSystem& menuSys);
     
     // Initialize WiFi AP, LittleFS, and Web Server
     void begin();
@@ -23,6 +25,7 @@ public:
 private:
     SettingsManager& _settingsMgr;
     PeripheralManager& _peripheralMgr;
+    MenuSystem& _menuSys;
     AsyncWebServer _server;
     AsyncWebSocket _ws;
     
