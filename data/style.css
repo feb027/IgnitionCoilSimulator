@@ -1,0 +1,204 @@
+:root {
+    --bg-base: #000000;
+    --surface-matte: #111111;
+    --surface-matte-hover: #1A1A1A;
+    --border-sharp: #333333;
+    --text-primary: #FFFFFF;
+    --text-muted: #888888;
+    
+    --neon-green: #00FF66;
+    --neon-red: #FF3333;
+    --neon-orange: #FF9900;
+    
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 48px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+#app {
+    padding: var(--space-md);
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border-sharp);
+    margin-bottom: var(--space-lg);
+}
+
+.title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border: 1px solid var(--border-sharp);
+    border-radius: 2px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+}
+.status-dot.connected { background-color: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+.status-dot.disconnected { background-color: var(--neon-red); box-shadow: 0 0 8px var(--neon-red); }
+
+/* Asymmetrical Bento Grid */
+.bento-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+}
+
+@media (min-width: 768px) {
+    .bento-grid {
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: auto auto;
+    }
+    .panel-main { grid-column: span 8; grid-row: span 2; }
+    .panel-side-top { grid-column: span 4; }
+    .panel-side-bottom { grid-column: span 4; }
+}
+
+/* Matte Panel Architecture (No Glass) */
+.panel {
+    background-color: var(--surface-matte);
+    border: 1px solid var(--border-sharp);
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    /* Teenage Engineering / Moog style sharp or slightly rounded corners */
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.panel-header {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Typography */
+.huge-value {
+    font-size: clamp(4rem, 10vw, 8rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.value-unit {
+    font-size: 1rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-left: 8px;
+}
+
+/* Controls */
+.slider-container {
+    margin-top: auto;
+    padding-top: var(--space-lg);
+}
+
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+input[type=range]:focus { outline: none; }
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: var(--border-sharp);
+}
+input[type=range]::-webkit-slider-thumb {
+    height: 24px;
+    width: 12px;
+    border-radius: 2px;
+    background: var(--text-primary);
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -10px;
+    border: 1px solid var(--bg-base);
+}
+
+/* Buttons */
+.btn {
+    background: var(--surface-matte);
+    border: 1px solid var(--border-sharp);
+    color: var(--text-primary);
+    padding: var(--space-md) var(--space-lg);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.32,0.72,0,1);
+    border-radius: 2px;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-active {
+    background: var(--text-primary);
+    color: var(--bg-base);
+}
+
+.btn-run {
+    width: 100%;
+    padding: var(--space-lg);
+    font-size: 1.5rem;
+    margin-top: var(--space-md);
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+}
+.btn-run.is-running {
+    background: var(--neon-red);
+    border-color: var(--neon-red);
+    color: var(--bg-base);
+}

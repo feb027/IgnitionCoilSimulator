@@ -6,6 +6,7 @@
 #include "core/PeripheralManager.h"
 #include "ui/DisplayManager.h"
 #include "ui/MenuSystem.h"
+#include "core/NetworkManager.h"
 #include "config/Pins.h"
 
 // Instantiate core modules
@@ -13,6 +14,7 @@ SettingsManager settingsMgr;
 PeripheralManager peripheralMgr(settingsMgr);
 DisplayManager displayMgr(settingsMgr, peripheralMgr);
 MenuSystem menuSys(settingsMgr, peripheralMgr);
+NetworkManager networkMgr(settingsMgr);
 
 uint32_t lastDisplayUpdate = 0;
 
@@ -28,6 +30,9 @@ void uiTask(void *pvParameters) {
             displayMgr.update(menuSys);
             lastDisplayUpdate = now;
         }
+        
+        // Update network tasks (WebSocket broadcasting)
+        networkMgr.update();
         
         // Yield to other tasks (e.g., WiFi if enabled later)
         vTaskDelay(pdMS_TO_TICKS(5)); 
@@ -56,6 +61,7 @@ void setup() {
     peripheralMgr.begin();
     displayMgr.begin();
     menuSys.begin();
+    networkMgr.begin();
 
     // Create UI Task on Core 0
     xTaskCreatePinnedToCore(
