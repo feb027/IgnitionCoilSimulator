@@ -110,7 +110,7 @@ function App() {
                 ${isStepper ? html`
                     <button 
                         class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === -1 ? 'var(--primary-color)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === -1 ? 'var(--bg-base)' : 'var(--text-color)'}; border: 2px solid var(--border-color); user-select: none;"
                         onPointerDown=${() => sendAction('stepperSpin', -1)}
                         onPointerUp=${() => sendAction('stepperSpin', 0)}
                         onPointerLeave=${() => sendAction('stepperSpin', 0)}
@@ -120,7 +120,7 @@ function App() {
                     </button>
                     <button 
                         class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: var(--surface-color); border: 2px solid var(--border-color); user-select: none;"
+                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === 1 ? 'var(--primary-color)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === 1 ? 'var(--bg-base)' : 'var(--text-color)'}; border: 2px solid var(--border-color); user-select: none;"
                         onPointerDown=${() => sendAction('stepperSpin', 1)}
                         onPointerUp=${() => sendAction('stepperSpin', 0)}
                         onPointerLeave=${() => sendAction('stepperSpin', 0)}
@@ -286,7 +286,6 @@ function App() {
                         </div>
                     </details>
                 ` : null}
-            </div>
         </main>
     `;
 }

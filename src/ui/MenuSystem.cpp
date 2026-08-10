@@ -205,8 +205,10 @@ void MenuSystem::handleEncoder() {
             if (_dashboardEditMode) {
                 _dashboardEditor.handleEncoder(diff, _dashboardFocusIndex);
             } else {
-                // Optional: fine tune RPM directly from Dashboard (for Coil mode)
-                if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
+                if (s.pulseMode == PULSE_STEPPER) {
+                    // Forward directly to Stepper for physical jogging when on dashboard
+                    _manager.getActive()->handleEncoder(diff, 0);
+                } else if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
                     s.rpm += (diff * s.rpmStep);
                     if (s.rpm < 0) s.rpm = 0;
                     if (s.rpm > 12000) s.rpm = 12000;

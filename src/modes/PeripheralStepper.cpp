@@ -48,10 +48,15 @@ void PeripheralStepper::step(int direction) {
     
     AppSettings& s = _settingsMgr.getSettings();
     s.lastFiredMs = millis();
+    s.stepperSpinDir = direction;
 }
 
 void PeripheralStepper::setSpinDirection(int direction) {
     _autoDirection = direction;
+    if (direction != 0) {
+        AppSettings& s = _settingsMgr.getSettings();
+        s.stepperSpinDir = direction;
+    }
 }
 
 void PeripheralStepper::update() {
@@ -74,6 +79,7 @@ void PeripheralStepper::update() {
             digitalWrite(PIN_STEP_A_MINUS, LOW);
             digitalWrite(PIN_STEP_B_PLUS, LOW);
             digitalWrite(PIN_STEP_B_MINUS, LOW);
+            s.stepperSpinDir = 0; // Stopped
         }
     }
 }

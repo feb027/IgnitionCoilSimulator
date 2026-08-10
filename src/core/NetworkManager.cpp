@@ -84,11 +84,12 @@ void NetworkManager::broadcastState() {
     doc["dutyCycle"] = s.dutyCycle;
     doc["sweepTimeSec"] = s.sweepTimeSec;
     doc["pulsePerKm"] = s.pulsePerKm;
+    doc["stepperSpeed"] = s.stepperSpeed;
+    doc["stepperSpinDir"] = s.stepperSpinDir;
     doc["speedoKmh"] = s.speedoKmh;
     doc["speedoRpm"] = s.speedoRpm;
     doc["speedoTemp"] = s.speedoTempPercent;
     doc["speedoFuel"] = s.speedoFuelPercent;
-    doc["stepperSpeed"] = s.stepperSpeed;
     
     // Read-only values for speedo sweeping
     doc["currentSpeedoKmh"] = s.currentSpeedoKmh;

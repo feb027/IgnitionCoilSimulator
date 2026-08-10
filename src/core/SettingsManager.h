@@ -37,6 +37,7 @@ struct AppSettings {
     int currentSpeedoTempPercent; // Live temp
     int currentSpeedoFuelPercent; // Live fuel
     int stepperSpeed;      // Speed for stepper motor (RPM or delay)
+    int stepperSpinDir;    // 1 for right, -1 for left, 0 for stopped
     bool isRunning;        // Is the driver currently active?
     uint32_t lastFiredMs;  // For visual feedback on display
 };
