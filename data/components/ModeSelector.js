@@ -43,10 +43,10 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                                     }
                                 }}
                                 disabled=${disabled}
-                                style="text-align: left; display: flex; justify-content: space-between; align-items: center;"
+                                style="text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 16px 12px;"
                             >
-                                <span>${m.label}</span>
-                                <span style="font-size: 0.7em; opacity: 0.7;">${m.desc}</span>
+                                <span style="font-size: 1.1rem; font-weight: bold;">${m.label}</span>
+                                <span style="font-size: 0.85rem; opacity: 0.7;">${m.desc}</span>
                             </button>
                             
                             ${mode === m.id ? html`
@@ -56,7 +56,7 @@ export function ModeSelector({ mode, runMode, onSelect, onSelectRunMode, disable
                                             class="btn ${runMode === rm.id ? 'btn-active' : ''}"
                                             onClick=${() => onSelectRunMode(rm.id)}
                                             disabled=${disabled}
-                                            style="flex: 1; padding: 6px 4px; font-size: 0.7rem; background: var(--surface-light);"
+                                            style="flex: 1; padding: 12px 4px; font-size: 0.85rem; font-weight: bold;"
                                         >
                                             ${rm.label}
                                         </button>

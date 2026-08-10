@@ -127,8 +127,9 @@ void PeripheralCoil::stop() {
     isCoilOn = false;
     
     AppSettings& s = _settingsMgr.getSettings();
+    bool wasRunning = s.isRunning;
     s.isRunning = false;
-    if (s.mode == MODE_SWEEP) {
+    if (wasRunning && s.mode == MODE_SWEEP) {
         _sweepController.reset();
         updateTimerConfig();
     }
