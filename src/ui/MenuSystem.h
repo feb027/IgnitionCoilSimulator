@@ -1,18 +1,19 @@
 #ifndef MENU_SYSTEM_H
 #define MENU_SYSTEM_H
 
-#define NUM_PAGES 12
+#define NUM_PAGES 5
 
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"
-
+#include "../core/PeripheralManager.h"
 #include "pages/MenuPage.h"
+#include "DashboardEditor.h"
 
-class CoilDriver;
+class PeripheralManager;
 
 class MenuSystem {
 public:
-    MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver);
+    MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager);
     
     void begin();
     void update();
@@ -33,7 +34,7 @@ public:
 
 private:
     SettingsManager& _settingsMgr;
-    CoilDriver& _driver;
+    PeripheralManager& _manager;
     
     ESP32Encoder _encoder;
     
@@ -56,6 +57,10 @@ private:
     int _lastSelectedIndex;
     bool _isEditing;
     int32_t _lastEncoderCount;
+    
+    DashboardEditor _dashboardEditor;
+    
+    // Button debounce state;
     
     MenuPage* _pages[NUM_PAGES];
     int _numPages;

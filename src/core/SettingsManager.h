@@ -20,6 +20,7 @@ enum PulseMode {
 // Application settings struct
 struct AppSettings {
     int rpm;               // Output speed in RPM (for Ignition Coil / PWM)
+    int rpmStep;           // Step size for RPM adjustment (10, 50, 100, etc)
     float dwellMs;         // Dwell time in milliseconds (for coils)
     float dutyCycle;       // Duty cycle in percentage 0.0 - 100.0 (for PWM)
     PulseMode pulseMode;   // Which variable is locked/controlling

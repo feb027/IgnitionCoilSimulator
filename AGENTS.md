@@ -1,23 +1,14 @@
-# AGENTS.md
+# Project: ESP32 Ignition Coil Tester / Simulator
 
-## Project
-ESP32 Ignition Coil Tester / Simulator  
-Board: Wemos D1 R32 (`board = wemos_d1_uno32`)  
-Framework: Arduino via PlatformIO
+## Arsitektur: Plugin-Based Strategy
+Mulai refactoring Agustus 2026, codebase ini telah 100% menggunakan arsitektur modular berbasis **Plugin (Strategy Pattern)** via `IPeripheral.h`.
 
-## Strict Rules
-- **NO monolithic files.** Every responsibility has its own .h/.cpp.
-- `main.cpp` must stay thin (only setup + loop + object creation).
-- All timing must use hardware peripherals (LEDC or gptimer). Never use blocking delay for dwell.
-- Pins only defined in `include/config/Pins.h`.
-- Safety limits (max dwell, max frequency) are hard requirements and must be enforced in CoilDriver.
-- Dual display support via DisplayManager abstraction (OLED primary, TFT optional).
+### Aturan Wajib (Strict Rules):
+1. **NO MONOLITHIC LOGIC**: Dilarang keras menempatkan `if (mode == COIL) else if (mode == STEPPER)` di dalam `MenuSystem`, `DisplayManager`, maupun `DashboardEditor`.
+2. **PeripheralManager**: Segala pergantian mode, batas nilai, *UI rendering*, dan kontrol hardware wajib dilempar (*delegate*) ke `PeripheralManager` -> `IPeripheral`.
+3. **Hardware Pin Isolation**: Semua pin wajib dideklarasikan *hanya* di dalam `include/config/Pins.h`.
+4. **Dual-Core**: UI (Layar & Encoder) hidup secara eksklusif di **Core 0** (FreeRTOS Task `uiTask`). Logika peripheral utama (*update*, *SweepController*) tetap di `loop()` **Core 1**. Dilarang melakukan operasi blokir yang lama di dalam ISR atau Core 1.
+5. **Menambahkan Tester Baru**: Cukup tambahkan ke enum `PulseMode`, lalu buat `Peripheral<Name>.h/cpp` di folder `src/modes/`, implementasikan `IPeripheral`, dan daftarkan di konstruktor `PeripheralManager`. Sistem UI akan menyesuaikan otomatis.
 
 ## Architecture
 See `docs/ARCHITECTURE.md`. Follow it strictly.
-
-## When adding features
-1. Update the relevant class only.
-2. Keep UI completely separated from CoilDriver.
-3. Persist new settings via Settings class (NVS).
-4. Update docs if pins or safety limits change.

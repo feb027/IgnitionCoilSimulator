@@ -1,58 +1,36 @@
 #include "MenuSystem.h"
 #include "config/Pins.h"
-#include "../core/CoilDriver.h"
+#include "../core/PeripheralManager.h"
 
 #include "pages/MenuPageType.h"
-#include "pages/MenuPageRPM.h"
-#include "pages/MenuPageDwell.h"
-#include "pages/MenuPageDuty.h"
-#include "pages/MenuPageSpeedoKmh.h"
-#include "pages/MenuPageSpeedoRpm.h"
-#include "pages/MenuPageSpeedoTemp.h"
-#include "pages/MenuPageSpeedoFuel.h"
 #include "pages/MenuPagePulse.h"
-#include "pages/MenuPageMode.h"
 #include "pages/MenuPageSweepTime.h"
+#include "pages/MenuPageRpmStep.h"
 #include "pages/MenuPageExit.h"
 
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_MS 1000
 
-// Instantiate pages statically
 static MenuPageType pageType;
-static MenuPageRPM pageRPM;
-static MenuPageDwell pageDwell;
-static MenuPageDuty pageDuty;
-static MenuPageSpeedoKmh pageSpeedoKmh;
-static MenuPageSpeedoRpm pageSpeedoRpm;
-static MenuPageSpeedoTemp pageSpeedoTemp;
-static MenuPageSpeedoFuel pageSpeedoFuel;
 static MenuPagePulse pagePulse;
-static MenuPageMode pageMode;
 static MenuPageSweepTime pageSweepTime;
+static MenuPageRpmStep pageRpmStep;
 static MenuPageExit pageExit;
 
-MenuSystem::MenuSystem(SettingsManager& settingsMgr, CoilDriver& driver)
-    : _settingsMgr(settingsMgr), _driver(driver), 
+MenuSystem::MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager)
+    : _settingsMgr(settingsMgr), _manager(manager), 
       _inMenu(false), _dashboardEditMode(false), _dashboardFocusIndex(0), 
       _selectedIndex(0), _lastSelectedIndex(0), _isEditing(false), 
+      _dashboardEditor(settingsMgr, manager),
       _rawButtonState(HIGH), _stableButtonState(HIGH), 
       _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false),
       _lastClickTime(0), _awaitingDoubleClick(false),
       _scrollOffset(0.0f), _lastActivityMs(0) {
-      
     _pages[0] = &pageType;
-    _pages[1] = &pageRPM;
-    _pages[2] = &pageDwell;
-    _pages[3] = &pageDuty;
-    _pages[4] = &pageSpeedoKmh;
-    _pages[5] = &pageSpeedoRpm;
-    _pages[6] = &pageSpeedoTemp;
-    _pages[7] = &pageSpeedoFuel;
-    _pages[8] = &pagePulse;
-    _pages[9] = &pageMode;
-    _pages[10] = &pageSweepTime;
-    _pages[11] = &pageExit;
+    _pages[1] = &pagePulse;
+    _pages[2] = &pageSweepTime;
+    _pages[3] = &pageRpmStep;
+    _pages[4] = &pageExit;
     _numPages = NUM_PAGES;
 }
 
@@ -118,9 +96,8 @@ void MenuSystem::handleButton() {
                     if (_awaitingDoubleClick) {
                         // Double Click detected!
                         _awaitingDoubleClick = false;
-                        
                         AppSettings& s = _settingsMgr.getSettings();
-                        if (!_inMenu && s.pulseMode == PULSE_SPEEDO) {
+                        if (!_inMenu) {
                             if (_dashboardEditMode) {
                                 // Double click to exit Edit Mode
                                 _dashboardEditMode = false;
@@ -130,6 +107,11 @@ void MenuSystem::handleButton() {
                                 _dashboardEditMode = true;
                                 _dashboardFocusIndex = 0; // Reset focus to MODE
                             }
+                        } else {
+                            // Double click to exit Menu from anywhere
+                            _inMenu = false;
+                            _isEditing = false;
+                            _settingsMgr.save();
                         }
                     } else {
                         // First click detected, wait for potential second click
@@ -150,9 +132,9 @@ void MenuSystem::handleButton() {
                 // Toggle RUN / STOP on dashboard
                 AppSettings& s = _settingsMgr.getSettings();
                 if (s.isRunning) {
-                    _driver.stop();
+                    _manager.stop();
                 } else {
-                    _driver.start();
+                    _manager.start();
                 }
             } else {
                 // Quick Exit from Menu on long press
@@ -175,113 +157,77 @@ void MenuSystem::handleEncoder() {
     int32_t diff = currentCount - _lastEncoderCount;
     _lastEncoderCount = currentCount;
     
-    AppSettings& s = _settingsMgr.getSettings();
-
-    if (_inMenu) {
-        if (!_isEditing) {
-            _lastSelectedIndex = _selectedIndex; // Store before changing
-            
-            // Scroll pages with wrap-around and dynamic skipping
-            int nextIndex = _selectedIndex;
-            int steps = abs(diff);
-            int dir = (diff > 0) ? 1 : -1;
-            
-            // Loop for each step of the encoder
-            for (int i = 0; i < steps; i++) {
-                while (true) {
-                    nextIndex = (nextIndex + dir) % NUM_PAGES;
-                    if (nextIndex < 0) nextIndex += NUM_PAGES;
-                    
-                    // Skip rules
-                    if (s.pulseMode == PULSE_SPEEDO) {
-                        // Skip coil/pwm specific pages
-                        if (nextIndex >= 1 && nextIndex <= 3) continue;
+    if (diff != 0) {
+        AppSettings& s = _settingsMgr.getSettings();
+        if (_inMenu) {
+            if (!_isEditing) {
+                _lastSelectedIndex = _selectedIndex; // Store before changing
+                
+                // Navigate menu using polymorphic skip rules
+                int nextIndex = _selectedIndex;
+                int steps = abs(diff);
+                int dir = diff > 0 ? 1 : -1;
+                
+                // Loop for each step of the encoder
+                for (int i = 0; i < steps; i++) {
+                    while (true) {
+                        nextIndex = (nextIndex + dir) % 5;
+                        if (nextIndex < 0) nextIndex += 5;
                         
-                        // Always hide Speedometer edit pages from main menu (we edit them on dashboard)
-                        if (nextIndex >= 4 && nextIndex <= 7) continue;
+                        // Skip rules
+                        if (s.pulseMode == PULSE_SPEEDO) {
+                            // Hide RpmStep from main menu (not applicable)
+                            if (nextIndex == 3) continue;
+                        } else {
+                            // Skip speedo specific pages (Pulse Per Km)
+                            if (nextIndex == 1) continue;
+                        }
                         
-                        // Hide Mode page from main menu (edited on dashboard)
-                        if (nextIndex == 9) continue;
-                    } else {
-                        // Skip speedo specific pages
-                        if (nextIndex >= 4 && nextIndex <= 8) continue;
-                        // Skip Dwell/Duty based on mode
-                        if (nextIndex == 2 && s.pulseMode != PULSE_DWELL) continue;
-                        if (nextIndex == 3 && s.pulseMode != PULSE_DUTY) continue;
+                        break;
                     }
-                    
-                    break;
+                }
+                
+                _selectedIndex = nextIndex;
+                
+                // Animation
+                if (diff > 0) _scrollOffset = 128.0f;
+                else _scrollOffset = -128.0f;
+            } else {
+                // Edit the value for the selected page using polymorphism
+                _pages[_selectedIndex]->onEdit(diff, s);
+                
+                // Live update for Speedometer
+                if (s.isRunning && s.pulseMode == PULSE_SPEEDO) {
+                    _manager.trigger();
                 }
             }
-            
-            _selectedIndex = nextIndex;
-            
-            // Animation
-            if (diff > 0) _scrollOffset = 128.0f;
-            else _scrollOffset = -128.0f;
         } else {
-            // Edit the value for the selected page using polymorphism
-            _pages[_selectedIndex]->onEdit(diff, s);
-            
-            // Live update for Speedometer
-            if (s.isRunning && s.pulseMode == PULSE_SPEEDO) {
-                _driver.trigger();
-            }
-        }
-    } else {
-        if (_dashboardEditMode) {
-            if (_dashboardFocusIndex == 0) { // MODE
-                if (diff != 0) {
-                    bool modeChanged = false;
-                    for (int i = 0; i < abs(diff); i++) {
-                        if (s.mode == MODE_CONTINUOUS) s.mode = MODE_SWEEP;
-                        else s.mode = MODE_CONTINUOUS;
-                        modeChanged = true;
-                    }
-                    
-                    // Stop running when mode changes for safety
-                    if (modeChanged && s.isRunning) _driver.stop();
+            if (_dashboardEditMode) {
+                _dashboardEditor.handleEncoder(diff, _dashboardFocusIndex);
+            } else {
+                // Optional: fine tune RPM directly from Dashboard (for Coil mode)
+                if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
+                    s.rpm += (diff * s.rpmStep);
+                    if (s.rpm < 0) s.rpm = 0;
+                    if (s.rpm > 12000) s.rpm = 12000;
+                    // Restart driver safely to apply new limits immediately
+                    _manager.stop();
+                    _manager.start();
                 }
-            } else if (_dashboardFocusIndex == 1) { // KMH
-                s.speedoKmh += (diff * 10);
-                if (s.speedoKmh < 0) s.speedoKmh = 0;
-                if (s.speedoKmh > 300) s.speedoKmh = 300;
-            } else if (_dashboardFocusIndex == 2) { // RPM
-                s.speedoRpm += (diff * 500);
-                if (s.speedoRpm < 0) s.speedoRpm = 0;
-                if (s.speedoRpm > 15000) s.speedoRpm = 15000;
-            } else if (_dashboardFocusIndex == 3) { // TEMP
-                s.speedoTempPercent += (diff * 5);
-                if (s.speedoTempPercent < 0) s.speedoTempPercent = 0;
-                if (s.speedoTempPercent > 100) s.speedoTempPercent = 100;
-            } else if (_dashboardFocusIndex == 4) { // FUEL
-                s.speedoFuelPercent += (diff * 5);
-                if (s.speedoFuelPercent < 0) s.speedoFuelPercent = 0;
-                if (s.speedoFuelPercent > 100) s.speedoFuelPercent = 100;
-            }
-            if (s.isRunning && _dashboardFocusIndex > 0) {
-                _driver.trigger();
-            }
-        } else {
-            // Optional: fine tune RPM directly from Dashboard (for Coil mode)
-            if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
-                s.rpm += (diff * 10);
-                if (s.rpm < 0) s.rpm = 0;
-                if (s.rpm > MAX_RPM) s.rpm = MAX_RPM;
-                // Restart driver safely to apply new limits immediately
-                _driver.stop();
-                _driver.start();
             }
         }
     }
 }
 
 void MenuSystem::executeSingleClick() {
+    _lastActivityMs = millis();
+    AppSettings& s = _settingsMgr.getSettings();
     if (!_inMenu) {
         if (_dashboardEditMode) {
             // Cycle through Dashboard fields infinitely
             _dashboardFocusIndex++;
-            if (_dashboardFocusIndex > 4) {
+            int maxIdx = _dashboardEditor.getMaxFocusIndex();
+            if (_dashboardFocusIndex > maxIdx) {
                 _dashboardFocusIndex = 0; // Wrap around
             }
         } else {
@@ -291,13 +237,12 @@ void MenuSystem::executeSingleClick() {
             _isEditing = false;
             _encoder.setCount(0);
             _lastEncoderCount = 0;
-            AppSettings& s = _settingsMgr.getSettings();
             if (s.pulseMode != PULSE_SPEEDO) {
-                _driver.stop(); // Stop firing for safety
+                _manager.stop(); // Stop firing for safety
             }
         }
     } else {
-        if (_selectedIndex == 11) { // 11 = EXIT
+        if (_selectedIndex == 4) { // 4 = EXIT
             _inMenu = false;
             _isEditing = false;
             _settingsMgr.save();

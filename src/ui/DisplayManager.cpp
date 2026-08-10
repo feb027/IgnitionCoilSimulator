@@ -1,25 +1,27 @@
 #include "DisplayManager.h"
-#include "../core/CoilDriver.h"
 #include "MenuSystem.h"
+#include "pages/MenuPage.h"
+#include "../core/PeripheralManager.h"
 #include "config/Pins.h"
 #include <Wire.h>
 
-DisplayManager::DisplayManager(SettingsManager& settingsMgr) 
-    : _settingsMgr(settingsMgr),
+DisplayManager::DisplayManager(SettingsManager& settingsMgr, PeripheralManager& periphMgr) 
+    : _settingsMgr(settingsMgr), 
+      _periphMgr(periphMgr),
       _u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, PIN_OLED_SCL, PIN_OLED_SDA) {
 }
 
 void DisplayManager::begin() {
-    // Note: The Wemos D1 R32 pins for I2C are 22 (SCL) and 21 (SDA) by default.
-    // U8g2 will use the default Wire object if not specified, but passing pins ensures correctness.
+    _u8g2.setBusClock(400000); // 400kHz Fast I2C for higher FPS
     _u8g2.begin();
+    _u8g2.setContrast(255);
 }
 
 void DisplayManager::update(MenuSystem& menu) {
     _u8g2.clearBuffer();
     
     AppSettings& s = _settingsMgr.getSettings();
-    if (!s.isRunning && millis() - menu.getLastActivityMs() > 300000) { // 5 minutes
+    if (!s.isRunning && millis() - menu.getLastActivityMs() > 180000) { // 3 minutes
         drawScreenSaver();
     } else {
         if (menu.isInMenu()) {
@@ -51,148 +53,41 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
         _u8g2.print("OFF | ");
     }
 
-    bool editMode = false;
-    int focusIdx = -1;
-    if (s.pulseMode == PULSE_SPEEDO) {
-        editMode = menu.isDashboardEditMode();
-        focusIdx = menu.getDashboardFocusIndex();
+    bool editMode = menu.isDashboardEditMode();
+    int focusIdx = menu.getDashboardFocusIndex();
+    
+    String modeStr;
+    switch(s.mode) {
+        case MODE_CONTINUOUS: modeStr = "CONTINUOUS"; break;
+        case MODE_BURST: modeStr = "BURST"; break;
+        case MODE_SINGLE: modeStr = "SINGLE"; break;
+        case MODE_SWEEP: modeStr = "SWEEP"; break;
     }
     
+    int modeWidth = _u8g2.getStrWidth(modeStr.c_str());
+    int modeX = 128 - modeWidth; // Right align
+
     // Highlight MODE if it's the current focus
     if (editMode && focusIdx == 0) {
         _u8g2.setDrawColor(1);
-        _u8g2.drawBox(48, 0, 80, 14); // Box around mode text area
+        _u8g2.drawBox(modeX - 2, 0, modeWidth + 4, 14); // Box around mode text area
         _u8g2.setDrawColor(0);
     } else {
         _u8g2.setDrawColor(1);
     }
     
-    _u8g2.setCursor(50, 10);
-    switch(s.mode) {
-        case MODE_CONTINUOUS: _u8g2.print("CONTINUOUS"); break;
-        case MODE_BURST: _u8g2.print("BURST"); break;
-        case MODE_SINGLE: _u8g2.print("SINGLE"); break;
-        case MODE_SWEEP: _u8g2.print("SWEEP"); break;
-    }
+    _u8g2.setCursor(modeX, 10);
+    _u8g2.print(modeStr);
     
     _u8g2.setDrawColor(1); // Restore default color
 
     
     _u8g2.drawLine(0, 15, 128, 15);
-
-    if (s.pulseMode == PULSE_SPEEDO) {
-        // 2x2 Grid Layout
-        
-        auto drawHighlight = [&](int idx, int x, int y, int w, int h) {
-            if (editMode && focusIdx == idx) {
-                _u8g2.setDrawColor(1);
-                _u8g2.drawBox(x, y, w, h);
-                _u8g2.setDrawColor(0);
-            } else {
-                _u8g2.setDrawColor(1);
-            }
-        };
-
-        // Vertical center line
-        _u8g2.drawLine(64, 15, 64, 64);
-        // Horizontal center line
-        _u8g2.drawLine(0, 39, 128, 39);
-
-        // Top Left: KM/H (Idx 1)
-        drawHighlight(1, 0, 16, 63, 23);
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        _u8g2.setCursor(2, 25);
-        _u8g2.print("KM/H");
-        _u8g2.setFont(u8g2_font_helvB10_tr);
-        _u8g2.setCursor(2, 37);
-        _u8g2.print(s.currentSpeedoKmh);
-
-        // Top Right: RPM (Idx 2)
-        drawHighlight(2, 65, 16, 63, 23);
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        _u8g2.setCursor(68, 25);
-        _u8g2.print("RPM");
-        _u8g2.setFont(u8g2_font_helvB10_tr);
-        _u8g2.setCursor(68, 37);
-        _u8g2.print(s.currentSpeedoRpm);
-
-        // Bottom Left: TEMP (Idx 3)
-        drawHighlight(3, 0, 40, 63, 24);
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        _u8g2.setCursor(2, 49);
-        _u8g2.print("TEMP");
-        _u8g2.setFont(u8g2_font_helvB10_tr);
-        _u8g2.setCursor(2, 61);
-        _u8g2.print(s.currentSpeedoTempPercent);
-        _u8g2.print("%");
-
-        // Bottom Right: FUEL (Idx 4)
-        drawHighlight(4, 65, 40, 63, 24);
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        _u8g2.setCursor(68, 49);
-        _u8g2.print("FUEL");
-        _u8g2.setFont(u8g2_font_helvB10_tr);
-        _u8g2.setCursor(68, 61);
-        _u8g2.print(s.currentSpeedoFuelPercent);
-        _u8g2.print("%");
-        
-        _u8g2.setDrawColor(1); // Restore default draw color
-        
-        return;
-    }
-
-    // ZONE 2: Middle (Giant RPM)
-    _u8g2.setFont(u8g2_font_inb21_mr); // Very large number font
-    String rpmStr = String(s.rpm);
-    int rpmWidth = _u8g2.getStrWidth(rpmStr.c_str());
     
-    _u8g2.setCursor(15, 45);
-    _u8g2.print(rpmStr);
+    // Delegate the rest of the layout to the active peripheral
+    _periphMgr.getActive()->drawDashboard(_u8g2, focusIdx, editMode);
     
-    _u8g2.setFont(u8g2_font_helvB12_tr);
-    _u8g2.setCursor(15 + rpmWidth + 5, 45);
-    if (s.pulseMode == PULSE_SPEEDO) {
-        _u8g2.print("km/h");
-    } else {
-        _u8g2.print("RPM");
-    }
-
-    // ZONE 3: Bottom (Dwell and Duty Cycle)
-    _u8g2.setCursor(0, 64);
-    
-    String dwellStr = String(s.dwellMs, 1) + " ms";
-    String dutyStr = String(s.dutyCycle, 1) + "% DC";
-    
-    if (s.pulseMode == PULSE_DWELL) {
-        // Dwell is the master (bold, left)
-        _u8g2.setFont(u8g2_font_helvB12_tr); 
-        _u8g2.print(dwellStr);
-        
-        // Duty is secondary (small, right)
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        int dutyW = _u8g2.getStrWidth(dutyStr.c_str());
-        
-        // Feature 3: Visual Overheat Warning
-        if (s.dutyCycle > 60.0f && (millis() / 250) % 2 == 0) {
-            _u8g2.setDrawColor(1);
-            _u8g2.drawBox(128 - dutyW - 2, 64 - 10, dutyW + 4, 12);
-            _u8g2.setDrawColor(0);
-            _u8g2.setFontMode(1);
-        }
-        _u8g2.setCursor(128 - dutyW, 64);
-        _u8g2.print(dutyStr);
-        _u8g2.setDrawColor(1);
-    } else {
-        // Duty is the master (bold, left)
-        _u8g2.setFont(u8g2_font_helvB12_tr); 
-        _u8g2.print(dutyStr);
-        
-        // Dwell is secondary (small, right)
-        _u8g2.setFont(u8g2_font_helvB08_tr);
-        int dwellW = _u8g2.getStrWidth(dwellStr.c_str());
-        _u8g2.setCursor(128 - dwellW, 64);
-        _u8g2.print(dwellStr);
-    }
+    _u8g2.setDrawColor(1);
 }
 
 void DisplayManager::drawMenu(MenuSystem& menu) {

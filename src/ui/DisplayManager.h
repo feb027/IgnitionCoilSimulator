@@ -7,10 +7,11 @@
 // Forward declaration of MenuSystem to avoid circular dependency
 class MenuSystem; 
 class MenuPage;
+class PeripheralManager;
 
 class DisplayManager {
 public:
-    DisplayManager(SettingsManager& settingsMgr);
+    DisplayManager(SettingsManager& settingsMgr, PeripheralManager& periphMgr);
     
     void begin();
     
@@ -19,6 +20,7 @@ public:
 
 private:
     SettingsManager& _settingsMgr;
+    PeripheralManager& _periphMgr;
     
     // We use HW I2C, U8G2_R0 (no rotation)
     // You can change SSD1306_128X64_NONAME to your specific OLED type if needed

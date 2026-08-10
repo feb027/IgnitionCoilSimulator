@@ -3,19 +3,47 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 #include "core/SettingsManager.h"
-#include "core/CoilDriver.h"
+#include "core/PeripheralManager.h"
 #include "ui/DisplayManager.h"
 #include "ui/MenuSystem.h"
+#include "config/Pins.h"
 
 // Instantiate core modules
 SettingsManager settingsMgr;
-CoilDriver coilDriver(settingsMgr);
-DisplayManager displayMgr(settingsMgr);
-MenuSystem menuSys(settingsMgr, coilDriver);
+PeripheralManager peripheralMgr(settingsMgr);
+DisplayManager displayMgr(settingsMgr, peripheralMgr);
+MenuSystem menuSys(settingsMgr, peripheralMgr);
 
 uint32_t lastDisplayUpdate = 0;
 
+// FreeRTOS Task for UI handling (Pinned to Core 0)
+void uiTask(void *pvParameters) {
+    for (;;) {
+        // Process encoder and button inputs
+        menuSys.update();
+        
+        // Update display at a higher frame rate (e.g., 33 Hz / 30ms) for smooth animations
+        uint32_t now = millis();
+        if (now - lastDisplayUpdate > 30) {
+            displayMgr.update(menuSys);
+            lastDisplayUpdate = now;
+        }
+        
+        // Yield to other tasks (e.g., WiFi if enabled later)
+        vTaskDelay(pdMS_TO_TICKS(5)); 
+    }
+}
+
 void setup() {
+    // --- FAILSAFE BOOT-UP ---
+    // Ensure critical output pins are explicitly set LOW immediately
+    // before any other peripheral or RTOS task is initialized.
+    // This prevents stray voltage spikes from firing the coil on boot.
+    pinMode(PIN_COIL_OUT, OUTPUT);
+    digitalWrite(PIN_COIL_OUT, LOW);
+    pinMode(PIN_SOLENOID, OUTPUT);
+    digitalWrite(PIN_SOLENOID, LOW);
+    
     Serial.begin(115200);
     Serial.println("Starting ESP32 Ignition Coil Tester...");
 
@@ -25,9 +53,19 @@ void setup() {
 
     // Initialize in order of dependencies
     settingsMgr.begin();
-    coilDriver.begin();
+    peripheralMgr.begin();
     displayMgr.begin();
     menuSys.begin();
+
+    // Create UI Task on Core 0
+    xTaskCreatePinnedToCore(
+        uiTask,        // Task function
+        "UI_Task",     // Name of task
+        4096,          // Stack size of task
+        NULL,          // Parameter of the task
+        1,             // Priority of the task
+        NULL,          // Task handle
+        0);            // Core where the task should run (Core 0)
 
     Serial.println("Initialization complete.");
 }
@@ -35,19 +73,12 @@ void setup() {
 void loop() {
     // Reset watchdog timer
     esp_task_wdt_reset();
-
-    // 1. Process encoder and button inputs
-    menuSys.update();
     
-    // 2. Process coil driver state (if any dynamic checks are needed outside ISR)
-    coilDriver.update();
+    // Process peripheral state (Core 1 loop)
+    peripheralMgr.update();
     
-    // 3. Update display at a higher frame rate (e.g., 33 Hz / 30ms) for smooth animations
-    uint32_t now = millis();
-    if (now - lastDisplayUpdate > 30) {
-        displayMgr.update(menuSys);
-        lastDisplayUpdate = now;
-    }
+    // Small delay to prevent watchdog reset if loop gets too tight
+    delay(1);
 }
 
 #endif // UNIT_TEST

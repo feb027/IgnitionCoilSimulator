@@ -20,6 +20,7 @@ AppSettings& SettingsManager::getSettings() {
 void SettingsManager::save() {
     // Feature C: Optimize NVS saving (only save if changed)
     if (_settings.rpm != _savedSettings.rpm || 
+        _settings.rpmStep != _savedSettings.rpmStep ||
         _settings.dwellMs != _savedSettings.dwellMs || 
         _settings.dutyCycle != _savedSettings.dutyCycle ||
         _settings.pulseMode != _savedSettings.pulseMode ||
@@ -32,6 +33,7 @@ void SettingsManager::save() {
         _settings.speedoFuelPercent != _savedSettings.speedoFuelPercent) {
         
         preferences.putInt("rpm", _settings.rpm);
+        preferences.putInt("rpm_s", _settings.rpmStep);
         preferences.putFloat("dwell", _settings.dwellMs);
         preferences.putFloat("duty", _settings.dutyCycle);
         preferences.putUChar("pmode", static_cast<uint8_t>(_settings.pulseMode));
@@ -50,6 +52,7 @@ void SettingsManager::save() {
 
 void SettingsManager::load() {
     _settings.rpm = preferences.getInt("rpm", 600);                 // Default 600 RPM (10 Hz)
+    _settings.rpmStep = preferences.getInt("rpm_s", 10);            // Default step 10
     _settings.dwellMs = preferences.getFloat("dwell", 3.0f);        // Default 3.0 ms
     _settings.dutyCycle = preferences.getFloat("duty", 50.0f);      // Default 50.0%
     _settings.pulseMode = static_cast<PulseMode>(preferences.getUChar("pmode", PULSE_DWELL));
@@ -79,6 +82,7 @@ void SettingsManager::load() {
 
 void SettingsManager::resetToDefaults() {
     _settings.rpm = 600;
+    _settings.rpmStep = 10;
     _settings.dwellMs = 3.0f;
     _settings.dutyCycle = 50.0f;
     _settings.pulseMode = PULSE_DWELL;
