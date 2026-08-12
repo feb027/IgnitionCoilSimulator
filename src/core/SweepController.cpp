@@ -36,7 +36,7 @@ void SweepController::reset() {
         s.currentSpeedoTempPercent = _targetTemp;
         s.currentSpeedoFuelPercent = _targetFuel;
     } else {
-        s.rpm = _targetRpmNormal;
+        s.currentRpm = _targetRpmNormal;
     }
 }
 
@@ -70,7 +70,7 @@ bool SweepController::update() {
             s.currentSpeedoTempPercent = (int)(_currentSweepVal * _targetTemp);
             s.currentSpeedoFuelPercent = (int)(_currentSweepVal * _targetFuel);
         } else {
-            s.rpm = (int)(_currentSweepVal * _targetRpmNormal);
+            s.currentRpm = (int)(_currentSweepVal * _targetRpmNormal);
         }
         
         // Rate limit hardware updates for LEDC to prevent phase resets (Speedometer PWM glitching)

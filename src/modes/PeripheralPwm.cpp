@@ -18,9 +18,9 @@ static void IRAM_ATTR onPwmTimer() {
         if (pwm_pulsesRemaining > 0) {
             pwm_pulsesRemaining--;
             if (pwm_pulsesRemaining == 0) {
-                timerAlarmDisable(pwm_timer);
                 pwm_autoStopped = true;
-                return;
+                timerAlarmDisable(pwm_timer);
+                return; // Do not re-arm the timer
             }
         }
         
@@ -51,7 +51,7 @@ void PeripheralPwm::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         pwm_timer = timerBegin(1000000); // 1MHz frequency API (ESP-IDF 5)
 #else
-        pwm_timer = timerBegin(0, 80, true); // 80 prescaler API (ESP-IDF 4)
+        pwm_timer = timerBegin(1, 80, true); // Timer 1 for PWM (prevents conflict with Coil on Timer 0)
 #endif
         timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
     }
@@ -61,7 +61,7 @@ void PeripheralPwm::update() {
     AppSettings& s = _settingsMgr.getSettings();
     if (pwm_autoStopped) {
         pwm_autoStopped = false;
-        s.isRunning = false;
+        stop(); // Cleanly shutdown hardware and update state
     }
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
@@ -76,23 +76,37 @@ void PeripheralPwm::syncHardware() {
 
 void PeripheralPwm::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
-    if (s.rpm > 12000) s.rpm = 12000;
-    if (s.rpm < 0) s.rpm = 0; 
+    int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.rpm;
     
-    if (s.rpm == 0) {
+    if (activeRpm > 12000) activeRpm = 12000;
+    if (activeRpm < 0) activeRpm = 0; 
+    
+    if (activeRpm == 0) {
         pwm_periodTicks = 1000000;
-        pwm_dwellTicks = 0;
-        s.dutyCycle = 0.0f;
-        s.dwellMs = 0.0f;
+        if (s.dutyCycle > 100.0f) s.dutyCycle = 100.0f;
+        if (s.dutyCycle < 0.0f) s.dutyCycle = 0.0f;
+        pwm_dwellTicks = (uint32_t)(pwm_periodTicks * (s.dutyCycle / 100.0f));
+        
+        if (pwm_dwellTicks > pwm_periodTicks) {
+            pwm_dwellTicks = pwm_periodTicks;
+        }
+        if (pwm_dwellTicks < 10) pwm_dwellTicks = 10;
+        
+        s.dwellMs = (float)pwm_dwellTicks / 1000.0f;
         return;
     }
     
-    pwm_periodTicks = 60000000 / s.rpm;
+    pwm_periodTicks = 60000000 / activeRpm;
     
     if (s.dutyCycle > 100.0f) s.dutyCycle = 100.0f;
     if (s.dutyCycle < 0.0f) s.dutyCycle = 0.0f;
     
     pwm_dwellTicks = (uint32_t)(pwm_periodTicks * (s.dutyCycle / 100.0f));
+    
+    if (pwm_dwellTicks > pwm_periodTicks) {
+        pwm_dwellTicks = pwm_periodTicks;
+    }
+    if (pwm_dwellTicks < 10) pwm_dwellTicks = 10;
     
     // Calculate display dwell for UI
     s.dwellMs = (float)pwm_dwellTicks / 1000.0f;
@@ -110,13 +124,18 @@ void PeripheralPwm::start() {
     else if (s.mode == MODE_BURST) pwm_pulsesRemaining = 5;
     else pwm_pulsesRemaining = 0; 
     
-    timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
-    
     digitalWrite(PIN_COIL_OUT, HIGH);
     digitalWrite(PIN_SOLENOID, HIGH);
     isPwmOn = true;
-    timerAlarmWrite(pwm_timer, pwm_dwellTicks, true);
-    timerAlarmEnable(pwm_timer);
+    timerWrite(pwm_timer, 0); // Reset timer counter
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+    timerRestart(pwm_timer);
+    timerAlarm(pwm_timer, pwm_dwellTicks, true, 0);
+#else
+    timerAlarmWrite(pwm_timer, pwm_dwellTicks, true); // Autoreload TRUE!
+#endif
+    timerAlarmEnable(pwm_timer); // CRITICAL: Re-enable interrupt!
+    timerStart(pwm_timer); // Explicitly start the timer
 }
 
 void PeripheralPwm::stop() {
@@ -161,7 +180,8 @@ void PeripheralPwm::drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) {
     u8g2.setCursor(2, 25);
     u8g2.print("RPM");
     u8g2.setFont(u8g2_font_helvB18_tr);
-    String rpmStr = String(s.rpm);
+    int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.rpm;
+    String rpmStr = String(activeRpm);
     int rpmWidth = u8g2.getStrWidth(rpmStr.c_str());
     u8g2.setCursor((128 - rpmWidth) / 2, 36);
     u8g2.print(rpmStr);
@@ -204,6 +224,40 @@ void PeripheralPwm::handleEncoder(int diff, int focusIndex) {
         trigger();
     } else if (!s.isRunning && focusIndex > 0) {
         updateTimerConfig();
+    }
+}
+
+bool PeripheralPwm::shouldShowMenuItem(int menuIndex) {
+    // Skip speedo specific pages (Pulse Per Km)
+    if (menuIndex == 1) return false;
+    // Skip Speedo Steps
+    if (menuIndex >= 4 && menuIndex <= 7) return false;
+    return true;
+}
+
+const char* PeripheralPwm::getModeString() {
+    switch(_settingsMgr.getSettings().mode) {
+        case MODE_CONTINUOUS: return "CONTINUOUS";
+        case MODE_BURST: return "BURST";
+        case MODE_SINGLE: return "SINGLE";
+        case MODE_SWEEP: return "SWEEP";
+        default: return "UNKNOWN";
+    }
+}
+
+void PeripheralPwm::cycleRunMode(AppSettings& s, int direction) {
+    int nextMode = (s.mode + direction) % 4;
+    if (nextMode < 0) nextMode += 4;
+    s.mode = (CoilMode)nextMode;
+}
+
+void PeripheralPwm::handleDashboardEncoder(int diff, AppSettings& s) {
+    if (s.isRunning && s.mode == MODE_CONTINUOUS) {
+        s.rpm += (diff * s.rpmStep);
+        if (s.rpm < 0) s.rpm = 0;
+        if (s.rpm > 12000) s.rpm = 12000;
+        stop();
+        start();
     }
 }
 

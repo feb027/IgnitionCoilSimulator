@@ -6,6 +6,10 @@
 #include "pages/MenuPagePulse.h"
 #include "pages/MenuPageSweepTime.h"
 #include "pages/MenuPageRpmStep.h"
+#include "pages/MenuPageSpeedoRpmStep.h"
+#include "pages/MenuPageSpeedoKmhStep.h"
+#include "pages/MenuPageSpeedoTempStep.h"
+#include "pages/MenuPageSpeedoFuelStep.h"
 #include "pages/MenuPageExit.h"
 
 #define DEBOUNCE_DELAY_MS 50
@@ -15,6 +19,10 @@ static MenuPageType pageType;
 static MenuPagePulse pagePulse;
 static MenuPageSweepTime pageSweepTime;
 static MenuPageRpmStep pageRpmStep;
+static MenuPageSpeedoRpmStep pageSpdRpmStep;
+static MenuPageSpeedoKmhStep pageSpdKmhStep;
+static MenuPageSpeedoTempStep pageSpdTempStep;
+static MenuPageSpeedoFuelStep pageSpdFuelStep;
 static MenuPageExit pageExit;
 
 MenuSystem::MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager)
@@ -30,7 +38,11 @@ MenuSystem::MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager)
     _pages[1] = &pagePulse;
     _pages[2] = &pageSweepTime;
     _pages[3] = &pageRpmStep;
-    _pages[4] = &pageExit;
+    _pages[4] = &pageSpdRpmStep;
+    _pages[5] = &pageSpdKmhStep;
+    _pages[6] = &pageSpdTempStep;
+    _pages[7] = &pageSpdFuelStep;
+    _pages[8] = &pageExit;
     _numPages = NUM_PAGES;
 }
 
@@ -44,21 +56,17 @@ void MenuSystem::begin() {
     _lastActivityMs = millis();
 }
 
-void MenuSystem::update() {
+void MenuSystem::update(float dt) {
     handleButton();
     handleEncoder();
     
-    static uint32_t lastAnimTime = 0;
     uint32_t now = millis();
     
-    // Decay scroll offset smoothly towards 0 for animation (only every 16ms, ~60FPS)
-    if (now - lastAnimTime > 16) {
-        lastAnimTime = now;
-        if (abs(_scrollOffset) > 1.0f) {
-            _scrollOffset *= 0.7f; // Adjust 0.7 for speed (lower is faster)
-        } else {
-            _scrollOffset = 0.0f;
-        }
+    // Decay scroll offset smoothly towards 0 for animation (framerate independent)
+    if (abs(_scrollOffset) > 1.0f) {
+        _scrollOffset -= (_scrollOffset * 20.0f * dt);
+    } else {
+        _scrollOffset = 0.0f;
     }
     
     // Handle Double Click Timeout
@@ -171,16 +179,12 @@ void MenuSystem::handleEncoder() {
                 // Loop for each step of the encoder
                 for (int i = 0; i < steps; i++) {
                     while (true) {
-                        nextIndex = (nextIndex + dir) % 5;
-                        if (nextIndex < 0) nextIndex += 5;
+                        nextIndex = (nextIndex + dir) % NUM_PAGES;
+                        if (nextIndex < 0) nextIndex += NUM_PAGES;
                         
-                        // Skip rules
-                        if (s.pulseMode == PULSE_SPEEDO) {
-                            // Hide RpmStep from main menu (not applicable)
-                            if (nextIndex == 3) continue;
-                        } else {
-                            // Skip speedo specific pages (Pulse Per Km)
-                            if (nextIndex == 1) continue;
+                        // Skip rules based on peripheral plugin
+                        if (!_manager.getActive()->shouldShowMenuItem(nextIndex)) {
+                            continue;
                         }
                         
                         break;
@@ -205,17 +209,7 @@ void MenuSystem::handleEncoder() {
             if (_dashboardEditMode) {
                 _dashboardEditor.handleEncoder(diff, _dashboardFocusIndex);
             } else {
-                if (s.pulseMode == PULSE_STEPPER) {
-                    // Forward directly to Stepper for physical jogging when on dashboard
-                    _manager.getActive()->handleEncoder(diff, 0);
-                } else if (s.isRunning && s.mode == MODE_CONTINUOUS && s.pulseMode != PULSE_SPEEDO) {
-                    s.rpm += (diff * s.rpmStep);
-                    if (s.rpm < 0) s.rpm = 0;
-                    if (s.rpm > 12000) s.rpm = 12000;
-                    // Restart driver safely to apply new limits immediately
-                    _manager.stop();
-                    _manager.start();
-                }
+                _manager.getActive()->handleDashboardEncoder(diff, s);
             }
         }
     }
@@ -244,7 +238,7 @@ void MenuSystem::executeSingleClick() {
             }
         }
     } else {
-        if (_selectedIndex == 4) { // 4 = EXIT
+        if (_selectedIndex == NUM_PAGES - 1) { // EXIT
             _inMenu = false;
             _isEditing = false;
             _settingsMgr.save();

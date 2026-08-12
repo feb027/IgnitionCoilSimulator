@@ -32,10 +32,15 @@ struct AppSettings {
     int speedoRpm;         // Target RPM for speedometer (and sweep max)
     int speedoTempPercent; // 0-100% for temperature gauge
     int speedoFuelPercent; // 0-100% for fuel gauge
+    int speedoRpmStep;     // Step size for RPM adjustment in Speedo mode
+    int speedoKmhStep;     // Step size for KMH adjustment in Speedo mode
+    int speedoTempStep;    // Step size for Temp adjustment in Speedo mode
+    int speedoFuelStep;    // Step size for Fuel adjustment in Speedo mode
     int currentSpeedoKmh;  // Live km/h (for sweep display)
     int currentSpeedoRpm;  // Live RPM
     int currentSpeedoTempPercent; // Live temp
     int currentSpeedoFuelPercent; // Live fuel
+    int currentRpm;        // Live RPM for coil/pwm sweep
     int stepperSpeed;      // Speed for stepper motor (RPM or delay)
     int stepperSpinDir;    // 1 for right, -1 for left, 0 for stopped
     bool isRunning;        // Is the driver currently active?

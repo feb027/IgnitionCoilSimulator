@@ -17,6 +17,15 @@ Sebuah alat *tester* dan *simulator* koil pengapian (Ignition Coil), aktuator PW
 - 🎯 **Presisi Mikrodetik**: Memanfaatkan *Hardware Timer* bawaan ESP32 (menggantikan fungsi `delay()`) sehingga *Dwell Time*, RPM, dan sinyal PWM dihasilkan secara identik layaknya ECU mobil sungguhan.
 - 💾 **Non-Volatile Settings (NVS)**: Sistem secara cerdas menyimpan preferensi RPM & Dwell Anda terakhir kali. Tidak perlu putar dari awal tiap alat dinyalakan.
 - 📺 **OLED Screensaver**: Mencegah *burn-in* layar jika dibiarkan *idle* terlalu lama.
+- 🌐 **Web UI Realtime Control**: Dilengkapi dengan dashboard web interaktif (Preact + WebSockets) untuk mengontrol parameter dari HP/Laptop secara instan.
+
+---
+
+## 🆕 Pembaruan Terbaru (Update)
+
+- **Speedometer Step Configuration**: Pengaturan kelipatan (step) untuk RPM, KM/H, Suhu, dan Bensin kini dinamis dan dapat diatur penuh dari layar fisik maupun Web UI.
+- **Timer Conflict Fix**: Resolusi penuh untuk lag/getaran pada output PWM Temperatur. Fitur PWM kini dialihkan ke Timer 2 agar tidak bentrok dengan kalkulasi *tacho* di Timer 0 & 1.
+- **Dukungan ESP32 38-Pin**: Telah dioptimalkan untuk board `esp32dev` (seperti ESP32-WROOM-32U 38-pin) dengan antena eksternal, memudahkan wiring tanpa menggunakan penamaan pin ala Arduino.
 
 ---
 
@@ -39,7 +48,7 @@ Sebuah alat *tester* dan *simulator* koil pengapian (Ignition Coil), aktuator PW
 
 ## 🔌 Daftar Komponen Utama
 
-- **Wemos D1 R32** (Bisa diganti ESP32 NodeMCU biasa, pastikan mapping pin sesuai)
+- **ESP32 38-Pin DevKit** (disarankan varian ESP32U untuk antena eksternal, atau Wemos D1 R32)
 - **Layar OLED 0.96"** I2C (128x64)
 - **Rotary Encoder** (Module KY-040)
 - **IGBT Otomotif** (IRGB14C40L / ISL9V5036P3)
@@ -104,7 +113,7 @@ Proyek ini menggunakan **PlatformIO IDE** (bukan Arduino IDE standar).
    ```
 4. *Unit Test* (Opsional - pastikan hardware terhubung):
    ```bash
-   pio test -e wemos_d1_uno32
+   pio test -e esp32dev
    ```
 
 ## 🏗️ Struktur Arsitektur (Bagi Pengembang)

@@ -2,13 +2,18 @@
 #include "config/Pins.h"
 
 PeripheralSpeedo::PeripheralSpeedo(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController),
-      _tempPot(PIN_X9C_INC, PIN_X9C_UD, PIN_X9C_CS_TEMP),
-      _fuelPot(PIN_X9C_INC, PIN_X9C_UD, PIN_X9C_CS_FUEL) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController) {}
 
 void PeripheralSpeedo::begin() {
-    _tempPot.begin();
-    _fuelPot.begin();
+    // LEDC Channel 4 and 5 for Temp and Fuel PWM (5kHz, 8-bit resolution)
+    // They share Timer 2, leaving Timer 0 for RPM (Ch 1) and Timer 1 for KMH (Ch 2)
+    ledcSetup(4, 5000, 8);
+    ledcAttachPin(PIN_PWM_TEMP, 4);
+    ledcWrite(4, 0);
+    
+    ledcSetup(5, 5000, 8);
+    ledcAttachPin(PIN_PWM_FUEL, 5);
+    ledcWrite(5, 0);
     
     // Timer 1 and 2 for LEDC (ESP32)
     ledcSetup(1, 50, 10);
@@ -65,8 +70,12 @@ void PeripheralSpeedo::updateTimerConfig() {
         ledcWrite(1, 0);
     }
     
-    _tempPot.setPercent(s.currentSpeedoTempPercent);
-    _fuelPot.setPercent(s.currentSpeedoFuelPercent);
+    // Convert 0-100% to 8-bit PWM (0-255)
+    uint32_t dutyTemp = (s.currentSpeedoTempPercent * 255) / 100;
+    uint32_t dutyFuel = (s.currentSpeedoFuelPercent * 255) / 100;
+    
+    ledcWrite(4, dutyTemp);
+    ledcWrite(5, dutyFuel);
 }
 
 void PeripheralSpeedo::start() {
@@ -157,19 +166,19 @@ void PeripheralSpeedo::handleEncoder(int diff, int focusIndex) {
     AppSettings& s = _settingsMgr.getSettings();
     
     if (focusIndex == 1) { // KMH
-        s.speedoKmh += (diff * 10);
+        s.speedoKmh += (diff * s.speedoKmhStep);
         if (s.speedoKmh < 0) s.speedoKmh = 0;
         if (s.speedoKmh > 300) s.speedoKmh = 300;
     } else if (focusIndex == 2) { // RPM
-        s.speedoRpm += (diff * 500);
+        s.speedoRpm += (diff * s.speedoRpmStep);
         if (s.speedoRpm < 0) s.speedoRpm = 0;
         if (s.speedoRpm > 15000) s.speedoRpm = 15000;
     } else if (focusIndex == 3) { // TEMP
-        s.speedoTempPercent += (diff * 5);
+        s.speedoTempPercent += (diff * s.speedoTempStep);
         if (s.speedoTempPercent < 0) s.speedoTempPercent = 0;
         if (s.speedoTempPercent > 100) s.speedoTempPercent = 100;
     } else if (focusIndex == 4) { // FUEL
-        s.speedoFuelPercent += (diff * 5);
+        s.speedoFuelPercent += (diff * s.speedoFuelStep);
         if (s.speedoFuelPercent < 0) s.speedoFuelPercent = 0;
         if (s.speedoFuelPercent > 100) s.speedoFuelPercent = 100;
     }
@@ -183,4 +192,29 @@ void PeripheralSpeedo::handleEncoder(int diff, int focusIndex) {
 
 int PeripheralSpeedo::getMaxFocusIndex() const {
     return 4;
+}
+
+bool PeripheralSpeedo::shouldShowMenuItem(int menuIndex) {
+    // Hide RpmStep from main menu (not applicable)
+    if (menuIndex == 3) return false;
+    return true;
+}
+
+const char* PeripheralSpeedo::getModeString() {
+    switch(_settingsMgr.getSettings().mode) {
+        case MODE_CONTINUOUS: return "CONTINUOUS";
+        case MODE_BURST: return "BURST";
+        case MODE_SINGLE: return "SINGLE";
+        case MODE_SWEEP: return "SWEEP";
+        default: return "UNKNOWN";
+    }
+}
+
+void PeripheralSpeedo::cycleRunMode(AppSettings& s, int direction) {
+    if (s.mode == MODE_CONTINUOUS) s.mode = MODE_SWEEP;
+    else s.mode = MODE_CONTINUOUS;
+}
+
+void PeripheralSpeedo::handleDashboardEncoder(int diff, AppSettings& s) {
+    // No direct dashboard encoder manipulation for speedo currently
 }

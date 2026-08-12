@@ -58,7 +58,8 @@ void NetworkManager::update() {
                      (current.mode != _lastBroadcastedState.mode) ||
                      (current.rpm != _lastBroadcastedState.rpm) ||
                      (current.dwellMs != _lastBroadcastedState.dwellMs) ||
-                     (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh);
+                     (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh) ||
+                     (current.currentRpm != _lastBroadcastedState.currentRpm);
                      
         if (dirty) {
             broadcastState();
@@ -90,14 +91,21 @@ void NetworkManager::broadcastState() {
     doc["speedoRpm"] = s.speedoRpm;
     doc["speedoTemp"] = s.speedoTempPercent;
     doc["speedoFuel"] = s.speedoFuelPercent;
+    doc["speedoRpmStep"] = s.speedoRpmStep;
+    doc["speedoKmhStep"] = s.speedoKmhStep;
+    doc["speedoTempStep"] = s.speedoTempStep;
+    doc["speedoFuelStep"] = s.speedoFuelStep;
     
     // Read-only values for speedo sweeping
     doc["currentSpeedoKmh"] = s.currentSpeedoKmh;
     doc["currentSpeedoRpm"] = s.currentSpeedoRpm;
+    doc["currentRpm"] = s.currentRpm;
     
     String output;
     serializeJson(doc, output);
     _ws.textAll(output);
+    
+    _lastBroadcastedState = s;
 }
 
 void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
@@ -173,6 +181,18 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         changed = true;
     } else if (action == "setSpeedoFuel") {
         s.speedoFuelPercent = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoRpmStep") {
+        s.speedoRpmStep = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoKmhStep") {
+        s.speedoKmhStep = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoTempStep") {
+        s.speedoTempStep = doc["value"].as<int>();
+        changed = true;
+    } else if (action == "setSpeedoFuelStep") {
+        s.speedoFuelStep = doc["value"].as<int>();
         changed = true;
     } else if (action == "setStepperSpeed") {
         s.stepperSpeed = doc["value"].as<int>();

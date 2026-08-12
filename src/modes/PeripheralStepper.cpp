@@ -173,3 +173,25 @@ void PeripheralStepper::handleEncoder(int diff, int focusIndex) {
 void PeripheralStepper::syncHardware() {
     // No hardware timers for stepper, handled in update() loop
 }
+
+bool PeripheralStepper::shouldShowMenuItem(int menuIndex) {
+    // Hide RpmStep (3) and PulsePerKm (1)
+    if (menuIndex == 1 || menuIndex == 3) return false;
+    // Hide Speedo Steps (4-7)
+    if (menuIndex >= 4 && menuIndex <= 7) return false;
+    return true;
+}
+
+const char* PeripheralStepper::getModeString() {
+    return "STEPPER";
+}
+
+void PeripheralStepper::cycleRunMode(AppSettings& s, int direction) {
+    // Stepper only has continuous currently, or maybe we don't cycle
+}
+
+void PeripheralStepper::handleDashboardEncoder(int diff, AppSettings& s) {
+    s.stepperSpeed += (diff * 5);
+    if (s.stepperSpeed < 5) s.stepperSpeed = 5;
+    if (s.stepperSpeed > 200) s.stepperSpeed = 200;
+}

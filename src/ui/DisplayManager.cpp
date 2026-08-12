@@ -56,19 +56,9 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
     bool editMode = menu.isDashboardEditMode();
     int focusIdx = menu.getDashboardFocusIndex();
     
-    String modeStr;
-    if (s.pulseMode == PULSE_STEPPER) {
-        modeStr = "STEPPER";
-    } else {
-        switch(s.mode) {
-            case MODE_CONTINUOUS: modeStr = "CONTINUOUS"; break;
-            case MODE_BURST: modeStr = "BURST"; break;
-            case MODE_SINGLE: modeStr = "SINGLE"; break;
-            case MODE_SWEEP: modeStr = "SWEEP"; break;
-        }
-    }
+    const char* modeStr = _periphMgr.getActive()->getModeString();
     
-    int modeWidth = _u8g2.getStrWidth(modeStr.c_str());
+    int modeWidth = _u8g2.getStrWidth(modeStr);
     int modeX = 128 - modeWidth; // Right align
 
     // Highlight MODE if it's the current focus

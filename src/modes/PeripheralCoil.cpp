@@ -217,3 +217,39 @@ void PeripheralCoil::handleEncoder(int diff, int focusIndex) {
 int PeripheralCoil::getMaxFocusIndex() const {
     return 2;
 }
+
+bool PeripheralCoil::shouldShowMenuItem(int menuIndex) {
+    // Skip speedo specific pages (Pulse Per Km)
+    if (menuIndex == 1) return false;
+    // Skip Speedo Steps
+    if (menuIndex >= 4 && menuIndex <= 7) return false;
+    return true;
+}
+
+const char* PeripheralCoil::getModeString() {
+    switch(_settingsMgr.getSettings().mode) {
+        case MODE_CONTINUOUS: return "CONTINUOUS";
+        case MODE_BURST: return "BURST";
+        case MODE_SINGLE: return "SINGLE";
+        case MODE_SWEEP: return "SWEEP";
+        default: return "UNKNOWN";
+    }
+}
+
+void PeripheralCoil::cycleRunMode(AppSettings& s, int direction) {
+    int nextMode = (s.mode + direction) % 4;
+    if (nextMode < 0) nextMode += 4;
+    s.mode = (CoilMode)nextMode;
+}
+
+void PeripheralCoil::handleDashboardEncoder(int diff, AppSettings& s) {
+    // Only RPM can be changed from dashboard if not in edit mode
+    s.rpm += (diff * s.rpmStep);
+    if (s.rpm < 0) s.rpm = 0;
+    if (s.rpm > 12000) s.rpm = 12000;
+    if (s.isRunning) {
+        trigger();
+    } else {
+        updateTimerConfig();
+    }
+}

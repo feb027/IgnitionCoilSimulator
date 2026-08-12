@@ -1,6 +1,10 @@
 import { html, render, useState, useEffect, useRef } from './preact.mjs';
 import { Dial } from './components/Dial.js';
 import { ModeSelector } from './components/ModeSelector.js';
+import { DashboardCoil } from './components/DashboardCoil.js';
+import { DashboardPwm } from './components/DashboardPwm.js';
+import { DashboardSpeedo } from './components/DashboardSpeedo.js';
+import { DashboardStepper } from './components/DashboardStepper.js';
 
 function App() {
     const [state, setState] = useState({
@@ -94,6 +98,36 @@ function App() {
     const isStepper = state.pulseMode === 3;
     const isSweep = state.runMode === 3;
 
+    const renderModeSelector = () => html`
+        <div class="panel-side-bottom mode-container ${state.isDrawerOpen ? 'open' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;" class="drawer-only-header">
+                <span style="font-weight: bold;">SELECT MODE</span>
+                <button class="btn" style="padding: 4px 12px;" onClick=${() => setState(s => ({ ...s, isDrawerOpen: false }))}>X</button>
+            </div>
+            <${ModeSelector} 
+                mode=${state.pulseMode}
+                runMode=${state.runMode}
+                onSelect=${(val) => {
+                    sendAction('setMode', val);
+                    setState(s => ({ ...s, isDrawerOpen: false }));
+                }}
+                onSelectRunMode=${(val) => {
+                    sendAction('setRunMode', val);
+                    setState(s => ({ ...s, isDrawerOpen: false }));
+                }}
+                disabled=${!state.connected || state.isRunning}
+            />
+        </div>
+    `;
+
+    const renderDashboard = () => {
+        if (state.pulseMode === 0) return html`<${DashboardCoil} state=${state} sendAction=${sendAction} modeSelector=${renderModeSelector()} />`;
+        if (state.pulseMode === 1) return html`<${DashboardPwm} state=${state} sendAction=${sendAction} modeSelector=${renderModeSelector()} />`;
+        if (state.pulseMode === 2) return html`<${DashboardSpeedo} state=${state} sendAction=${sendAction} modeSelector=${renderModeSelector()} />`;
+        if (state.pulseMode === 3) return html`<${DashboardStepper} state=${state} sendAction=${sendAction} modeSelector=${renderModeSelector()} />`;
+        return null;
+    };
+
     return html`
         <header>
             <div class="title">IGNITION PRO</div>
@@ -136,186 +170,7 @@ function App() {
         ` : null}
 
         <main class="bento-grid">
-            <div class="panel-main" style=${isStepper ? "display: flex; justify-content: space-between; gap: 20px; align-items: stretch; padding: 30px;" : ""}>
-                ${isStepper ? html`
-                    <button 
-                        class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === -1 ? 'var(--text-primary)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === -1 ? 'var(--bg-base)' : 'var(--text-primary)'}; border: 2px solid var(--border-sharp); user-select: none;"
-                        onPointerDown=${() => sendAction('stepperSpin', -1)}
-                        onPointerUp=${() => sendAction('stepperSpin', 0)}
-                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
-                        disabled=${!state.connected}
-                    >
-                        PUTAR KIRI
-                    </button>
-                    <button 
-                        class="btn btn-jog"
-                        style="flex: 1; font-size: 1.5rem; font-weight: bold; background: ${state.stepperSpinDir === 1 ? 'var(--text-primary)' : 'var(--surface-color)'}; color: ${state.stepperSpinDir === 1 ? 'var(--bg-base)' : 'var(--text-primary)'}; border: 2px solid var(--border-sharp); user-select: none;"
-                        onPointerDown=${() => sendAction('stepperSpin', 1)}
-                        onPointerUp=${() => sendAction('stepperSpin', 0)}
-                        onPointerLeave=${() => sendAction('stepperSpin', 0)}
-                        disabled=${!state.connected}
-                    >
-                        PUTAR KANAN
-                    </button>
-                ` : html`
-                    <${Dial} 
-                        label=${isSpeedo ? (isSweep ? "TARGET SPEED" : "ACTUAL SPEED") : "ENGINE SPEED"}
-                        value=${isSpeedo ? state.speedoKmh : state.rpm}
-                        unit=${isSpeedo ? "KM/H" : "RPM"}
-                        min=${isSpeedo ? 0 : 0}
-                        max=${isSpeedo ? 300 : 16000}
-                        step=${isSpeedo ? 10 : state.rpmStep}
-                        onChange=${(val) => sendAction(isSpeedo ? 'setSpeedoKmh' : 'setRpm', val)}
-                        disabled=${!state.connected}
-                    />
-                `}
-            </div>
-            
-            <div class="panel-side-top" style="display: flex; flex-direction: column; gap: 16px;">
-                ${state.pulseMode === 0 ? html`
-                    <${Dial} 
-                        label="DWELL TIME"
-                        value=${state.dwellMs}
-                        unit="MS"
-                        min="0.5"
-                        max="5.0"
-                        step="0.1"
-                        subInfo=${"Calculated Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
-                        onChange=${(val) => sendAction('setDwell', val)}
-                        disabled=${!state.connected}
-                    />
-                ` : state.pulseMode === 1 ? html`
-                    <${Dial} 
-                        label="DUTY CYCLE"
-                        value=${state.dutyCycle}
-                        unit="%"
-                        min="0"
-                        max="100"
-                        step="1"
-                        subInfo=${"Calculated Dwell: " + (state.dwellMs ? state.dwellMs.toFixed(1) : "0.0") + "ms"}
-                        onChange=${(val) => sendAction('setDuty', val)}
-                        disabled=${!state.connected}
-                    />
-                ` : isStepper ? html`
-                    <${Dial} 
-                        label="STEPPER SPEED"
-                        value=${state.stepperSpeed}
-                        unit="%"
-                        min="1"
-                        max="100"
-                        step="5"
-                        onChange=${(val) => sendAction('setStepperSpeed', val)}
-                        disabled=${!state.connected}
-                    />
-                ` : html`
-                    <${Dial} 
-                        label=${(isSweep && state.isRunning) ? "SWEEPING TACHO..." : (isSweep ? "TARGET TACHO" : "ACTUAL TACHO")}
-                        value=${(isSweep && state.isRunning) ? state.rpm : state.speedoRpm}
-                        unit="RPM"
-                        min="0"
-                        max="16000"
-                        step="100"
-                        onChange=${(val) => sendAction('setSpeedoRpm', val)}
-                        disabled=${!state.connected || (isSweep && state.isRunning)}
-                    />
-                    <${Dial} 
-                        label=${(isSweep && state.isRunning) ? "SWEEPING TEMP..." : (isSweep ? "TARGET TEMP" : "ACTUAL TEMP")}
-                        value=${(isSweep && state.isRunning) ? state.currentSpeedoTempPercent : state.speedoTempPercent}
-                        unit="%"
-                        min="0"
-                        max="100"
-                        step="1"
-                        onChange=${(val) => sendAction('setSpeedoTemp', val)}
-                        disabled=${!state.connected || (isSweep && state.isRunning)}
-                    />
-                    <${Dial} 
-                        label=${(isSweep && state.isRunning) ? "SWEEPING FUEL..." : (isSweep ? "TARGET FUEL" : "ACTUAL FUEL")}
-                        value=${(isSweep && state.isRunning) ? state.currentSpeedoFuelPercent : state.speedoFuelPercent}
-                        unit="%"
-                        min="0"
-                        max="100"
-                        step="1"
-                        onChange=${(val) => sendAction('setSpeedoFuel', val)}
-                        disabled=${!state.connected || (isSweep && state.isRunning)}
-                    />
-                `}
-            </div>
-
-            <div class="panel-side-bottom mode-container ${state.isDrawerOpen ? 'open' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;" class="drawer-only-header">
-                    <span style="font-weight: bold;">SELECT MODE</span>
-                    <button class="btn" style="padding: 4px 12px;" onClick=${() => setState(s => ({ ...s, isDrawerOpen: false }))}>X</button>
-                </div>
-                <${ModeSelector} 
-                    mode=${state.pulseMode}
-                    runMode=${state.runMode}
-                    onSelect=${(val) => {
-                        sendAction('setMode', val);
-                        setState(s => ({ ...s, isDrawerOpen: false }));
-                    }}
-                    onSelectRunMode=${(val) => {
-                        sendAction('setRunMode', val);
-                        setState(s => ({ ...s, isDrawerOpen: false }));
-                    }}
-                    disabled=${!state.connected || state.isRunning}
-                />
-            </div>
-            
-            <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: 16px; grid-column: 1 / -1;">
-                    ${!isStepper ? html`
-                        <button 
-                            class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
-                            onClick=${() => sendAction('toggleRun')}
-                            disabled=${!state.connected}
-                            style="box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
-                        >
-                            ${state.isRunning ? 'RUNNING' : 'STANDBY'}
-                        </button>
-                    ` : ''}
-                </div>
-                
-                ${!isStepper ? html`
-                    <details class="panel" style="margin-top: 16px; grid-column: 1 / -1;">
-                        <summary class="panel-header">
-                            <span>ADVANCED SETTINGS</span>
-                        </summary>
-                        <div style="display: flex; flex-direction: column; gap: 16px; padding-top: 16px;">
-                            <${Dial} 
-                                label="SWEEP TIME"
-                                value=${state.sweepTimeSec}
-                                unit="SEC"
-                                min="1"
-                                max="60"
-                                step="1"
-                                onChange=${(val) => sendAction('setSweepTime', val)}
-                                disabled=${!state.connected}
-                            />
-                            <${Dial} 
-                                label="RPM STEP"
-                                value=${state.rpmStep}
-                                unit="RPM"
-                                min="10"
-                                max="1000"
-                                step="10"
-                                onChange=${(val) => sendAction('setRpmStep', val)}
-                                disabled=${!state.connected}
-                            />
-                            ${isSpeedo ? html`
-                                <${Dial} 
-                                    label="PULSES / KM"
-                                    value=${state.pulsePerKm}
-                                    unit="P/KM"
-                                    min="1000"
-                                    max="10000"
-                                    step="100"
-                                    onChange=${(val) => sendAction('setPulsePerKm', val)}
-                                    disabled=${!state.connected}
-                                />
-                            ` : ''}
-                        </div>
-                    </details>
-                ` : null}
+            ${renderDashboard()}
         </main>
     `;
 }

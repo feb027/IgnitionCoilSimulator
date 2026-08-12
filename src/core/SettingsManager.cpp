@@ -31,6 +31,10 @@ void SettingsManager::save() {
         _settings.speedoRpm != _savedSettings.speedoRpm ||
         _settings.speedoTempPercent != _savedSettings.speedoTempPercent ||
         _settings.speedoFuelPercent != _savedSettings.speedoFuelPercent ||
+        _settings.speedoRpmStep != _savedSettings.speedoRpmStep ||
+        _settings.speedoKmhStep != _savedSettings.speedoKmhStep ||
+        _settings.speedoTempStep != _savedSettings.speedoTempStep ||
+        _settings.speedoFuelStep != _savedSettings.speedoFuelStep ||
         _settings.stepperSpeed != _savedSettings.stepperSpeed) {
         
         preferences.putInt("rpm", _settings.rpm);
@@ -45,6 +49,10 @@ void SettingsManager::save() {
         preferences.putInt("s_rpm", _settings.speedoRpm);
         preferences.putInt("s_tmp", _settings.speedoTempPercent);
         preferences.putInt("s_fuel", _settings.speedoFuelPercent);
+        preferences.putInt("s_rpm_s", _settings.speedoRpmStep);
+        preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
+        preferences.putInt("s_tmp_s", _settings.speedoTempStep);
+        preferences.putInt("s_ful_s", _settings.speedoFuelStep);
         preferences.putInt("st_spd", _settings.stepperSpeed);
         
         // Sync saved state
@@ -68,6 +76,10 @@ void SettingsManager::load() {
     _settings.speedoRpm = preferences.getInt("s_rpm", 4000);
     _settings.speedoTempPercent = preferences.getInt("s_tmp", 50);
     _settings.speedoFuelPercent = preferences.getInt("s_fuel", 50);
+    _settings.speedoRpmStep = preferences.getInt("s_rpm_s", 500);
+    _settings.speedoKmhStep = preferences.getInt("s_kmh_s", 10);
+    _settings.speedoTempStep = preferences.getInt("s_tmp_s", 5);
+    _settings.speedoFuelStep = preferences.getInt("s_ful_s", 5);
     _settings.stepperSpeed = preferences.getInt("st_spd", 50);
     
     // Initialize current/live values to match target
@@ -96,6 +108,10 @@ void SettingsManager::resetToDefaults() {
     _settings.speedoRpm = 4000;
     _settings.speedoTempPercent = 50;
     _settings.speedoFuelPercent = 50;
+    _settings.speedoRpmStep = 500;
+    _settings.speedoKmhStep = 10;
+    _settings.speedoTempStep = 5;
+    _settings.speedoFuelStep = 5;
     _settings.stepperSpeed = 50;
     _settings.isRunning = false;
 }

@@ -21,6 +21,11 @@ public:
     int getMaxFocusIndex() const override;
     void handleEncoder(int diff, int focusIndex) override;
     void syncHardware() override;
+
+    bool shouldShowMenuItem(int menuIndex) override;
+    const char* getModeString() override;
+    void cycleRunMode(AppSettings& s, int direction) override;
+    void handleDashboardEncoder(int diff, AppSettings& s) override;
     
     // Stepper specific actions
     void step(int direction); // 1 for forward, -1 for backward

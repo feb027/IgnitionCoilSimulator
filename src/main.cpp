@@ -20,12 +20,18 @@ uint32_t lastDisplayUpdate = 0;
 
 // FreeRTOS Task for UI handling (Pinned to Core 0)
 void uiTask(void *pvParameters) {
+    uint32_t lastFrameTime = millis();
     for (;;) {
+        uint32_t now = millis();
+        float dt = (now - lastFrameTime) / 1000.0f;
+        if (dt == 0) dt = 0.001f;
+        lastFrameTime = now;
+        
         // Process encoder and button inputs
-        menuSys.update();
+        menuSys.update(dt);
         
         // Update display at a higher frame rate (e.g., 33 Hz / 30ms) for smooth animations
-        uint32_t now = millis();
+        now = millis();
         if (now - lastDisplayUpdate > 30) {
             displayMgr.update(menuSys);
             lastDisplayUpdate = now;

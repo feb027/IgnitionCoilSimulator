@@ -1,7 +1,7 @@
 #ifndef MENU_SYSTEM_H
 #define MENU_SYSTEM_H
 
-#define NUM_PAGES 5
+#define NUM_PAGES 9
 
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"
@@ -16,7 +16,7 @@ public:
     MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager);
     
     void begin();
-    void update();
+    void update(float dt);
     
     // Display getters
     bool isInMenu() const { return _inMenu; }

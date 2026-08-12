@@ -4,8 +4,6 @@
 #include "../core/IPeripheral.h"
 #include "../core/SettingsManager.h"
 #include "../core/SweepController.h"
-#include "../core/DigipotDriver.h"
-
 class PeripheralSpeedo : public IPeripheral {
 public:
     PeripheralSpeedo(SettingsManager& settingsMgr, SweepController& sweepController);
@@ -22,11 +20,15 @@ public:
     void handleEncoder(int diff, int focusIndex) override;
     int getMaxFocusIndex() const override;
 
+    bool shouldShowMenuItem(int menuIndex) override;
+    const char* getModeString() override;
+    void cycleRunMode(AppSettings& s, int direction) override;
+    void handleDashboardEncoder(int diff, AppSettings& s) override;
+
 private:
     SettingsManager& _settingsMgr;
     SweepController& _sweepController;
-    DigipotDriver _tempPot;
-    DigipotDriver _fuelPot;
+
     
     void updateTimerConfig();
 };

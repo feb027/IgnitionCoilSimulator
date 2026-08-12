@@ -2,6 +2,7 @@
 #define I_PERIPHERAL_H
 
 #include <U8g2lib.h>
+#include "SettingsManager.h"
 
 class IPeripheral {
 public:
@@ -21,6 +22,11 @@ public:
     virtual void stop() = 0;
     virtual void trigger() = 0;
 
+    // Menu System
+    virtual bool shouldShowMenuItem(int menuIndex) { return true; }
+    virtual const char* getModeString() = 0;
+    virtual void cycleRunMode(AppSettings& s, int direction) = 0;
+
     // Dashboard UI
     // Renders the specific layout for this peripheral
     virtual void drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) = 0;
@@ -28,6 +34,9 @@ public:
     // Dashboard Editor Input
     // Handles encoder turns when editing on the dashboard
     virtual void handleEncoder(int diff, int focusIndex) = 0;
+    
+    // Dashboard direct encoder control (when not in edit mode)
+    virtual void handleDashboardEncoder(int diff, AppSettings& s) {}
     
     // Returns how many editable fields exist on this dashboard layout
     virtual int getMaxFocusIndex() const = 0;
