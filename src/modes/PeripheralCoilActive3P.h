@@ -1,22 +1,22 @@
-#ifndef PERIPHERAL_SPEEDO_H
-#define PERIPHERAL_SPEEDO_H
+#ifndef PERIPHERAL_COIL_ACTIVE_3P_H
+#define PERIPHERAL_COIL_ACTIVE_3P_H
 
 #include "../core/IPeripheral.h"
 #include "../core/SettingsManager.h"
 #include "../core/SweepController.h"
 
-class PeripheralSpeedo : public IPeripheral {
+class PeripheralCoilActive3P : public IPeripheral {
 public:
-    PeripheralSpeedo(SettingsManager& settingsMgr, SweepController& sweepController);
-    ~PeripheralSpeedo() override = default;
+    PeripheralCoilActive3P(SettingsManager& settingsMgr, SweepController& sweepController);
+    ~PeripheralCoilActive3P() override = default;
     
     void begin() override;
     void update() override;
+    void syncHardware() override;
     
     void start() override;
     void stop() override;
     void trigger() override;
-    void syncHardware() override;
 
     void drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) override;
     
@@ -31,13 +31,10 @@ public:
 private:
     SettingsManager& _settingsMgr;
     SweepController& _sweepController;
-    bool _dacFuelFound;
-    bool _dacTempFound;
-    uint32_t _lastDacPollMs;
+    uint32_t _lastCurrentSampleTime;
     
-    void detectDacs();
-    void writeDac(uint8_t addr, float volts);
     void updateTimerConfig();
+    void samplePrimaryCurrent();
 };
 
-#endif // PERIPHERAL_SPEEDO_H
+#endif // PERIPHERAL_COIL_ACTIVE_3P_H

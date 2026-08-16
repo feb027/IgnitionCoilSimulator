@@ -23,6 +23,8 @@ void SettingsManager::save() {
         _settings.rpmStep != _savedSettings.rpmStep ||
         _settings.dwellMs != _savedSettings.dwellMs || 
         _settings.dutyCycle != _savedSettings.dutyCycle ||
+        _settings.iscDuty != _savedSettings.iscDuty ||
+        _settings.iscFreq != _savedSettings.iscFreq ||
         _settings.pulseMode != _savedSettings.pulseMode ||
         _settings.mode != _savedSettings.mode ||
         _settings.sweepTimeSec != _savedSettings.sweepTimeSec ||
@@ -35,12 +37,19 @@ void SettingsManager::save() {
         _settings.speedoKmhStep != _savedSettings.speedoKmhStep ||
         _settings.speedoTempStep != _savedSettings.speedoTempStep ||
         _settings.speedoFuelStep != _savedSettings.speedoFuelStep ||
+        _settings.speedoEnableRpm != _savedSettings.speedoEnableRpm ||
+        _settings.speedoEnableKmh != _savedSettings.speedoEnableKmh ||
+        _settings.speedoEnableTemp != _savedSettings.speedoEnableTemp ||
+        _settings.speedoEnableFuel != _savedSettings.speedoEnableFuel ||
+        _settings.speedoTachoPpr != _savedSettings.speedoTachoPpr ||
         _settings.stepperSpeed != _savedSettings.stepperSpeed) {
         
         preferences.putInt("rpm", _settings.rpm);
         preferences.putInt("rpm_s", _settings.rpmStep);
         preferences.putFloat("dwell", _settings.dwellMs);
         preferences.putFloat("duty", _settings.dutyCycle);
+        preferences.putFloat("isc_d", _settings.iscDuty);
+        preferences.putInt("isc_f", _settings.iscFreq);
         preferences.putUChar("pmode", static_cast<uint8_t>(_settings.pulseMode));
         preferences.putUChar("mode", static_cast<uint8_t>(_settings.mode));
         preferences.putInt("s_time", _settings.sweepTimeSec);
@@ -53,6 +62,11 @@ void SettingsManager::save() {
         preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
         preferences.putInt("s_tmp_s", _settings.speedoTempStep);
         preferences.putInt("s_ful_s", _settings.speedoFuelStep);
+        preferences.putBool("s_en_rpm", _settings.speedoEnableRpm);
+        preferences.putBool("s_en_kmh", _settings.speedoEnableKmh);
+        preferences.putBool("s_en_tmp", _settings.speedoEnableTemp);
+        preferences.putBool("s_en_ful", _settings.speedoEnableFuel);
+        preferences.putFloat("s_t_ppr", _settings.speedoTachoPpr);
         preferences.putInt("st_spd", _settings.stepperSpeed);
         
         // Sync saved state
@@ -65,6 +79,8 @@ void SettingsManager::load() {
     _settings.rpmStep = preferences.getInt("rpm_s", 10);            // Default step 10
     _settings.dwellMs = preferences.getFloat("dwell", 3.0f);        // Default 3.0 ms
     _settings.dutyCycle = preferences.getFloat("duty", 50.0f);      // Default 50.0%
+    _settings.iscDuty = preferences.getFloat("isc_d", 50.0f);       // Default 50.0% opening
+    _settings.iscFreq = preferences.getInt("isc_f", 250);           // Default 250 Hz
     _settings.pulseMode = static_cast<PulseMode>(preferences.getUChar("pmode", PULSE_DWELL));
     _settings.mode = static_cast<CoilMode>(preferences.getUChar("mode", MODE_CONTINUOUS));
     _settings.sweepTimeSec = preferences.getInt("s_time", 5);
@@ -80,6 +96,15 @@ void SettingsManager::load() {
     _settings.speedoKmhStep = preferences.getInt("s_kmh_s", 10);
     _settings.speedoTempStep = preferences.getInt("s_tmp_s", 5);
     _settings.speedoFuelStep = preferences.getInt("s_ful_s", 5);
+    _settings.speedoEnableRpm = preferences.getBool("s_en_rpm", true);
+    _settings.speedoEnableKmh = preferences.getBool("s_en_kmh", true);
+    _settings.speedoEnableTemp = preferences.getBool("s_en_tmp", true);
+    _settings.speedoEnableFuel = preferences.getBool("s_en_ful", true);
+    _settings.speedoTachoPpr = preferences.getFloat("s_t_ppr", 2.0f);
+    _settings.speedoGaugeCurve = preferences.getInt("s_g_crv", 0); // 0: Non-Linear Sqrt Curve
+    _settings.speedoDacRouting = preferences.getInt("s_dac_rt", 3); // 3: Dual MCP4725 (0x60 Fuel + 0x61 Temp)
+    _settings.speedoDacFuelFound = false;
+    _settings.speedoDacTempFound = false;
     _settings.stepperSpeed = preferences.getInt("st_spd", 50);
     
     // Initialize current/live values to match target
@@ -88,6 +113,47 @@ void SettingsManager::load() {
     _settings.currentSpeedoTempPercent = _settings.speedoTempPercent;
     _settings.currentSpeedoFuelPercent = _settings.speedoFuelPercent;
     
+    // Injector Defaults
+    _settings.injectorMs = preferences.getFloat("inj_ms", 3.0f);
+    _settings.injectorRpm = preferences.getInt("inj_rpm", 1500);
+    _settings.injectorFlowPulses = preferences.getInt("inj_flw", 100);
+    _settings.injectorPulsesLeft = 0;
+    _settings.injectorFlowRunning = false;
+    _settings.injectorPeakCurrentA = 0.0f;
+    _settings.injectorResistanceOhm = 0.0f;
+    _settings.injectorAutoDiagRunning = false;
+    _settings.injectorDiagPhase = 0;
+    _settings.injectorDiagProgress = 0;
+    strncpy(_settings.injectorDiagVerdict, "READY", sizeof(_settings.injectorDiagVerdict));
+    
+    // IACV Stepper Defaults
+    _settings.iacvTargetSteps = preferences.getInt("iacv_tgt", 50);
+    _settings.iacvCurrentSteps = 0;
+    _settings.iacvAutoCalibrating = false;
+    
+    // Hall Sensor & MCP4725 DAC Defaults
+    _settings.hallDacVoltage = preferences.getFloat("hall_v", 2.50f);
+    _settings.hallDacFreqHz = preferences.getInt("hall_f", 50);
+    _settings.hallDacWaveform = preferences.getInt("hall_w", 0); // 0: DC VADJ
+    _settings.hallDacProfile = preferences.getInt("hall_p", 0); // 0: Custom VADJ
+    _settings.hallDacDomain = preferences.getInt("hall_d", 0);  // 0: Domain 5V, 1: Domain 12V
+    _settings.hallDacConnected = false;
+    
+    // Coil Diagnostic Defaults
+    _settings.coilFiredCount = 0;
+    _settings.coilIgfCount = 0;
+    _settings.coilMissedCount = 0;
+    _settings.coilHealthPercent = 100.0f;
+    _settings.coilPeakCurrentA = 0.0f;
+    _settings.coilAutoDiagRunning = false;
+    _settings.coilDiagPhase = 0;
+    _settings.coilDiagProgress = 0;
+    strncpy(_settings.coilDiagVerdict, "READY", sizeof(_settings.coilDiagVerdict));
+    
+    _settings.coilLeakCount = 0;
+    _settings.coilLeakRate = 0;
+    _settings.coilLeakDetected = false;
+
     // Setup fallback defaults just in case
     _settings.isRunning = false; // Always start stopped for safety
     
@@ -100,7 +166,9 @@ void SettingsManager::resetToDefaults() {
     _settings.rpmStep = 10;
     _settings.dwellMs = 3.0f;
     _settings.dutyCycle = 50.0f;
-    _settings.pulseMode = PULSE_DWELL;
+    _settings.iscDuty = 50.0f;
+    _settings.iscFreq = 250;
+    _settings.pulseMode = PULSE_COIL_PASSIVE;
     _settings.mode = MODE_CONTINUOUS;
     _settings.sweepTimeSec = 5;
     _settings.pulsePerKm = 4000;
@@ -112,6 +180,56 @@ void SettingsManager::resetToDefaults() {
     _settings.speedoKmhStep = 10;
     _settings.speedoTempStep = 5;
     _settings.speedoFuelStep = 5;
+    _settings.speedoEnableRpm = true;
+    _settings.speedoEnableKmh = true;
+    _settings.speedoEnableTemp = true;
+    _settings.speedoEnableFuel = true;
+    _settings.speedoTachoPpr = 2.0f;
+    _settings.speedoGaugeCurve = 0;
+    _settings.speedoDacRouting = 3;
+    _settings.speedoDacFuelFound = false;
+    _settings.speedoDacTempFound = false;
     _settings.stepperSpeed = 50;
+    _settings.stepperSpinDir = 0;
     _settings.isRunning = false;
+    _settings.lastFiredMs = 0;
+    
+    _settings.injectorMs = 3.0f;
+    _settings.injectorRpm = 1500;
+    _settings.injectorFlowPulses = 100;
+    _settings.injectorPulsesLeft = 0;
+    _settings.injectorFlowRunning = false;
+    _settings.injectorPeakCurrentA = 0.0f;
+    _settings.injectorResistanceOhm = 0.0f;
+    _settings.injectorAutoDiagRunning = false;
+    _settings.injectorDiagPhase = 0;
+    _settings.injectorDiagProgress = 0;
+    strncpy(_settings.injectorDiagVerdict, "READY", sizeof(_settings.injectorDiagVerdict));
+    
+    _settings.iacvTargetSteps = 50;
+    _settings.iacvCurrentSteps = 0;
+    _settings.iacvAutoCalibrating = false;
+    
+    _settings.hallDacVoltage = 2.50f;
+    _settings.hallDacFreqHz = 50;
+    _settings.hallDacWaveform = 0;
+    _settings.hallDacProfile = 0;
+    _settings.hallDacDomain = 0;
+    _settings.hallDacConnected = false;
+    
+    _settings.coilFiredCount = 0;
+    _settings.coilIgfCount = 0;
+    _settings.coilMissedCount = 0;
+    _settings.coilHealthPercent = 100.0f;
+    _settings.coilPeakCurrentA = 0.0f;
+    _settings.coilAutoDiagRunning = false;
+    _settings.coilDiagPhase = 0;
+    _settings.coilDiagProgress = 0;
+    strncpy(_settings.coilDiagVerdict, "READY", sizeof(_settings.coilDiagVerdict));
+    
+    _settings.coilLeakCount = 0;
+    _settings.coilLeakRate = 0;
+    _settings.coilLeakDetected = false;
+    
+    _savedSettings = _settings;
 }

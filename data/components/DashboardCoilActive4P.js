@@ -1,17 +1,17 @@
 import { html } from '../preact.mjs';
 import { Dial } from './Dial.js';
+import { LeakageCard } from './LeakageCard.js';
 
-export function DashboardCoil({ state, sendAction, modeSelector }) {
+export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     const isAutoDiag = state.coilAutoDiagRunning;
     const health = (state.coilHealthPercent !== undefined) ? state.coilHealthPercent : 100.0;
     const fired = state.coilFiredCount || 0;
     const igf = state.coilIgfCount || 0;
     const missed = state.coilMissedCount || 0;
-    const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const verdict = state.coilDiagVerdict || "READY";
+    const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
 
-    // Dynamic color coding based on health
     let healthColor = "var(--neon-green)";
     let healthBadge = "HEALTHY";
     if (fired > 20 && health < 90.0) {
@@ -24,6 +24,9 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
 
     return html`
         <div class="panel-main">
+            <div style="margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: ${healthColor}; letter-spacing: 0.05em;">
+                ⚡ HARDWARE: IGT OUT (PIN 25) | IGF IN (PIN 34) | SENSE (PIN 35)
+            </div>
             <${Dial} 
                 label=${isAutoDiag ? "AUTO DIAGNOSTIC RPM" : ((isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
@@ -39,13 +42,13 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
         
         <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
             <${Dial} 
-                label="DWELL TIME"
+                label="DWELL TIME (IGT PULSE)"
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.5"
                 max="5.0"
                 step="0.1"
-                subInfo=${"Calculated Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
+                subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
                 onChange=${(val) => sendAction('setDwell', val)}
                 disabled=${!state.connected || isAutoDiag}
             />
@@ -61,7 +64,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                 disabled=${!state.connected || isAutoDiag}
                 style="box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
             >
-                ${state.isRunning ? 'COIL TRIGGER: ON' : 'COIL TRIGGER: OFF'}
+                ${state.isRunning ? 'IGT TRIGGER: ON' : 'IGT TRIGGER: OFF'}
             </button>
         </div>
         
@@ -69,47 +72,47 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
         <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
             <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
                 <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
-                    ⚡ COIL HEALTH & IGF DIAGNOSTIC ANALYZER
+                    ⚡ 4-PIN COIL HEALTH & IGF DIAGNOSTIC ANALYZER
                 </span>
                 <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
                     ${healthBadge}
                 </span>
             </div>
 
-            <!-- Telemetry Stats 4-Column Grid -->
+            <!-- Telemetry Stats Grid (Including Current Sense) -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK HEALTH</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
                         ${fired > 0 ? health.toFixed(1) + "%" : "--%"}
                     </div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-orange); margin-top: 4px;">
+                        ${currentA} A
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">FIRED (IGT)</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
                         ${fired}
                     </div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">IGF CONFIRMED</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
                         ${igf}
                     </div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">MISSED SPARKS</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
                         ${missed}
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT (I_pk)</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: var(--neon-orange); margin-top: 4px;">
-                        ${currentA} A
                     </div>
                 </div>
             </div>
@@ -171,6 +174,9 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
             </div>
         </div>
         
+        <!-- BODY LEAKAGE DETECTION CARD -->
+        <${LeakageCard} state=${state} sendAction=${sendAction} />
+
         <!-- ADVANCED SETTINGS ACCORDION -->
         <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
             <summary class="panel-header" style="cursor: pointer; user-select: none;">

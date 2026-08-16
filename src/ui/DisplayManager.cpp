@@ -61,8 +61,9 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
     int modeWidth = _u8g2.getStrWidth(modeStr);
     int modeX = 128 - modeWidth; // Right align
 
-    // Highlight MODE if it's the current focus
-    if (editMode && focusIdx == 0) {
+    // Highlight MODE if it's the current focus and mode has selectable run modes
+    bool hasRunModes = (s.pulseMode != PULSE_ISC3PIN && s.pulseMode != PULSE_STEPPER);
+    if (editMode && focusIdx == 0 && hasRunModes) {
         _u8g2.setDrawColor(1);
         _u8g2.drawBox(modeX - 2, 0, modeWidth + 4, 14); // Box around mode text area
         _u8g2.setDrawColor(0);

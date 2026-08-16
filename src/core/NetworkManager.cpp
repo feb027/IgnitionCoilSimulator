@@ -1,65 +1,88 @@
 #include "NetworkManager.h"
+#include <WiFi.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
-#include "../modes/PeripheralStepper.h"
-
+#include "PeripheralManager.h"
 #include "../ui/MenuSystem.h"
+#include "../modes/PeripheralCoilActive4P.h"
+#include "../modes/PeripheralInjector.h"
+#include "../modes/PeripheralStepperIacv.h"
+#include "../modes/PeripheralStepperUni.h"
+#include "CoilLeakSensor.h"
 
-NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr, MenuSystem& menuSys) 
-    : _settingsMgr(settingsMgr), _peripheralMgr(peripheralMgr), _menuSys(menuSys), _server(80), _ws("/ws"), _lastBroadcastMs(0) {
+NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr, MenuSystem& menuSys)
+    : _settingsMgr(settingsMgr), 
+      _peripheralMgr(peripheralMgr),
+      _menuSys(menuSys),
+      _server(80), 
+      _ws("/ws"), 
+      _lastBroadcastMs(0) {
+    _lastBroadcastedState = _settingsMgr.getSettings();
 }
 
 void NetworkManager::begin() {
-    Serial.println("Starting NetworkManager...");
-
-    // Initialize LittleFS
-    if(!LittleFS.begin(true)){
+    // 1. Initialize LittleFS for web UI assets
+    if (!LittleFS.begin(true)) {
         Serial.println("LittleFS Mount Failed");
-        return;
     }
 
-    // Start WiFi Access Point
-    WiFi.softAP("Ignition_Pro"); // No password
-    IPAddress IP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
-    Serial.println(IP);
+    // 2. Setup Access Point (Open, No Password)
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("Coil_Simulator_AP");
+    Serial.print("AP IP Address: ");
+    Serial.println(WiFi.softAPIP());
 
-    // Setup WebSocket
+    // 3. Setup WebSocket
     _ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
         this->onWebSocketEvent(server, client, type, arg, data, len);
     });
     _server.addHandler(&_ws);
 
-    // Serve static files from LittleFS
+    // 4. Serve static files from LittleFS
     _server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
-    // Catch-all for 404
-    _server.onNotFound([](AsyncWebServerRequest *request){
-        request->send(404, "text/plain", "Not found");
-    });
-
+    // 5. Start Server
     _server.begin();
-    
-    // Copy current state for tracking
-    _lastBroadcastedState = _settingsMgr.getSettings();
+    Serial.println("HTTP Server & WebSocket started");
 }
 
 void NetworkManager::update() {
     _ws.cleanupClients();
     
-    // Broadcast state every 100ms if changed, or periodically
+    // Broadcast state updates every 100ms or if state changed significantly
     uint32_t now = millis();
     if (now - _lastBroadcastMs > 100) {
         AppSettings& current = _settingsMgr.getSettings();
         
-        // Simple dirty check (compare a few key values)
-        bool dirty = (current.isRunning != _lastBroadcastedState.isRunning) ||
+        bool isSweeping = (current.isRunning && current.mode == MODE_SWEEP);
+        bool dirty = isSweeping ||
+                     (current.isRunning != _lastBroadcastedState.isRunning) ||
                      (current.pulseMode != _lastBroadcastedState.pulseMode) ||
                      (current.mode != _lastBroadcastedState.mode) ||
                      (current.rpm != _lastBroadcastedState.rpm) ||
                      (current.dwellMs != _lastBroadcastedState.dwellMs) ||
+                     (current.iscDuty != _lastBroadcastedState.iscDuty) ||
+                     (current.iscFreq != _lastBroadcastedState.iscFreq) ||
+                     (current.speedoEnableRpm != _lastBroadcastedState.speedoEnableRpm) ||
+                     (current.speedoEnableKmh != _lastBroadcastedState.speedoEnableKmh) ||
+                     (current.speedoEnableTemp != _lastBroadcastedState.speedoEnableTemp) ||
+                     (current.speedoEnableFuel != _lastBroadcastedState.speedoEnableFuel) ||
+                     (current.speedoTachoPpr != _lastBroadcastedState.speedoTachoPpr) ||
+                     (current.speedoGaugeCurve != _lastBroadcastedState.speedoGaugeCurve) ||
+                     (current.speedoDacRouting != _lastBroadcastedState.speedoDacRouting) ||
+                     (current.speedoKmh != _lastBroadcastedState.speedoKmh) ||
+                     (current.speedoRpm != _lastBroadcastedState.speedoRpm) ||
+                     (current.speedoTempPercent != _lastBroadcastedState.speedoTempPercent) ||
+                     (current.speedoFuelPercent != _lastBroadcastedState.speedoFuelPercent) ||
                      (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh) ||
-                     (current.currentRpm != _lastBroadcastedState.currentRpm);
+                     (current.currentSpeedoRpm != _lastBroadcastedState.currentSpeedoRpm) ||
+                     (current.currentSpeedoTempPercent != _lastBroadcastedState.currentSpeedoTempPercent) ||
+                     (current.currentSpeedoFuelPercent != _lastBroadcastedState.currentSpeedoFuelPercent) ||
+                     (current.currentRpm != _lastBroadcastedState.currentRpm) ||
+                     (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
+                     (current.coilIgfCount != _lastBroadcastedState.coilIgfCount) ||
+                     (current.coilAutoDiagRunning != _lastBroadcastedState.coilAutoDiagRunning) ||
+                     (current.coilDiagProgress != _lastBroadcastedState.coilDiagProgress);
                      
         if (dirty) {
             broadcastState();
@@ -83,6 +106,8 @@ void NetworkManager::broadcastState() {
     doc["rpmStep"] = s.rpmStep;
     doc["dwellMs"] = s.dwellMs;
     doc["dutyCycle"] = s.dutyCycle;
+    doc["iscDuty"] = s.iscDuty;
+    doc["iscFreq"] = s.iscFreq;
     doc["sweepTimeSec"] = s.sweepTimeSec;
     doc["pulsePerKm"] = s.pulsePerKm;
     doc["stepperSpeed"] = s.stepperSpeed;
@@ -95,11 +120,62 @@ void NetworkManager::broadcastState() {
     doc["speedoKmhStep"] = s.speedoKmhStep;
     doc["speedoTempStep"] = s.speedoTempStep;
     doc["speedoFuelStep"] = s.speedoFuelStep;
+    doc["speedoEnableRpm"] = s.speedoEnableRpm;
+    doc["speedoEnableKmh"] = s.speedoEnableKmh;
+    doc["speedoEnableTemp"] = s.speedoEnableTemp;
+    doc["speedoEnableFuel"] = s.speedoEnableFuel;
+    doc["speedoTachoPpr"] = s.speedoTachoPpr;
+    doc["speedoGaugeCurve"] = s.speedoGaugeCurve;
+    doc["speedoDacRouting"] = s.speedoDacRouting;
+    doc["speedoDacFuelDetected"] = s.speedoDacFuelFound;
+    doc["speedoDacTempDetected"] = s.speedoDacTempFound;
     
-    // Read-only values for speedo sweeping
+    // Read-only live values for speedo & coil sweeping
     doc["currentSpeedoKmh"] = s.currentSpeedoKmh;
     doc["currentSpeedoRpm"] = s.currentSpeedoRpm;
+    doc["currentSpeedoTemp"] = s.currentSpeedoTempPercent;
+    doc["currentSpeedoFuel"] = s.currentSpeedoFuelPercent;
     doc["currentRpm"] = s.currentRpm;
+    
+    // Coil Diagnostic Telemetry
+    doc["coilFiredCount"] = s.coilFiredCount;
+    doc["coilIgfCount"] = s.coilIgfCount;
+    doc["coilMissedCount"] = s.coilMissedCount;
+    doc["coilHealthPercent"] = s.coilHealthPercent;
+    doc["coilPeakCurrentA"] = s.coilPeakCurrentA;
+    doc["coilAutoDiagRunning"] = s.coilAutoDiagRunning;
+    doc["coilDiagPhase"] = s.coilDiagPhase;
+    doc["coilDiagProgress"] = s.coilDiagProgress;
+    doc["coilDiagVerdict"] = s.coilDiagVerdict;
+    doc["coilLeakCount"] = s.coilLeakCount;
+    doc["coilLeakRate"] = s.coilLeakRate;
+    doc["coilLeakDetected"] = s.coilLeakDetected;
+    
+    // Injector Telemetry
+    doc["injectorMs"] = s.injectorMs;
+    doc["injectorRpm"] = s.injectorRpm;
+    doc["injectorFlowPulses"] = s.injectorFlowPulses;
+    doc["injectorPulsesLeft"] = s.injectorPulsesLeft;
+    doc["injectorFlowRunning"] = s.injectorFlowRunning;
+    doc["injectorPeakCurrentA"] = s.injectorPeakCurrentA;
+    doc["injectorResistanceOhm"] = s.injectorResistanceOhm;
+    doc["injectorAutoDiagRunning"] = s.injectorAutoDiagRunning;
+    doc["injectorDiagPhase"] = s.injectorDiagPhase;
+    doc["injectorDiagProgress"] = s.injectorDiagProgress;
+    doc["injectorDiagVerdict"] = s.injectorDiagVerdict;
+    
+    // IACV Stepper Telemetry
+    doc["iacvTargetSteps"] = s.iacvTargetSteps;
+    doc["iacvCurrentSteps"] = s.iacvCurrentSteps;
+    doc["iacvAutoCalibrating"] = s.iacvAutoCalibrating;
+    
+    // Hall & VADJ DAC Telemetry
+    doc["hallDacVoltage"] = s.hallDacVoltage;
+    doc["hallDacFreqHz"] = s.hallDacFreqHz;
+    doc["hallDacWaveform"] = s.hallDacWaveform;
+    doc["hallDacProfile"] = s.hallDacProfile;
+    doc["hallDacDomain"] = s.hallDacDomain;
+    doc["hallDacConnected"] = s.hallDacConnected;
     
     String output;
     serializeJson(doc, output);
@@ -110,120 +186,331 @@ void NetworkManager::broadcastState() {
 
 void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
     if (type == WS_EVT_CONNECT) {
-        Serial.printf("WS Client connected: %u\n", client->id());
-        // Send immediate state sync on connect
-        broadcastState();
+        Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        AppSettings& s = _settingsMgr.getSettings();
+        JsonDocument doc;
+        doc["type"] = "state";
+        doc["isRunning"] = s.isRunning;
+        doc["pulseMode"] = (int)s.pulseMode;
+        doc["runMode"] = (int)s.mode;
+        doc["rpm"] = s.rpm;
+        doc["rpmStep"] = s.rpmStep;
+        doc["dwellMs"] = s.dwellMs;
+        doc["dutyCycle"] = s.dutyCycle;
+        doc["iscDuty"] = s.iscDuty;
+        doc["iscFreq"] = s.iscFreq;
+        doc["sweepTimeSec"] = s.sweepTimeSec;
+        doc["pulsePerKm"] = s.pulsePerKm;
+        doc["stepperSpeed"] = s.stepperSpeed;
+        doc["stepperSpinDir"] = s.stepperSpinDir;
+        doc["speedoKmh"] = s.speedoKmh;
+        doc["speedoRpm"] = s.speedoRpm;
+        doc["speedoTemp"] = s.speedoTempPercent;
+        doc["speedoFuel"] = s.speedoFuelPercent;
+        doc["speedoRpmStep"] = s.speedoRpmStep;
+        doc["speedoKmhStep"] = s.speedoKmhStep;
+        doc["speedoTempStep"] = s.speedoTempStep;
+        doc["speedoFuelStep"] = s.speedoFuelStep;
+        doc["speedoEnableRpm"] = s.speedoEnableRpm;
+        doc["speedoEnableKmh"] = s.speedoEnableKmh;
+        doc["speedoEnableTemp"] = s.speedoEnableTemp;
+        doc["speedoEnableFuel"] = s.speedoEnableFuel;
+        doc["speedoTachoPpr"] = s.speedoTachoPpr;
+        doc["speedoGaugeCurve"] = s.speedoGaugeCurve;
+        doc["speedoDacRouting"] = s.speedoDacRouting;
+        doc["speedoDacFuelDetected"] = s.speedoDacFuelFound;
+        doc["speedoDacTempDetected"] = s.speedoDacTempFound;
+        doc["currentSpeedoKmh"] = s.currentSpeedoKmh;
+        doc["currentSpeedoRpm"] = s.currentSpeedoRpm;
+        doc["currentSpeedoTemp"] = s.currentSpeedoTempPercent;
+        doc["currentSpeedoFuel"] = s.currentSpeedoFuelPercent;
+        doc["currentRpm"] = s.currentRpm;
+        
+        doc["coilFiredCount"] = s.coilFiredCount;
+        doc["coilIgfCount"] = s.coilIgfCount;
+        doc["coilMissedCount"] = s.coilMissedCount;
+        doc["coilHealthPercent"] = s.coilHealthPercent;
+        doc["coilPeakCurrentA"] = s.coilPeakCurrentA;
+        doc["coilAutoDiagRunning"] = s.coilAutoDiagRunning;
+        doc["coilDiagPhase"] = s.coilDiagPhase;
+        doc["coilDiagProgress"] = s.coilDiagProgress;
+        doc["coilDiagVerdict"] = s.coilDiagVerdict;
+        doc["coilLeakCount"] = s.coilLeakCount;
+        doc["coilLeakRate"] = s.coilLeakRate;
+        doc["coilLeakDetected"] = s.coilLeakDetected;
+        
+        doc["injectorMs"] = s.injectorMs;
+        doc["injectorRpm"] = s.injectorRpm;
+        doc["injectorFlowPulses"] = s.injectorFlowPulses;
+        doc["injectorPulsesLeft"] = s.injectorPulsesLeft;
+        doc["injectorFlowRunning"] = s.injectorFlowRunning;
+        doc["injectorPeakCurrentA"] = s.injectorPeakCurrentA;
+        doc["injectorResistanceOhm"] = s.injectorResistanceOhm;
+        doc["injectorAutoDiagRunning"] = s.injectorAutoDiagRunning;
+        doc["injectorDiagPhase"] = s.injectorDiagPhase;
+        doc["injectorDiagProgress"] = s.injectorDiagProgress;
+        doc["injectorDiagVerdict"] = s.injectorDiagVerdict;
+        
+        doc["iacvTargetSteps"] = s.iacvTargetSteps;
+        doc["iacvCurrentSteps"] = s.iacvCurrentSteps;
+        doc["iacvAutoCalibrating"] = s.iacvAutoCalibrating;
+        
+        doc["hallDacVoltage"] = s.hallDacVoltage;
+        doc["hallDacFreqHz"] = s.hallDacFreqHz;
+        doc["hallDacWaveform"] = s.hallDacWaveform;
+        doc["hallDacProfile"] = s.hallDacProfile;
+        doc["hallDacDomain"] = s.hallDacDomain;
+        doc["hallDacConnected"] = s.hallDacConnected;
+        
+        String output;
+        serializeJson(doc, output);
+        client->text(output);
     } else if (type == WS_EVT_DISCONNECT) {
-        Serial.printf("WS Client disconnected: %u\n", client->id());
+        Serial.printf("WebSocket client #%u disconnected\n", client->id());
     } else if (type == WS_EVT_DATA) {
-        AwsFrameInfo *info = (AwsFrameInfo*)arg;
-        if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-            handleWebSocketMessage(arg, data, len);
-        }
+        handleWebSocketMessage(arg, data, len);
     }
 }
 
 void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-    data[len] = 0; // Null terminate
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, (char*)data);
-    
-    if (error) {
-        Serial.println("Failed to parse WS JSON");
-        return;
-    }
-    
-    if (!doc["action"].is<String>()) return;
-    String action = doc["action"].as<String>();
-    AppSettings& s = _settingsMgr.getSettings();
-    bool changed = false;
-    
-    if (action == "toggleRun") {
-        s.isRunning = !s.isRunning;
-        if (s.isRunning) {
-            _peripheralMgr.start();
-        } else {
-            _peripheralMgr.stop();
+    AwsFrameInfo *info = (AwsFrameInfo*)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+        data[len] = 0;
+        
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, (char*)data);
+        if (error) {
+            Serial.print("deserializeJson() failed: ");
+            Serial.println(error.c_str());
+            return;
         }
-        changed = true;
-    } else if (action == "setMode") {
-        s.pulseMode = static_cast<PulseMode>(doc["value"].as<int>());
-        changed = true;
-    } else if (action == "setRunMode") {
-        s.mode = static_cast<CoilMode>(doc["value"].as<int>());
-        changed = true;
-    } else if (action == "setRpm") {
-        s.rpm = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setDwell") {
-        s.dwellMs = doc["value"].as<float>();
-        changed = true;
-    } else if (action == "setDuty") {
-        s.dutyCycle = doc["value"].as<float>();
-        changed = true;
-    } else if (action == "setSweepTime") {
-        s.sweepTimeSec = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setRpmStep") {
-        s.rpmStep = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setPulsePerKm") {
-        s.pulsePerKm = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoKmh") {
-        s.speedoKmh = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoRpm") {
-        s.speedoRpm = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoTemp") {
-        s.speedoTempPercent = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoFuel") {
-        s.speedoFuelPercent = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoRpmStep") {
-        s.speedoRpmStep = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoKmhStep") {
-        s.speedoKmhStep = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoTempStep") {
-        s.speedoTempStep = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setSpeedoFuelStep") {
-        s.speedoFuelStep = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "setStepperSpeed") {
-        s.stepperSpeed = doc["value"].as<int>();
-        changed = true;
-    } else if (action == "stepperSpin") {
-        if (s.pulseMode == PULSE_STEPPER && _peripheralMgr.getActive() != nullptr) {
-            int dir = doc["value"].as<int>();
-            ((PeripheralStepper*)_peripheralMgr.getActive())->setSpinDirection(dir);
-            bool wantRun = (dir != 0);
-            if (wantRun != s.isRunning) {
-                s.isRunning = wantRun;
-                if (s.isRunning) _peripheralMgr.start();
-                else _peripheralMgr.stop();
+
+        String action = doc["action"].as<String>();
+        AppSettings& s = _settingsMgr.getSettings();
+        bool changed = false;
+
+        if (action == "toggleRun") {
+            s.isRunning = !s.isRunning;
+            if (s.isRunning) {
+                _peripheralMgr.start();
+            } else {
+                _peripheralMgr.stop();
             }
             changed = true;
+        } else if (action == "setMode") {
+            int m = doc["value"].as<int>();
+            s.pulseMode = (PulseMode)m;
+            changed = true;
+        } else if (action == "setRunMode") {
+            s.mode = (CoilMode)doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setRpm") {
+            s.rpm = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setDwell") {
+            s.dwellMs = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setDuty") {
+            s.dutyCycle = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setIscDuty") {
+            s.iscDuty = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setIscFreq") {
+            s.iscFreq = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSweepTime") {
+            s.sweepTimeSec = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setRpmStep") {
+            s.rpmStep = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setPulsePerKm") {
+            s.pulsePerKm = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoKmh") {
+            s.speedoKmh = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoRpm") {
+            s.speedoRpm = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoTemp") {
+            s.speedoTempPercent = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoFuel") {
+            s.speedoFuelPercent = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoRpmStep") {
+            s.speedoRpmStep = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoKmhStep") {
+            s.speedoKmhStep = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoTempStep") {
+            s.speedoTempStep = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoFuelStep") {
+            s.speedoFuelStep = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoEnable" || action == "toggleSpeedoChannel") {
+            String ch = "";
+            bool val = true;
+            if (doc["value"].is<JsonObject>()) {
+                ch = doc["value"]["channel"].as<String>();
+                val = doc["value"]["value"].as<bool>();
+            } else if (doc["channel"].is<const char*>()) {
+                ch = doc["channel"].as<String>();
+                val = doc["value"].as<bool>();
+            }
+            if (ch == "rpm") s.speedoEnableRpm = val;
+            else if (ch == "kmh") s.speedoEnableKmh = val;
+            else if (ch == "temp") s.speedoEnableTemp = val;
+            else if (ch == "fuel") s.speedoEnableFuel = val;
+            
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            changed = true;
+        } else if (action == "setTachoPpr") {
+            s.speedoTachoPpr = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setSpeedoGaugeCurve") {
+            s.speedoGaugeCurve = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSpeedoDacRouting") {
+            s.speedoDacRouting = doc["value"].as<int>();
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            changed = true;
+        } else if (action == "setInjectorMs") {
+            s.injectorMs = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setInjectorRpm") {
+            s.injectorRpm = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "startInjectorFlow") {
+            if (s.pulseMode == PULSE_INJECTOR && _peripheralMgr.getActive() != nullptr) {
+                int p = doc["value"].as<int>();
+                ((PeripheralInjector*)_peripheralMgr.getActive())->startFlowTest(p);
+                changed = true;
+            }
+        } else if (action == "stopInjectorFlow") {
+            if (s.pulseMode == PULSE_INJECTOR && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralInjector*)_peripheralMgr.getActive())->stopFlowTest();
+                changed = true;
+            }
+        } else if (action == "startInjectorDiag") {
+            if (s.pulseMode == PULSE_INJECTOR && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralInjector*)_peripheralMgr.getActive())->startAutoDiag();
+                changed = true;
+            }
+        } else if (action == "stopInjectorDiag") {
+            if (s.pulseMode == PULSE_INJECTOR && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralInjector*)_peripheralMgr.getActive())->stopAutoDiag();
+                changed = true;
+            }
+        } else if (action == "setIacvSteps") {
+            if (s.pulseMode == PULSE_STEPPER_IACV && _peripheralMgr.getActive() != nullptr) {
+                int stp = doc["value"].as<int>();
+                ((PeripheralStepperIacv*)_peripheralMgr.getActive())->setTargetSteps(stp);
+                changed = true;
+            }
+        } else if (action == "iacvHome") {
+            if (s.pulseMode == PULSE_STEPPER_IACV && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralStepperIacv*)_peripheralMgr.getActive())->startAutoCalibrate();
+                changed = true;
+            }
+        } else if (action == "iacvCycle") {
+            if (s.pulseMode == PULSE_STEPPER_IACV && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralStepperIacv*)_peripheralMgr.getActive())->cycleSweepTest();
+                changed = true;
+            }
+        } else if (action == "setHallDacVoltage") {
+            s.hallDacVoltage = doc["value"].as<float>();
+            changed = true;
+        } else if (action == "setHallDacFreq") {
+            s.hallDacFreqHz = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setHallDacWaveform") {
+            s.hallDacWaveform = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setHallDacProfile") {
+            int p = doc["value"].as<int>();
+            s.hallDacProfile = p;
+            switch (p) {
+                // 5V Domain Profiles
+                case 0: s.hallDacWaveform = 0; s.hallDacDomain = 0; break;
+                case 1: s.hallDacWaveform = 0; s.hallDacVoltage = 0.75f; s.hallDacDomain = 0; break;
+                case 2: s.hallDacWaveform = 0; s.hallDacVoltage = 2.50f; s.hallDacDomain = 0; break;
+                case 3: s.hallDacWaveform = 0; s.hallDacVoltage = 2.50f; s.hallDacDomain = 0; break;
+                case 4: s.hallDacWaveform = 0; s.hallDacVoltage = 1.80f; s.hallDacDomain = 0; break;
+                case 5: s.hallDacWaveform = 0; s.hallDacVoltage = 0.80f; s.hallDacDomain = 0; break;
+                case 6: s.hallDacWaveform = 0; s.hallDacVoltage = 0.45f; s.hallDacDomain = 0; break;
+                case 7: s.hallDacWaveform = 2; s.hallDacFreqHz = 50; s.hallDacDomain = 0; break;
+                case 8: s.hallDacWaveform = 2; s.hallDacFreqHz = 66; s.hallDacDomain = 0; break;
+                // 12V Domain Profiles
+                case 11: s.hallDacWaveform = 2; s.hallDacFreqHz = 66; s.hallDacDomain = 1; break;  // VSS 12V
+                case 12: s.hallDacWaveform = 2; s.hallDacFreqHz = 50; s.hallDacDomain = 1; break;  // CKP 12V
+                case 13: s.hallDacWaveform = 2; s.hallDacFreqHz = 100; s.hallDacDomain = 1; break; // ABS 12V
+                case 14: s.hallDacWaveform = 0; s.hallDacVoltage = 2.50f; s.hallDacDomain = 1; break; // GAUGE 12V
+                case 15: s.hallDacWaveform = 0; s.hallDacVoltage = 5.00f; s.hallDacDomain = 1; break; // VADJ 0-12V
+            }
+            changed = true;
+        } else if (action == "setHallDacDomain") {
+            int d = doc["value"].as<int>();
+            s.hallDacDomain = d;
+            if (d == 0) {
+                s.hallDacProfile = 1;
+                s.hallDacWaveform = 0;
+                s.hallDacVoltage = 0.75f;
+            } else {
+                s.hallDacProfile = 11;
+                s.hallDacWaveform = 2;
+                s.hallDacFreqHz = 66;
+            }
+            changed = true;
+        } else if (action == "setStepperSpeed") {
+            s.stepperSpeed = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "stepperSpin") {
+            if (s.pulseMode == PULSE_STEPPER_UNI && _peripheralMgr.getActive() != nullptr) {
+                int dir = doc["value"].as<int>();
+                ((PeripheralStepperUni*)_peripheralMgr.getActive())->setSpinDirection(dir);
+                bool wantRun = (dir != 0);
+                if (wantRun != s.isRunning) {
+                    if (wantRun) _peripheralMgr.start();
+                    else _peripheralMgr.stop();
+                }
+                changed = true;
+            }
+        } else if (action == "startCoilDiag") {
+            if (s.pulseMode == PULSE_COIL_ACTIVE_4P && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralCoilActive4P*)_peripheralMgr.getActive())->startAutoDiag();
+                changed = true;
+            }
+        } else if (action == "stopCoilDiag") {
+            if (s.pulseMode == PULSE_COIL_ACTIVE_4P && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralCoilActive4P*)_peripheralMgr.getActive())->stopAutoDiag();
+                changed = true;
+            }
+        } else if (action == "resetCoilCounters") {
+            if (s.pulseMode == PULSE_COIL_ACTIVE_4P && _peripheralMgr.getActive() != nullptr) {
+                ((PeripheralCoilActive4P*)_peripheralMgr.getActive())->resetCounters();
+                changed = true;
+            }
+        } else if (action == "resetLeakCounter") {
+            CoilLeakSensor::reset(s);
+            changed = true;
         }
-    } else if (action == "trigger") {
-        // We need a way to pass trigger event, maybe we add a flag in settings
-        // For now, we will just ignore or add it later if needed
-    }
-    
-    if (changed || action == "trigger") {
-        _menuSys.wakeUp(); // Wake up the screensaver
-        
-        if (_peripheralMgr.getActive() != nullptr) {
-            _peripheralMgr.getActive()->syncHardware();
+
+        if (changed) {
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            _settingsMgr.save();
+            _menuSys.wakeUp();
+            broadcastState();
         }
-    }
-    
-    if (changed) {
-        _settingsMgr.save(); // Not ideal to save to NVS on every slider move, but we will throttle it on frontend
-        broadcastState();
     }
 }

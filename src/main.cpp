@@ -7,6 +7,7 @@
 #include "ui/DisplayManager.h"
 #include "ui/MenuSystem.h"
 #include "core/NetworkManager.h"
+#include "core/CoilLeakSensor.h"
 #include "config/Pins.h"
 
 // Instantiate core modules
@@ -50,8 +51,10 @@ void setup() {
     // Ensure critical output pins are explicitly set LOW immediately
     // before any other peripheral or RTOS task is initialized.
     // This prevents stray voltage spikes from firing the coil on boot.
-    pinMode(PIN_COIL_OUT, OUTPUT);
-    digitalWrite(PIN_COIL_OUT, LOW);
+    pinMode(PIN_COIL_PASSIVE_IGBT, OUTPUT);
+    digitalWrite(PIN_COIL_PASSIVE_IGBT, LOW);
+    pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
+    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     pinMode(PIN_SOLENOID, OUTPUT);
     digitalWrite(PIN_SOLENOID, LOW);
     
@@ -64,6 +67,7 @@ void setup() {
 
     // Initialize in order of dependencies
     settingsMgr.begin();
+    CoilLeakSensor::begin();
     peripheralMgr.begin();
     displayMgr.begin();
     menuSys.begin();

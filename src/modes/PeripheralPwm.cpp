@@ -11,8 +11,8 @@ static volatile bool pwm_autoStopped = false;
 
 static void IRAM_ATTR onPwmTimer() {
     if (isPwmOn) {
-        // Fast direct register write for GPIO 32 & 33
-        GPIO.out1_w1tc.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
+        // Fast direct register write for GPIO 32 (PIN_SOLENOID)
+        GPIO.out1_w1tc.val = (1 << (PIN_SOLENOID - 32));
         isPwmOn = false;
         
         if (pwm_pulsesRemaining > 0) {
@@ -30,8 +30,8 @@ static void IRAM_ATTR onPwmTimer() {
             timerAlarmWrite(pwm_timer, 1000, true); 
         }
     } else {
-        // Fast direct register write for GPIO 32 & 33
-        GPIO.out1_w1ts.val = (1 << (PIN_COIL_OUT - 32)) | (1 << (PIN_SOLENOID - 32));
+        // Fast direct register write for GPIO 32 (PIN_SOLENOID)
+        GPIO.out1_w1ts.val = (1 << (PIN_SOLENOID - 32));
         isPwmOn = true;
         timerAlarmWrite(pwm_timer, pwm_dwellTicks, true);
     }
@@ -41,8 +41,6 @@ PeripheralPwm::PeripheralPwm(SettingsManager& settingsMgr, SweepController& swee
     : _settingsMgr(settingsMgr), _sweepController(sweepController) {}
 
 void PeripheralPwm::begin() {
-    pinMode(PIN_COIL_OUT, OUTPUT);
-    digitalWrite(PIN_COIL_OUT, LOW);
     pinMode(PIN_SOLENOID, OUTPUT);
     digitalWrite(PIN_SOLENOID, LOW);
     
@@ -124,7 +122,6 @@ void PeripheralPwm::start() {
     else if (s.mode == MODE_BURST) pwm_pulsesRemaining = 5;
     else pwm_pulsesRemaining = 0; 
     
-    digitalWrite(PIN_COIL_OUT, HIGH);
     digitalWrite(PIN_SOLENOID, HIGH);
     isPwmOn = true;
     timerWrite(pwm_timer, 0); // Reset timer counter
@@ -140,7 +137,6 @@ void PeripheralPwm::start() {
 
 void PeripheralPwm::stop() {
     if (pwm_timer != NULL) timerAlarmDisable(pwm_timer);
-    digitalWrite(PIN_COIL_OUT, LOW);
     digitalWrite(PIN_SOLENOID, LOW);
     isPwmOn = false;
     
@@ -228,10 +224,9 @@ void PeripheralPwm::handleEncoder(int diff, int focusIndex) {
 }
 
 bool PeripheralPwm::shouldShowMenuItem(int menuIndex) {
-    // Skip speedo specific pages (Pulse Per Km)
-    if (menuIndex == 1) return false;
-    // Skip Speedo Steps
-    if (menuIndex >= 4 && menuIndex <= 7) return false;
+    // Hide Speedo specific pages (PPK: 1, Tacho PPR: 2, Speedo Steps: 5-8)
+    if (menuIndex == 1 || menuIndex == 2) return false;
+    if (menuIndex >= 5 && menuIndex <= 8) return false;
     return true;
 }
 

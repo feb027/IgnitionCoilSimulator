@@ -1,22 +1,22 @@
-#ifndef PERIPHERAL_SPEEDO_H
-#define PERIPHERAL_SPEEDO_H
+#ifndef PERIPHERAL_INJECTOR_H
+#define PERIPHERAL_INJECTOR_H
 
 #include "../core/IPeripheral.h"
 #include "../core/SettingsManager.h"
 #include "../core/SweepController.h"
 
-class PeripheralSpeedo : public IPeripheral {
+class PeripheralInjector : public IPeripheral {
 public:
-    PeripheralSpeedo(SettingsManager& settingsMgr, SweepController& sweepController);
-    ~PeripheralSpeedo() override = default;
+    PeripheralInjector(SettingsManager& settingsMgr, SweepController& sweepController);
+    ~PeripheralInjector() override = default;
     
     void begin() override;
     void update() override;
+    void syncHardware() override;
     
     void start() override;
     void stop() override;
     void trigger() override;
-    void syncHardware() override;
 
     void drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) override;
     
@@ -28,16 +28,22 @@ public:
     void cycleRunMode(AppSettings& s, int direction) override;
     void handleDashboardEncoder(int diff, AppSettings& s) override;
 
+    // Injector Specific Flow & Auto Health Scan
+    void startFlowTest(int numPulses);
+    void stopFlowTest();
+    void startAutoDiag();
+    void stopAutoDiag();
+
 private:
     SettingsManager& _settingsMgr;
     SweepController& _sweepController;
-    bool _dacFuelFound;
-    bool _dacTempFound;
-    uint32_t _lastDacPollMs;
     
-    void detectDacs();
-    void writeDac(uint8_t addr, float volts);
+    uint32_t _lastCurrentSampleTime;
+    uint32_t _diagStartTime;
+    
     void updateTimerConfig();
+    void samplePrimaryCurrent();
+    void updateAutoDiag();
 };
 
-#endif // PERIPHERAL_SPEEDO_H
+#endif // PERIPHERAL_INJECTOR_H

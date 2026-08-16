@@ -1,22 +1,22 @@
-#ifndef PERIPHERAL_SPEEDO_H
-#define PERIPHERAL_SPEEDO_H
+#ifndef PERIPHERAL_COIL_ACTIVE_4P_H
+#define PERIPHERAL_COIL_ACTIVE_4P_H
 
 #include "../core/IPeripheral.h"
 #include "../core/SettingsManager.h"
 #include "../core/SweepController.h"
 
-class PeripheralSpeedo : public IPeripheral {
+class PeripheralCoilActive4P : public IPeripheral {
 public:
-    PeripheralSpeedo(SettingsManager& settingsMgr, SweepController& sweepController);
-    ~PeripheralSpeedo() override = default;
+    PeripheralCoilActive4P(SettingsManager& settingsMgr, SweepController& sweepController);
+    ~PeripheralCoilActive4P() override = default;
     
     void begin() override;
     void update() override;
+    void syncHardware() override;
     
     void start() override;
     void stop() override;
     void trigger() override;
-    void syncHardware() override;
 
     void drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) override;
     
@@ -28,16 +28,21 @@ public:
     void cycleRunMode(AppSettings& s, int direction) override;
     void handleDashboardEncoder(int diff, AppSettings& s) override;
 
+    // Diagnostic Specific Methods
+    void startAutoDiag();
+    void stopAutoDiag();
+    void resetCounters();
+
 private:
     SettingsManager& _settingsMgr;
     SweepController& _sweepController;
-    bool _dacFuelFound;
-    bool _dacTempFound;
-    uint32_t _lastDacPollMs;
     
-    void detectDacs();
-    void writeDac(uint8_t addr, float volts);
+    uint32_t _diagStartTime;
+    uint32_t _lastCurrentSampleTime;
+    
     void updateTimerConfig();
+    void updateAutoDiag();
+    void samplePrimaryCurrent();
 };
 
-#endif // PERIPHERAL_SPEEDO_H
+#endif // PERIPHERAL_COIL_ACTIVE_4P_H

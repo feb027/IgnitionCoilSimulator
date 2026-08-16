@@ -1,14 +1,15 @@
 import { html, useRef, useEffect } from '../preact.mjs';
 
-export function Dial({ label, value, unit, min, max, step, onChange, disabled }) {
+export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue }) {
     const trackRef = useRef(null);
-
     const thumbRef = useRef(null);
 
     const handlePointerDown = (e) => {
         if (disabled) return;
         updateValueFromEvent(e);
-        thumbRef.current.setPointerCapture(e.pointerId);
+        if (thumbRef.current) {
+            thumbRef.current.setPointerCapture(e.pointerId);
+        }
     };
 
     const handlePointerMove = (e) => {
@@ -25,12 +26,17 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
         }
     };
 
-    const numMin = Number(min);
-    const numMax = Number(max);
-    const numStep = Number(step);
+    const numMin = Number(min) || 0;
+    const numMax = Number(max) || 100;
+    const numStep = Number(step) || 1;
+    const numVal = Number(value) || 0;
+    const dispVal = (displayValue !== undefined) ? displayValue : numVal;
 
     const updateValueFromEvent = (e) => {
+        if (!trackRef.current) return;
         const rect = trackRef.current.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        
         let percentage = (e.clientX - rect.left) / rect.width;
         percentage = Math.max(0, Math.min(1, percentage));
         
@@ -43,12 +49,13 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
         const decimals = (numStep.toString().split('.')[1] || '').length;
         const finalValue = Number(steppedValue.toFixed(decimals));
         
-        if (finalValue !== value) {
+        if (finalValue !== numVal && onChange) {
             onChange(finalValue);
         }
     };
 
-    const percentage = ((value - numMin) / (numMax - numMin)) * 100;
+    const range = numMax - numMin;
+    const percentage = range > 0 ? Math.max(0, Math.min(100, ((numVal - numMin) / range) * 100)) : 0;
 
     return html`
         <div class="panel">
@@ -57,9 +64,9 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled })
                 <span>${min} - ${max} ${unit}</span>
             </div>
             <div class="huge-value">
-                ${value}<span class="value-unit">${unit}</span>
+                ${dispVal}<span class="value-unit">${unit}</span>
             </div>
-            ${arguments[0].subInfo ? html`<div style="font-size: 0.8em; color: #888; text-align: center; margin-top: -8px; margin-bottom: 8px;">${arguments[0].subInfo}</div>` : ''}
+            ${subInfo ? html`<div style="font-size: 0.8em; color: var(--text-muted); text-align: center; margin-top: -8px; margin-bottom: 8px;">${subInfo}</div>` : ''}
             <div class="slider-container" style="opacity: ${disabled ? 0.3 : 1}; pointer-events: ${disabled ? 'none' : 'auto'};">
                 <div 
                     class="fader-track" 

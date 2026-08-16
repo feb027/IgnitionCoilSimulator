@@ -4,6 +4,7 @@
 
 #include "pages/MenuPageType.h"
 #include "pages/MenuPagePulse.h"
+#include "pages/MenuPageTachoPpr.h"
 #include "pages/MenuPageSweepTime.h"
 #include "pages/MenuPageRpmStep.h"
 #include "pages/MenuPageSpeedoRpmStep.h"
@@ -17,6 +18,7 @@
 
 static MenuPageType pageType;
 static MenuPagePulse pagePulse;
+static MenuPageTachoPpr pageTachoPpr;
 static MenuPageSweepTime pageSweepTime;
 static MenuPageRpmStep pageRpmStep;
 static MenuPageSpeedoRpmStep pageSpdRpmStep;
@@ -32,17 +34,18 @@ MenuSystem::MenuSystem(SettingsManager& settingsMgr, PeripheralManager& manager)
       _dashboardEditor(settingsMgr, manager),
       _rawButtonState(HIGH), _stableButtonState(HIGH), 
       _lastDebounceTime(0), _buttonPressTime(0), _buttonLongPressed(false),
-      _lastClickTime(0), _awaitingDoubleClick(false),
+      _lastClickTime(0), _clickCount(0),
       _scrollOffset(0.0f), _lastActivityMs(0) {
     _pages[0] = &pageType;
     _pages[1] = &pagePulse;
-    _pages[2] = &pageSweepTime;
-    _pages[3] = &pageRpmStep;
-    _pages[4] = &pageSpdRpmStep;
-    _pages[5] = &pageSpdKmhStep;
-    _pages[6] = &pageSpdTempStep;
-    _pages[7] = &pageSpdFuelStep;
-    _pages[8] = &pageExit;
+    _pages[2] = &pageTachoPpr;
+    _pages[3] = &pageSweepTime;
+    _pages[4] = &pageRpmStep;
+    _pages[5] = &pageSpdRpmStep;
+    _pages[6] = &pageSpdKmhStep;
+    _pages[7] = &pageSpdTempStep;
+    _pages[8] = &pageSpdFuelStep;
+    _pages[9] = &pageExit;
     _numPages = NUM_PAGES;
 }
 
@@ -69,11 +72,18 @@ void MenuSystem::update(float dt) {
         _scrollOffset = 0.0f;
     }
     
-    // Handle Double Click Timeout
-    if (_awaitingDoubleClick && (now - _lastClickTime > 350)) {
-        if (_stableButtonState == HIGH) { // Ensure button is not currently held down
-            _awaitingDoubleClick = false;
-            executeSingleClick();
+    // Handle Multi-Click Dispatch
+    if (_clickCount > 0 && (now - _lastClickTime > 300)) {
+        if (_stableButtonState == HIGH) { // Ensure button is released
+            int clicks = _clickCount;
+            _clickCount = 0;
+            if (clicks == 1) {
+                executeSingleClick();
+            } else if (clicks == 2) {
+                executeDoubleClick();
+            } else if (clicks >= 3) {
+                executeTripleClick();
+            }
         }
     }
 }
@@ -101,31 +111,8 @@ void MenuSystem::handleButton() {
             } else {
                 // Button Released (Rising edge)
                 if (!_buttonLongPressed) {
-                    if (_awaitingDoubleClick) {
-                        // Double Click detected!
-                        _awaitingDoubleClick = false;
-                        AppSettings& s = _settingsMgr.getSettings();
-                        if (!_inMenu) {
-                            if (_dashboardEditMode) {
-                                // Double click to exit Edit Mode
-                                _dashboardEditMode = false;
-                                _settingsMgr.save();
-                            } else {
-                                // Toggle Dashboard Edit Mode
-                                _dashboardEditMode = true;
-                                _dashboardFocusIndex = 0; // Reset focus to MODE
-                            }
-                        } else {
-                            // Double click to exit Menu from anywhere
-                            _inMenu = false;
-                            _isEditing = false;
-                            _settingsMgr.save();
-                        }
-                    } else {
-                        // First click detected, wait for potential second click
-                        _awaitingDoubleClick = true;
-                        _lastClickTime = now;
-                    }
+                    _clickCount++;
+                    _lastClickTime = now;
                 }
             }
         }
@@ -135,6 +122,7 @@ void MenuSystem::handleButton() {
     if (_stableButtonState == LOW && !_buttonLongPressed) {
         if ((now - _buttonPressTime) > LONG_PRESS_MS) {
             _buttonLongPressed = true; // Mark as handled
+            _clickCount = 0; // Cancel multi-click
 
             if (!_inMenu) {
                 // Toggle RUN / STOP on dashboard
@@ -220,11 +208,12 @@ void MenuSystem::executeSingleClick() {
     AppSettings& s = _settingsMgr.getSettings();
     if (!_inMenu) {
         if (_dashboardEditMode) {
-            // Cycle through Dashboard fields infinitely
+            // Cycle through Dashboard fields
             _dashboardFocusIndex++;
             int maxIdx = _dashboardEditor.getMaxFocusIndex();
-            if (_dashboardFocusIndex > maxIdx) {
-                _dashboardFocusIndex = 0; // Wrap around
+            int minIdx = (s.pulseMode == PULSE_ISC3PIN || s.pulseMode == PULSE_STEPPER) ? 1 : 0;
+            if (_dashboardFocusIndex > maxIdx || _dashboardFocusIndex < minIdx) {
+                _dashboardFocusIndex = minIdx; // Wrap around
             }
         } else {
             // Enter Menu
@@ -252,5 +241,51 @@ void MenuSystem::executeSingleClick() {
                 _lastEncoderCount = 0;
             }
         }
+    }
+}
+
+void MenuSystem::executeDoubleClick() {
+    _lastActivityMs = millis();
+    AppSettings& s = _settingsMgr.getSettings();
+    if (!_inMenu) {
+        // Toggle Dashboard Edit Mode on double click
+        _dashboardEditMode = !_dashboardEditMode;
+        if (_dashboardEditMode) {
+            _dashboardFocusIndex = 1; // Start at first editable parameter
+        } else {
+            _settingsMgr.save();
+        }
+    } else {
+        // Exit Menu from anywhere on double click
+        _inMenu = false;
+        _isEditing = false;
+        _settingsMgr.save();
+    }
+}
+
+void MenuSystem::executeTripleClick() {
+    _lastActivityMs = millis();
+    AppSettings& s = _settingsMgr.getSettings();
+    
+    // In Speedometer mode, triple-click toggles individual channels
+    if (!_inMenu && s.pulseMode == PULSE_SPEEDO) {
+        if (_dashboardFocusIndex == 1) {
+            s.speedoEnableKmh = !s.speedoEnableKmh;
+        } else if (_dashboardFocusIndex == 2) {
+            s.speedoEnableRpm = !s.speedoEnableRpm;
+        } else if (_dashboardFocusIndex == 3) {
+            s.speedoEnableTemp = !s.speedoEnableTemp;
+        } else if (_dashboardFocusIndex == 4) {
+            s.speedoEnableFuel = !s.speedoEnableFuel;
+        } else {
+            // Focus 0 or general: Toggle ALL channels
+            bool anyOn = s.speedoEnableKmh || s.speedoEnableRpm || s.speedoEnableTemp || s.speedoEnableFuel;
+            s.speedoEnableKmh = !anyOn;
+            s.speedoEnableRpm = !anyOn;
+            s.speedoEnableTemp = !anyOn;
+            s.speedoEnableFuel = !anyOn;
+        }
+        _settingsMgr.save();
+        _manager.getActive()->syncHardware();
     }
 }

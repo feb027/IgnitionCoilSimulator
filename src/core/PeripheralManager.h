@@ -4,10 +4,16 @@
 #include "IPeripheral.h"
 #include "SettingsManager.h"
 #include "SweepController.h"
-#include "../modes/PeripheralCoil.h"
+#include "../modes/PeripheralCoilPassive.h"
+#include "../modes/PeripheralCoilActive3P.h"
+#include "../modes/PeripheralCoilActive4P.h"
+#include "../modes/PeripheralInjector.h"
 #include "../modes/PeripheralPwm.h"
+#include "../modes/PeripheralIsc3Pin.h"
 #include "../modes/PeripheralSpeedo.h"
-#include "../modes/PeripheralStepper.h"
+#include "../modes/PeripheralStepperIacv.h"
+#include "../modes/PeripheralStepperUni.h"
+#include "../modes/PeripheralHallDac.h"
 
 class PeripheralManager {
 public:
@@ -27,12 +33,18 @@ private:
     SettingsManager& _settingsMgr;
     SweepController _sweepController;
     
-    PeripheralCoil _coil;
+    PeripheralCoilPassive _coilPassive;
+    PeripheralCoilActive3P _coilActive3P;
+    PeripheralCoilActive4P _coilActive4P;
+    PeripheralInjector _injector;
     PeripheralPwm _pwm;
+    PeripheralIsc3Pin _isc3pin;
     PeripheralSpeedo _speedo;
-    PeripheralStepper _stepper;
+    PeripheralStepperIacv _stepperIacv;
+    PeripheralStepperUni _stepperUni;
+    PeripheralHallDac _hallDac;
     
-    IPeripheral* _peripherals[4];
+    IPeripheral* _peripherals[10];
 };
 
 #endif // PERIPHERAL_MANAGER_H

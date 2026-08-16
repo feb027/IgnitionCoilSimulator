@@ -9,13 +9,9 @@ SweepController::SweepController(SettingsManager& settingsMgr)
 void SweepController::beginSweep() {
     AppSettings& s = _settingsMgr.getSettings();
     _targetKmh = s.speedoKmh;
-    if (_targetKmh <= 0) _targetKmh = 120; // Fallback so sweep is always visible
     _targetRpm = s.speedoRpm;
-    if (_targetRpm <= 0) _targetRpm = 4000;
     _targetTemp = s.speedoTempPercent;
-    if (_targetTemp <= 0) _targetTemp = 50;
     _targetFuel = s.speedoFuelPercent;
-    if (_targetFuel <= 0) _targetFuel = 50;
     _targetRpmNormal = s.rpm;
     
     _currentSweepVal = 0.0f;
@@ -27,10 +23,6 @@ void SweepController::beginSweep() {
 void SweepController::reset() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.pulseMode == PULSE_SPEEDO) {
-        s.speedoKmh = _targetKmh;
-        s.speedoRpm = _targetRpm;
-        s.speedoTempPercent = _targetTemp;
-        s.speedoFuelPercent = _targetFuel;
         s.currentSpeedoKmh = _targetKmh;
         s.currentSpeedoRpm = _targetRpm;
         s.currentSpeedoTempPercent = _targetTemp;
@@ -65,10 +57,10 @@ bool SweepController::update() {
         }
         
         if (s.pulseMode == PULSE_SPEEDO) {
-            s.currentSpeedoKmh = (int)(_currentSweepVal * _targetKmh);
-            s.currentSpeedoRpm = (int)(_currentSweepVal * _targetRpm);
-            s.currentSpeedoTempPercent = (int)(_currentSweepVal * _targetTemp);
-            s.currentSpeedoFuelPercent = (int)(_currentSweepVal * _targetFuel);
+            s.currentSpeedoKmh = s.speedoEnableKmh ? (int)(_currentSweepVal * _targetKmh) : 0;
+            s.currentSpeedoRpm = s.speedoEnableRpm ? (int)(_currentSweepVal * _targetRpm) : 0;
+            s.currentSpeedoTempPercent = s.speedoEnableTemp ? (int)(_currentSweepVal * _targetTemp) : 0;
+            s.currentSpeedoFuelPercent = s.speedoEnableFuel ? (int)(_currentSweepVal * _targetFuel) : 0;
         } else {
             s.currentRpm = (int)(_currentSweepVal * _targetRpmNormal);
         }

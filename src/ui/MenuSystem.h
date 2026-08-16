@@ -1,7 +1,7 @@
 #ifndef MENU_SYSTEM_H
 #define MENU_SYSTEM_H
 
-#define NUM_PAGES 9
+#define NUM_PAGES 10
 
 #include <ESP32Encoder.h>
 #include "../core/SettingsManager.h"
@@ -46,9 +46,9 @@ private:
     uint32_t _buttonPressTime;
     bool _buttonLongPressed;
     
-    // Double click state
+    // Multi-click state
     uint32_t _lastClickTime;
-    bool _awaitingDoubleClick;
+    int _clickCount;
 
     // Menu state
     bool _inMenu;
@@ -61,8 +61,6 @@ private:
     
     DashboardEditor _dashboardEditor;
     
-    // Button debounce state;
-    
     MenuPage* _pages[NUM_PAGES];
     int _numPages;
     
@@ -72,6 +70,8 @@ private:
     void handleButton();
     void handleEncoder();
     void executeSingleClick();
+    void executeDoubleClick();
+    void executeTripleClick();
 };
 
 #endif // MENU_SYSTEM_H
