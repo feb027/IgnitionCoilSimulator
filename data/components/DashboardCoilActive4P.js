@@ -208,5 +208,59 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 />
             </div>
         </details>
+
+        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL 4-PIN -->
+        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-cyan, #00d4ff);" open>
+            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-cyan, #00d4ff); font-weight: bold; letter-spacing: 0.05em;">
+                📖 TATA CARA & PANDUAN PENGUJIAN KOIL 4-PIN LENGKAP ▾
+            </summary>
+            <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                
+                <div style="background: rgba(0, 212, 255, 0.06); border-left: 3px solid var(--neon-cyan, #00d4ff); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-cyan, #00d4ff);">🎯 TUJUAN DIAGNOSA:</strong><br/>
+                    Mengetahui apakah koil benar-benar sehat di bawah beban kompresi 15 Bar, bebas dari gejala brebet saat akselerasi, bebas kebocoran kilovolt, dan tidak pincang saat mesin panas.
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-orange);">1. KONEKSI KABEL KOIL 4-PIN:</strong>
+                        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                            <li><strong>Pin 1 (+B):</strong> Sambung ke +12V Aki (via ACS712).</li>
+                            <li><strong>Pin 2 (IGT):</strong> Sambung ke Pin IGT Output (Pin 25).</li>
+                            <li><strong>Pin 3 (IGF):</strong> Sambung ke Pin IGF Input (Pin 34).</li>
+                            <li><strong>Pin 4 (GND):</strong> Sambung ke Ground Aki 12V.</li>
+                            <li><strong>Probe Leak:</strong> Lilitkan kawat di leher karet koil.</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-green);">2. SETTING CELAH BUSI (SPARK GAP):</strong>
+                        <div style="font-size: 0.8rem; margin-top: 6px;">
+                            • Gunakan <strong>Adjustable Spark Gap Tester</strong>.<br/>
+                            • Atur celah loncatan ke <strong>10 mm s/d 12 mm</strong> (jarak ini meniru hambatan kompresi 15 Bar di ruang silinder mesin mobil).<br/>
+                            • <em>Jangan gunakan celah busi pendek 0.8mm karena tidak mewakili beban mesin nyata!</em>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-purple);">3. TAHAP PENGUJIAN MANUAL & DETEKSI BREBET:</strong>
+                    <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                        <li><strong>Uji Langsam (Idle Test):</strong> Set RPM 1.200, Dwell 3.0 ms → Tekan <strong>MASTER RUN</strong>. Amati api wajib biru tebal dan suara cetak-cetak padat.</li>
+                        <li><strong>Uji Arus Primer:</strong> Lihat kotak <strong>PEAK CURRENT</strong>. Koil sehat wajib berada di rentang <strong>6.5A s/d 9.5A</strong>. Jika di bawah 5.0A berarti kumparan loyo.</li>
+                        <li><strong>Uji Akselerasi Spontan (Tip-in Response):</strong> Naikkan RPM ke 5.000 dan turunkan Dwell ke <strong>2.0 ms</strong>. Koil sehat tetap memercik kuat tanpa ada <em>Missed Sparks</em>.</li>
+                        <li><strong>Uji Ketahanan Panas 5-10 Menit:</strong> Pilih mode <strong>SWEEP</strong> dan biarkan menyala 5-10 menit hingga koil hangat. Jika muncul misfire atau buzzer bunyi, koil mengalami <em>Thermal Breakdown</em>.</li>
+                    </ol>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-green);">4. UJI OTOMATIS (20-DETIK AUTO HEALTH SCAN):</strong>
+                    <div style="font-size: 0.8rem; margin-top: 6px;">
+                        Tekan tombol <strong>`START AUTO HEALTH SCAN`</strong> di atas. Sistem akan menguji 3 tahap otomatis (Dwell Sweep → WOT Burst → High-RPM Stress) dan menghitung persentase kesehatan (Health Score %) serta vonis akhir koil secara akurat.
+                    </div>
+                </div>
+
+            </div>
+        </details>
     `;
 }

@@ -202,5 +202,47 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                 />
             </div>
         </details>
+
+        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL UMUM -->
+        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-cyan, #00d4ff);" open>
+            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-cyan, #00d4ff); font-weight: bold; letter-spacing: 0.05em;">
+                📖 TATA CARA & STANDAR PENGUJIAN KOIL PENGAPIAN ▾
+            </summary>
+            <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                
+                <div style="background: rgba(0, 212, 255, 0.06); border-left: 3px solid var(--neon-cyan, #00d4ff); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-cyan, #00d4ff);">🎯 STANDAR KELAYAKAN KOIL MOBIL:</strong><br/>
+                    Koil yang lolos uji wajib memercik di celah 10-12 mm (setara kompresi 15 Bar), arus primer 6.5A-9.5A, dan tidak putus apinya saat mesin panas.
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-green);">1. CELAH UJI (SPARK GAP 10 - 12 MM):</strong>
+                        <div style="font-size: 0.8rem; margin-top: 6px;">
+                            • Jarak celah 10-12 mm meniru hambatan kompresi 15 Bar di mobil.<br/>
+                            • Koil sehat: Api biru keunguan tebal & padat.<br/>
+                            • Koil lemah/brebet: Api kemerahan/kuning tipis & sering putus.
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-orange);">2. TARGET ARUS PRIMER (PEAK CURRENT):</strong>
+                        <div style="font-size: 0.8rem; margin-top: 6px;">
+                            • <strong>6.5A - 9.5A:</strong> Normal (Optimal).<br/>
+                            • <strong>Di bawah 5.0A:</strong> Kumparan/Igniter Loyo (Penyebab brebet).<br/>
+                            • <strong>Di atas 11.0A:</strong> Kumparan Korslet Sebagian.
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-purple);">3. UJI PANAS DINAMIS (THERMAL TEST 5-10 MENIT):</strong>
+                    <div style="font-size: 0.8rem; margin-top: 6px;">
+                        Gunakan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang hanya pincang saat mesin panas akan mulai mengalami misfire / penurunan loncatan api setelah koil terasa hangat.
+                    </div>
+                </div>
+
+            </div>
+        </details>
     `;
 }

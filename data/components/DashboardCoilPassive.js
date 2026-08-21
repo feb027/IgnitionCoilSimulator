@@ -85,6 +85,50 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
         <!-- BODY LEAKAGE DETECTION CARD -->
         <${LeakageCard} state=${state} sendAction=${sendAction} />
 
+        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL PASIF 2-PIN -->
+        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-purple);" open>
+            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-purple); font-weight: bold; letter-spacing: 0.05em;">
+                📖 TATA CARA & PANDUAN PENGUJIAN KOIL PASIF (2-PIN) LENGKAP ▾
+            </summary>
+            <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                
+                <div style="background: rgba(189, 0, 255, 0.06); border-left: 3px solid var(--neon-purple); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-purple);">🎯 TUJUAN DIAGNOSA KOIL PASIF:</strong><br/>
+                    Menguji induktansi kumparan primer & sekunder murni menggunakan IGBT internal tester, mengukur titik saturasi arus, serta menguji ketahanan isolasi terhadap tegangan tembus kilovolt.
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-cyan, #00d4ff);">1. KONEKSI KABEL KOIL 2-PIN:</strong>
+                        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                            <li><strong>Pin (+) / Kl.15:</strong> Sambung ke +12V Aki (via ACS712).</li>
+                            <li><strong>Pin (-) / Kl.1:</strong> Sambung ke Output IGBT Driver Tester (Pin 33).</li>
+                            <li><strong>Kabel Busi Sekunder:</strong> Sambung ke Spark Gap Tester.</li>
+                            <li><strong>Probe Leak:</strong> Pasang kawat sensor di leher bodi koil.</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-green);">2. SETTING CELAH BUSI (SPARK GAP):</strong>
+                        <div style="font-size: 0.8rem; margin-top: 6px;">
+                            • Pasang celah jarum di <strong>10 mm s/d 12 mm</strong>.<br/>
+                            • Koil pasif yang sehat wajib mampu melompati celah 10-12 mm secara padat dan stabil tanpa putus-putus.
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-orange);">3. TAHAP PENGUJIAN & DETEKSI KERUSAKAN:</strong>
+                    <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                        <li><strong>Batas Dwell Aman (2.5 ms – 3.5 ms):</strong> Jangan menyetel Dwell melebihi 4.5 ms pada RPM rendah agar kumparan primer koil tidak mengalami panas berlebih.</li>
+                        <li><strong>Uji Arus Primer (PEAK CURRENT):</strong> Koil sehat menarik arus <strong>6.0A s/d 8.5A</strong>. Jika arus melonjak >11A berarti ada lilitan primer yang korslet sebagian (*shorted turns*).</li>
+                        <li><strong>Uji Ketahanan Panas:</strong> Jalankan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mengalami penurunan api saat badan koil mulai hangat.</li>
+                    </ol>
+                </div>
+
+            </div>
+        </details>
+
         <!-- ADVANCED SETTINGS ACCORDION -->
         <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
             <summary class="panel-header" style="cursor: pointer; user-select: none;">
