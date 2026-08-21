@@ -235,10 +235,20 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
                     <strong style="color: var(--neon-purple);">3. UJI PANAS DINAMIS (THERMAL TEST 5-10 MENIT):</strong>
                     <div style="font-size: 0.8rem; margin-top: 6px;">
                         Gunakan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang hanya pincang saat mesin panas akan mulai mengalami misfire / penurunan loncatan api setelah koil terasa hangat.
+                    </div>
+                </div>
+
+                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
+                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR:</strong>
+                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
+                        • <strong>Arus 0.0A & Tidak Ada Api:</strong> Periksa kabel +12V/GND dan pastikan sinyal trigger IGT terhubung ke pin yang benar di soket koil.<br/>
+                        • <strong>Koil Sangat Cepat Panas (>11A):</strong> Matikan segera! Sinyal trigger atau kabel daya mengalami korsleting.<br/>
+                        • <strong>Api Melompat Liar ke Bodi:</strong> Pastikan penjepit ground busi/spark gap terpasang kencang ke Ground Aki 12V.
                     </div>
                 </div>
 

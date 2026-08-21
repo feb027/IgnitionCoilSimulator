@@ -155,9 +155,9 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                     <div style="margin-top: 12px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
                             <span>
-                                ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' : 
-                                  state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' : 
-                                  'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
+                                ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' :
+                state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' :
+                    'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
                             </span>
                             <span style="font-weight: bold;">${state.coilDiagProgress || 0}%</span>
                         </div>
@@ -253,10 +253,40 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                     </ol>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
                     <strong style="color: var(--neon-green);">4. UJI OTOMATIS (20-DETIK AUTO HEALTH SCAN):</strong>
                     <div style="font-size: 0.8rem; margin-top: 6px;">
                         Tekan tombol <strong>`START AUTO HEALTH SCAN`</strong> di atas. Sistem akan menguji 3 tahap otomatis (Dwell Sweep → WOT Burst → High-RPM Stress) dan menghitung persentase kesehatan (Health Score %) serta vonis akhir koil secara akurat.
+                    </div>
+                </div>
+
+                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
+                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR / KESALAHAN WIRING:</strong>
+                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
+                        • <strong>Gejala: PEAK CURRENT = 0.0A (NO CURRENT) & Tidak Ada Api:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → Kabel <strong>+12V</strong> atau <strong>GND</strong> belum terhubung ke koil.<br/>
+                            → Kabel <strong>IGT (Pin 25)</strong> salah colok pin (tertukar dengan IGF/GND).<br/>
+                            → Posisi saklar Switch 5V/12V salah atau igniter di dalam koil putus total.
+                        </span><br/>
+
+                        • <strong>Gejala: Api Busi Memercik TAPI IGF CONFIRMED = 0 (MISSED SPARKS Naik):</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → Kabel <strong>IGF (Pin 34)</strong> belum dicolok atau salah pin di soket koil.<br/>
+                            → Resistor Pull-Up 1kΩ ke +5V pada jalur IGF kendor/belum terpasang.<br/>
+                            → Sensor feedback IGF di dalam kepala koil sudah mati (meskipun api masih keluar).
+                        </span><br/>
+
+                        • <strong>Gejala: OVERCURRENT (>11A) / Cepat Panas:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <em>SEGERA MATIKAN RUN!</em> Kabel IGT menyentuh +12V atau kumparan primer koil korslet internal.
+                        </span><br/>
+
+                        • <strong>Gejala: Api Melompat Liar / Buzzer Kebocoran Berbunyi Terus:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <strong>Penjepit Ground Logam Busi BELUM terpasang ke Ground Aki!</strong> Tegangan 25.000V tidak punya jalur kembali sehingga melompat liar mencari jalan menembus insulator karet koil.
+                        </span>
                     </div>
                 </div>
 

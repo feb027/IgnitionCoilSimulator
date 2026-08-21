@@ -131,7 +131,7 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
                     <strong style="color: var(--neon-purple);">3. TAHAP PENGUJIAN & DETEKSI KERUSAKAN:</strong>
                     <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
                         <li><strong>Uji Arus Primer (PEAK CURRENT):</strong> Koil sehat menarik arus <strong>6.5A s/d 9.0A</strong>. Jika di bawah 5.0A berarti igniter internal drop (penyebab brebet). Jika >11.0A berarti kumparan korslet.</li>
@@ -139,6 +139,29 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                         <li><strong>Uji Ketahanan Panas (Endurance Test):</strong> Jalankan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mulai putus-putus apinya saat badan koil mulai hangat.</li>
                         <li><strong>Uji Kebocoran Bodi:</strong> Perhatikan kartu <strong>LEAKAGE DETECTOR</strong> di atas. Jika muncul status kuning/merah atau buzzer berbunyi, isolator batang koil bocor.</li>
                     </ol>
+                </div>
+
+                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
+                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR:</strong>
+                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
+                        • <strong>Arus Primer Terbaca 0.0A (NO CURRENT):</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → Kabel <strong>+12V</strong> atau <strong>GND</strong> belum terhubung ke koil.<br/>
+                            → Kabel <strong>IGT (Pin 25)</strong> salah colok pin atau switch tegangan 5V/12V salah.<br/>
+                            → Transistor igniter di dalam kepala koil putus total.
+                        </span><br/>
+
+                        • <strong>Status OVERCURRENT (>11A) / Koil Sangat Panas:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <em>MATIKAN SEGERA!</em> Kabel IGT atau +12V tersambung ke pin yang salah, atau kumparan primer korslet internal.
+                        </span><br/>
+
+                        • <strong>Buzzer Kebocoran Berbunyi / Api Melompat Liar:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <strong>Penjepit Ground Busi belum terpasang ke Ground Aki!</strong> Pasang penjepit buaya spark gap ke Ground Aki agar api tidak melompat liar ke bodi.
+                        </span>
+                    </div>
                 </div>
 
             </div>

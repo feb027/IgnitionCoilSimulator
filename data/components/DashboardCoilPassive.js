@@ -117,13 +117,36 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
                     <strong style="color: var(--neon-orange);">3. TAHAP PENGUJIAN & DETEKSI KERUSAKAN:</strong>
                     <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
                         <li><strong>Batas Dwell Aman (2.5 ms – 3.5 ms):</strong> Jangan menyetel Dwell melebihi 4.5 ms pada RPM rendah agar kumparan primer koil tidak mengalami panas berlebih.</li>
                         <li><strong>Uji Arus Primer (PEAK CURRENT):</strong> Koil sehat menarik arus <strong>6.0A s/d 8.5A</strong>. Jika arus melonjak >11A berarti ada lilitan primer yang korslet sebagian (*shorted turns*).</li>
                         <li><strong>Uji Ketahanan Panas:</strong> Jalankan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mengalami penurunan api saat badan koil mulai hangat.</li>
                     </ol>
+                </div>
+
+                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
+                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR:</strong>
+                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
+                        • <strong>Tidak Ada Percikan Api & Arus 0.0A:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → Kabel <strong>+12V Aki</strong> belum terhubung ke terminal (+) koil.<br/>
+                            → Kabel <strong>Pin 33 (IGBT Driver)</strong> belum terhubung ke terminal (-) koil.<br/>
+                            → Lilitan primer koil putus total di dalam.
+                        </span><br/>
+
+                        • <strong>Arus Primer Sangat Tinggi (>12A) & Koil Panas Kilat:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <em>MATIKAN SEGERA!</em> Terminal (-) koil terhubung langsung ke Ground (tanpa melewati IGBT) atau lilitan primer koil terbakar korslet.
+                        </span><br/>
+
+                        • <strong>Api Melompat Liar ke Bodi Koil:</strong><br/>
+                        <span style="color: var(--text-muted); margin-left: 12px;">
+                            → <strong>Bodi spark tester/busi belum dijepitkan ke Ground Aki 12V!</strong>
+                        </span>
+                    </div>
                 </div>
 
             </div>
