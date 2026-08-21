@@ -16,13 +16,13 @@ public:
     }
     
     float getProgress(const AppSettings& s) const override {
-        return (float)(s.pulsePerKm - 1000) / 19000.0f; // Range 1000 to 20000
+        return (float)(s.pulsePerKm - 500) / 49500.0f; // Range 500 to 50000
     }
     
     void onEdit(int diff, AppSettings& s) override {
         s.pulsePerKm += (diff * 100); 
-        if (s.pulsePerKm < 1000) s.pulsePerKm = 1000;
-        if (s.pulsePerKm > 20000) s.pulsePerKm = 20000;
+        if (s.pulsePerKm < 500) s.pulsePerKm = 500;
+        if (s.pulsePerKm > 50000) s.pulsePerKm = 50000;
     }
 };
 

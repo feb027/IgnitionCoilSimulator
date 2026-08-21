@@ -70,6 +70,12 @@ void NetworkManager::update() {
                      (current.speedoTachoPpr != _lastBroadcastedState.speedoTachoPpr) ||
                      (current.speedoGaugeCurve != _lastBroadcastedState.speedoGaugeCurve) ||
                      (current.speedoDacRouting != _lastBroadcastedState.speedoDacRouting) ||
+                     (current.speedoTempCalMin != _lastBroadcastedState.speedoTempCalMin) ||
+                     (current.speedoTempCalMid != _lastBroadcastedState.speedoTempCalMid) ||
+                     (current.speedoTempCalMax != _lastBroadcastedState.speedoTempCalMax) ||
+                     (current.speedoFuelCalMin != _lastBroadcastedState.speedoFuelCalMin) ||
+                     (current.speedoFuelCalMid != _lastBroadcastedState.speedoFuelCalMid) ||
+                     (current.speedoFuelCalMax != _lastBroadcastedState.speedoFuelCalMax) ||
                      (current.speedoKmh != _lastBroadcastedState.speedoKmh) ||
                      (current.speedoRpm != _lastBroadcastedState.speedoRpm) ||
                      (current.speedoTempPercent != _lastBroadcastedState.speedoTempPercent) ||
@@ -127,6 +133,13 @@ void NetworkManager::broadcastState() {
     doc["speedoTachoPpr"] = s.speedoTachoPpr;
     doc["speedoGaugeCurve"] = s.speedoGaugeCurve;
     doc["speedoDacRouting"] = s.speedoDacRouting;
+    doc["speedoPwmFreqHz"] = s.speedoPwmFreqHz;
+    doc["speedoTempCalMin"] = s.speedoTempCalMin;
+    doc["speedoTempCalMid"] = s.speedoTempCalMid;
+    doc["speedoTempCalMax"] = s.speedoTempCalMax;
+    doc["speedoFuelCalMin"] = s.speedoFuelCalMin;
+    doc["speedoFuelCalMid"] = s.speedoFuelCalMid;
+    doc["speedoFuelCalMax"] = s.speedoFuelCalMax;
     doc["speedoDacFuelDetected"] = s.speedoDacFuelFound;
     doc["speedoDacTempDetected"] = s.speedoDacTempFound;
     
@@ -379,6 +392,42 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             changed = true;
         } else if (action == "setSpeedoDacRouting") {
             s.speedoDacRouting = doc["value"].as<int>();
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            changed = true;
+        } else if (action == "setSpeedoPwmFreq" || action == "setSpeedoPwmFreqHz") {
+            int f = doc["value"].as<int>();
+            if (f < 10) f = 10;
+            if (f > 5000) f = 5000;
+            s.speedoPwmFreqHz = f;
+            _settingsMgr.save();
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            changed = true;
+        } else if (action == "setSpeedoTempCal") {
+            JsonObject valObj = doc["value"];
+            if (valObj["min"].is<int>()) s.speedoTempCalMin = valObj["min"].as<int>();
+            if (valObj["mid"].is<int>()) s.speedoTempCalMid = valObj["mid"].as<int>();
+            if (valObj["max"].is<int>()) s.speedoTempCalMax = valObj["max"].as<int>();
+            if (doc["min"].is<int>()) s.speedoTempCalMin = doc["min"].as<int>();
+            if (doc["mid"].is<int>()) s.speedoTempCalMid = doc["mid"].as<int>();
+            if (doc["max"].is<int>()) s.speedoTempCalMax = doc["max"].as<int>();
+            _settingsMgr.save();
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->syncHardware();
+            }
+            changed = true;
+        } else if (action == "setSpeedoFuelCal") {
+            JsonObject valObj = doc["value"];
+            if (valObj["min"].is<int>()) s.speedoFuelCalMin = valObj["min"].as<int>();
+            if (valObj["mid"].is<int>()) s.speedoFuelCalMid = valObj["mid"].as<int>();
+            if (valObj["max"].is<int>()) s.speedoFuelCalMax = valObj["max"].as<int>();
+            if (doc["min"].is<int>()) s.speedoFuelCalMin = doc["min"].as<int>();
+            if (doc["mid"].is<int>()) s.speedoFuelCalMid = doc["mid"].as<int>();
+            if (doc["max"].is<int>()) s.speedoFuelCalMax = doc["max"].as<int>();
+            _settingsMgr.save();
             if (_peripheralMgr.getActive() != nullptr) {
                 _peripheralMgr.getActive()->syncHardware();
             }

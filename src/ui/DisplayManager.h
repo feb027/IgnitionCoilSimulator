@@ -22,9 +22,8 @@ private:
     SettingsManager& _settingsMgr;
     PeripheralManager& _periphMgr;
     
-    // We use HW I2C, U8G2_R0 (no rotation)
-    // You can change SSD1306_128X64_NONAME to your specific OLED type if needed
-    U8G2_SSD1306_128X64_NONAME_F_HW_I2C _u8g2;
+    // 1.3 inch OLED uses SH1106 controller (128x64 with 2px hardware column offset)
+    U8G2_SH1106_128X64_NONAME_F_HW_I2C _u8g2;
 
     void drawDashboard(MenuSystem& menu);
     void drawMenu(MenuSystem& menu);

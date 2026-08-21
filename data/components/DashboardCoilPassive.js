@@ -40,12 +40,11 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
         ${modeSelector}
         
         <!-- MASTER RUN BUTTON -->
-        <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: var(--space-md); grid-column: 1 / -1;">
+        <div class="sticky-run-bar">
             <button 
                 class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
-                style="box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
             >
                 ${state.isRunning ? 'IGBT DRIVE: ON' : 'IGBT DRIVE: OFF'}
             </button>
@@ -96,8 +95,9 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                     min="1"
                     max="60"
                     step="1"
+                    accentColor="var(--neon-purple)"
                     onChange=${(val) => sendAction('setSweepTime', val)}
-                    disabled=${!state.connected}
+                    disabled=${!state.connected || (state.runMode === 3 && state.isRunning)}
                 />
                 <${Dial} 
                     label="RPM STEP SIZE"

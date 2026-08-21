@@ -55,8 +55,17 @@ struct AppSettings {
     float speedoTachoPpr;  // Tachometer Pulses Per Revolution (1.0, 2.0, 3.0, 4.0, 0.5)
     int speedoGaugeCurve;  // 0: Non-Linear (Thermal/Fuel Sqrt Curve), 1: Linear 1:1
     int speedoDacRouting;  // 0: Dual PWM, 1: Single DAC Fuel, 2: Single DAC Temp, 3: Dual MCP4725 (0x60 Fuel + 0x61 Temp)
+    int speedoPwmFreqHz;   // Gauge PWM frequency in Hz (10 - 5000 Hz, default 5000)
     bool speedoDacFuelFound; // MCP4725 0x60 detected
     bool speedoDacTempFound; // MCP4725 0x61 detected
+    
+    // 3-Point Calibration for Temp & Fuel Gauges (0-100% duty mapping)
+    int speedoTempCalMin;  // Output duty % at 0% input (Cold / C), default 0
+    int speedoTempCalMid;  // Output duty % at 50% input (Norm / Middle), default 50
+    int speedoTempCalMax;  // Output duty % at 100% input (Hot / H), default 100
+    int speedoFuelCalMin;  // Output duty % at 0% input (Empty / E), default 0
+    int speedoFuelCalMid;  // Output duty % at 50% input (Half / 1/2), default 50
+    int speedoFuelCalMax;  // Output duty % at 100% input (Full / F), default 100
     int currentSpeedoKmh;  // Live km/h (for sweep display)
     int currentSpeedoRpm;  // Live RPM
     int currentSpeedoTempPercent; // Live temp

@@ -1,6 +1,6 @@
 import { html, useRef, useEffect } from '../preact.mjs';
 
-export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue }) {
+export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue, accentColor, panelClass }) {
     const trackRef = useRef(null);
     const thumbRef = useRef(null);
 
@@ -58,13 +58,13 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
     const percentage = range > 0 ? Math.max(0, Math.min(100, ((numVal - numMin) / range) * 100)) : 0;
 
     return html`
-        <div class="panel">
+        <div class="${panelClass || 'panel'}">
             <div class="panel-header">
-                <span>${label}</span>
+                <span style="${accentColor ? ('color: ' + accentColor + '; font-weight: 700;') : ''}">${label}</span>
                 <span>${min} - ${max} ${unit}</span>
             </div>
             <div class="huge-value">
-                ${dispVal}<span class="value-unit">${unit}</span>
+                ${dispVal}<span class="value-unit" style="${accentColor ? ('color: ' + accentColor) : ''}">${unit}</span>
             </div>
             ${subInfo ? html`<div style="font-size: 0.8em; color: var(--text-muted); text-align: center; margin-top: -8px; margin-bottom: 8px;">${subInfo}</div>` : ''}
             <div class="slider-container" style="opacity: ${disabled ? 0.3 : 1}; pointer-events: ${disabled ? 'none' : 'auto'};">
@@ -73,11 +73,11 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
                     ref=${trackRef}
                     style="pointer-events: none;"
                 >
-                    <div class="fader-fill" style="width: ${percentage}%"></div>
+                    <div class="fader-fill" style="width: ${percentage}%; background: ${accentColor || 'var(--text-primary)'}; box-shadow: ${accentColor ? '0 0 8px ' + accentColor : 'none'};"></div>
                     <div 
                         class="fader-thumb" 
                         ref=${thumbRef}
-                        style="left: ${percentage}%; cursor: grab; pointer-events: auto; touch-action: none;"
+                        style="left: ${percentage}%; cursor: grab; pointer-events: auto; touch-action: none; border-color: ${accentColor || 'var(--surface-matte)'};"
                         onPointerDown=${handlePointerDown}
                         onPointerMove=${handlePointerMove}
                         onPointerUp=${handlePointerUp}

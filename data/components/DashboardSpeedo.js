@@ -4,10 +4,12 @@ import { Dial } from './Dial.js';
 export function DashboardSpeedo({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     const isRunning = state.isRunning;
+    const isSweepActive = isSweep && isRunning;
     const ppr = state.speedoTachoPpr || 2.0;
     const ppk = state.pulsePerKm || 4000;
     const gaugeCurve = state.speedoGaugeCurve !== undefined ? state.speedoGaugeCurve : 0; // 0: Non-Linear (sqrt), 1: Linear
     const dacRouting = state.speedoDacRouting !== undefined ? state.speedoDacRouting : 3; // 0: Dual PWM, 1: DAC Fuel, 2: DAC Temp, 3: Dual MCP4725
+    const pwmFreq = state.speedoPwmFreqHz !== undefined ? state.speedoPwmFreqHz : 5000;
 
     const dacFuelDetected = state.speedoDacFuelDetected || false;
     const dacTempDetected = state.speedoDacTempDetected || false;
@@ -48,27 +50,46 @@ export function DashboardSpeedo({ state, sendAction, modeSelector }) {
     const isFuelDacActive = (dacRouting === 3 || dacRouting === 1);
     const isTempDacActive = (dacRouting === 3 || dacRouting === 2);
 
-    const renderChannelToggle = (label, channelKey, isEnabled, liveHz) => html`
-        <div class="channel-toggle-bar">
-            <span style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.05em;">
-                ${label} ${liveHz && isEnabled ? html`<span style="opacity: 0.6; font-size: 0.72rem; margin-left: 4px;">(${liveHz} Hz)</span>` : ''}
-            </span>
+    const maxRpm = Number(state.speedoMaxRpm) || 16000;
+    const maxRpmPresets = [
+        { label: '6K', val: 6000 },
+        { label: '7K', val: 7000 },
+        { label: '8K', val: 8000 },
+        { label: '10K', val: 10000 },
+        { label: '12K', val: 12000 },
+        { label: '16K', val: 16000 }
+    ];
+
+    const renderChannelToggle = (badgeNum, label, channelKey, isEnabled, liveHz, accentColor) => html`
+        <div class="channel-toggle-bar" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="channel-tag" style="background: rgba(255,255,255,0.05); color: ${accentColor}; border: 1px solid ${accentColor}50; font-size: 0.78rem; padding: 4px 8px;">
+                    ${badgeNum}
+                </span>
+                <div>
+                    <div style="font-size: 0.95rem; font-weight: 800; letter-spacing: 0.05em; color: ${isEnabled ? 'var(--text-primary)' : 'var(--text-muted)'};">
+                        ${label}
+                    </div>
+                    ${liveHz && isEnabled ? html`<div style="font-size: 0.75rem; color: ${accentColor}; font-family: monospace; font-weight: 600;">Frekuensi: ${liveHz} Hz [Pin Aktif]</div>` : ''}
+                </div>
+            </div>
             <button 
                 class="btn ${isEnabled ? 'btn-active' : ''}" 
-                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 3px; letter-spacing: 0.05em;"
-                onClick=${() => sendAction('setSpeedoEnable', { channel: channelKey, value: !isEnabled })}
+                style="padding: 10px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 4px; letter-spacing: 0.06em; min-width: 120px; transition: all 0.15s ease; ${isEnabled ? ('background: ' + accentColor + '; color: #000; border-color: ' + accentColor + '; box-shadow: 0 0 12px ' + accentColor + '60;') : 'color: #888; border-color: #444;'}"
+                onClick=${() => sendAction('toggleSpeedoChannel', { channel: channelKey, value: !isEnabled })}
                 disabled=${!state.connected}
             >
-                ${isEnabled ? 'CH: ON (AKTIF)' : 'CH: OFF (MUTED)'}
+                ${isEnabled ? '● CH: ON' : '○ CH: OFF'}
             </button>
         </div>
     `;
 
     const ppkPresets = [
-        { label: '2548 (JIS Japan)', val: 2548 },
-        { label: '4000 (Universal)', val: 4000 },
-        { label: '6000 (Custom)', val: 6000 },
-        { label: '8000 (Euro)', val: 8000 }
+        { label: '2548 (JIS)', val: 2548 },
+        { label: '4000 (Univ)', val: 4000 },
+        { label: '8000 (Euro)', val: 8000 },
+        { label: '23333 (Modern)', val: 23333 },
+        { label: '30000 (Digital/ABS)', val: 30000 }
     ];
 
     const pprPresets = [
@@ -80,79 +101,103 @@ export function DashboardSpeedo({ state, sendAction, modeSelector }) {
     ];
 
     return html`
-        <div class="panel-main" style="display: flex; flex-direction: column; gap: var(--space-sm);">
-            ${renderChannelToggle('SPEED (KM/H)', 'kmh', enableKmh, isRunning && enableKmh ? hzKmh : '0.0')}
-            <${Dial} 
-                label=${isSweep ? ("TARGET SPEED (MAKS SWEEP: " + state.speedoKmh + " KM/H)") : "ACTUAL SPEED"}
-                value=${state.speedoKmh}
-                displayValue=${!enableKmh ? (isRunning ? 0 : state.speedoKmh) : (isKmhSweeping ? liveKmh : state.speedoKmh)}
-                unit="KM/H"
-                min="0"
-                max="300"
-                step=${state.speedoKmhStep || 10}
-                subInfo=${!enableKmh 
-                    ? "CH: OFF (Muted) — Pin 2 diam / tidak di-sweep" 
-                    : (isKmhSweeping 
-                        ? ("Live Sweep: " + liveKmh + " KM/H (" + hzKmh + " Hz) [Pin 2 AKTIF]") 
-                        : (isRunning ? ("Output: " + hzKmh + " Hz [Pin 2 AKTIF]") : "Standby (Siap)"))}
-                onChange=${(val) => sendAction('setSpeedoKmh', val)}
-                disabled=${!state.connected || isKmhSweeping}
-            />
+        <div class="panel-main">
+            <!-- CH 1: SPEEDOMETER KM/H -->
+            <div class="panel-channel panel-channel-kmh" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                ${renderChannelToggle('CH 1', 'SPEED (KM/H)', 'kmh', enableKmh, isRunning && enableKmh ? hzKmh : '0.0', 'var(--neon-blue)')}
+                <${Dial} 
+                    label=${isSweep ? ("TARGET SPEED (MAKS: " + state.speedoKmh + " KM/H)") : "SPEED (KM/H)"}
+                    value=${state.speedoKmh}
+                    displayValue=${!enableKmh ? (isRunning ? 0 : state.speedoKmh) : (isKmhSweeping ? liveKmh : state.speedoKmh)}
+                    unit="KM/H"
+                    min="0"
+                    max="300"
+                    step=${state.speedoKmhStep || 10}
+                    accentColor="var(--neon-blue)"
+                    subInfo=${!enableKmh 
+                        ? "CH 1 OFF (Muted) — Pin 2 diam (0 Hz / 0V)" 
+                        : (isKmhSweeping 
+                            ? ("Live Sweep: " + liveKmh + " KM/H (" + hzKmh + " Hz) [Pin 2 AKTIF]") 
+                            : (isRunning ? ("Output: " + hzKmh + " Hz [Pin 2 AKTIF]") : "Standby"))}
+                    onChange=${(val) => sendAction('setSpeedoKmh', val)}
+                    disabled=${!state.connected || isKmhSweeping}
+                />
+            </div>
         </div>
         
         <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
-            <!-- TACHO RPM PANEL -->
-            <div class="panel" style="padding: 14px;">
-                ${renderChannelToggle('TACHO (RPM)', 'rpm', enableRpm, isRunning && enableRpm ? hzRpm : '0.0')}
+            <!-- CH 2: TACHO RPM PANEL -->
+            <div class="panel-channel panel-channel-rpm" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                ${renderChannelToggle('CH 2', 'TACHOMETER (RPM)', 'rpm', enableRpm, isRunning && enableRpm ? hzRpm : '0.0', 'var(--neon-green)')}
+                
+                <!-- MAX RPM SCALE PILLS -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; background: rgba(0,0,0,0.35); padding: 5px 8px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">MAX SCALE:</span>
+                    <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+                        ${maxRpmPresets.map(p => html`
+                            <button 
+                                class="btn ${maxRpm === p.val ? 'btn-active' : ''}" 
+                                style="padding: 3px 7px; font-size: 0.70rem; border-radius: 2px; ${maxRpm === p.val ? 'border-color: var(--neon-green); color: var(--neon-green); font-weight: bold;' : ''}"
+                                onClick=${() => sendAction('setSpeedoMaxRpm', p.val)}
+                                disabled=${!state.connected || isRpmSweeping}
+                            >
+                                ${p.label}
+                            </button>
+                        `)}
+                    </div>
+                </div>
+
                 <${Dial} 
-                    label=${isSweep ? ("TARGET TACHO (MAKS SWEEP: " + state.speedoRpm + " RPM)") : "ACTUAL TACHO"}
+                    label=${isSweep ? ("TARGET TACHO (MAKS: " + state.speedoRpm + " RPM)") : "TACHO (RPM)"}
                     value=${state.speedoRpm}
                     displayValue=${!enableRpm ? (isRunning ? 0 : state.speedoRpm) : (isRpmSweeping ? liveRpm : state.speedoRpm)}
                     unit="RPM"
                     min="0"
-                    max="16000"
+                    max=${maxRpm}
                     step=${state.speedoRpmStep || 500}
+                    accentColor="var(--neon-green)"
                     subInfo=${!enableRpm 
-                        ? "CH: OFF (Muted) — Pin 4 diam / tidak di-sweep" 
+                        ? "CH 2 OFF (Muted) — Pin 4 diam (0 Hz / 0V)" 
                         : (isRpmSweeping 
                             ? ("Live Sweep: " + liveRpm + " RPM (" + hzRpm + " Hz) [Pin 4 AKTIF]") 
-                            : (isRunning ? ("Output: " + hzRpm + " Hz [Pin 4] (" + ppr + " PPR)") : "Standby (Siap)"))}
+                            : (isRunning ? ("Output: " + hzRpm + " Hz [Pin 4] (" + ppr + " PPR)") : "Standby"))}
                     onChange=${(val) => sendAction('setSpeedoRpm', val)}
                     disabled=${!state.connected || isRpmSweeping}
                 />
             </div>
 
-            <!-- TEMPERATURE GAUGE PANEL -->
-            <div class="panel" style="padding: 14px;">
-                ${renderChannelToggle('TEMPERATURE GAUGE', 'temp', enableTemp, null)}
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px;">
-                    <button class="btn ${state.speedoTempPercent === 0 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 0)} disabled=${!state.connected || isTempSweeping}>COLD 0%</button>
-                    <button class="btn ${state.speedoTempPercent === 50 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 50)} disabled=${!state.connected || isTempSweeping}>NORM 50%</button>
-                    <button class="btn ${state.speedoTempPercent === 80 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 80)} disabled=${!state.connected || isTempSweeping}>HOT 80%</button>
-                    <button class="btn ${state.speedoTempPercent === 100 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem; color: var(--neon-red);" onClick=${() => sendAction('setSpeedoTemp', 100)} disabled=${!state.connected || isTempSweeping}>MAX 100%</button>
+            <!-- CH 3: TEMPERATURE GAUGE PANEL -->
+            <div class="panel-channel panel-channel-temp" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                ${renderChannelToggle('CH 3', 'TEMPERATURE (ECT)', 'temp', enableTemp, null, 'var(--neon-orange)')}
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                    <button class="btn ${state.speedoTempPercent === 0 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 0)} disabled=${!state.connected || isTempSweeping}>0% C</button>
+                    <button class="btn ${state.speedoTempPercent === 50 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 50)} disabled=${!state.connected || isTempSweeping}>50% MID</button>
+                    <button class="btn ${state.speedoTempPercent === 80 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoTemp', 80)} disabled=${!state.connected || isTempSweeping}>80% HOT</button>
+                    <button class="btn ${state.speedoTempPercent === 100 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem; color: var(--neon-red);" onClick=${() => sendAction('setSpeedoTemp', 100)} disabled=${!state.connected || isTempSweeping}>100% MAX</button>
                 </div>
                 <${Dial} 
-                    label=${isSweep ? ("TARGET SUHU (MAKS: " + state.speedoTempPercent + "%)") : "ACTUAL TEMP"}
+                    label=${isSweep ? ("TARGET SUHU (MAKS: " + state.speedoTempPercent + "%)") : "SUHU ENGINE (ECT)"}
                     value=${state.speedoTempPercent}
                     displayValue=${!enableTemp ? (isRunning ? 0 : state.speedoTempPercent) : (isTempSweeping ? liveTemp : state.speedoTempPercent)}
                     unit="%"
                     min="0"
                     max="100"
                     step=${state.speedoTempStep || 5}
+                    accentColor="var(--neon-orange)"
                     subInfo=${!enableTemp 
-                        ? "CH: OFF (Muted) — Pin 13 diam" 
+                        ? "CH 3 OFF (Muted) — Pin 13 diam" 
                         : (isTempDacActive 
-                            ? ("DAC OUT 2 (0x61) -> " + tempDacVolt + "V DC Murni [Untuk LM358 Sink]") 
-                            : ("Pin 13 PWM 5kHz -> " + tempPwmDuty + "% Duty [Filter LC/RC]"))}
+                            ? ("DAC 2 (0x61) -> " + tempDacVolt + "V DC Murni") 
+                            : ("Pin 13 PWM -> " + tempPwmDuty + "% Duty"))}
                     onChange=${(val) => sendAction('setSpeedoTemp', val)}
                     disabled=${!state.connected || isTempSweeping}
                 />
             </div>
 
-            <!-- FUEL GAUGE PANEL -->
-            <div class="panel" style="padding: 14px;">
-                ${renderChannelToggle('FUEL GAUGE', 'fuel', enableFuel, null)}
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 8px;">
+            <!-- CH 4: FUEL GAUGE PANEL -->
+            <div class="panel-channel panel-channel-fuel" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                ${renderChannelToggle('CH 4', 'FUEL LEVEL (BENSIN)', 'fuel', enableFuel, null, 'var(--neon-yellow)')}
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
                     <button class="btn ${state.speedoFuelPercent === 0 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoFuel', 0)} disabled=${!state.connected || isFuelSweeping}>E (0%)</button>
                     <button class="btn ${state.speedoFuelPercent === 25 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoFuel', 25)} disabled=${!state.connected || isFuelSweeping}>1/4</button>
                     <button class="btn ${state.speedoFuelPercent === 50 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoFuel', 50)} disabled=${!state.connected || isFuelSweeping}>1/2</button>
@@ -160,18 +205,19 @@ export function DashboardSpeedo({ state, sendAction, modeSelector }) {
                     <button class="btn ${state.speedoFuelPercent === 100 ? 'btn-active' : ''}" style="padding: 6px 2px; font-size: 0.72rem;" onClick=${() => sendAction('setSpeedoFuel', 100)} disabled=${!state.connected || isFuelSweeping}>F (100%)</button>
                 </div>
                 <${Dial} 
-                    label=${isSweep ? ("TARGET BENSIN (MAKS: " + state.speedoFuelPercent + "%)") : "ACTUAL FUEL"}
+                    label=${isSweep ? ("TARGET BENSIN (MAKS: " + state.speedoFuelPercent + "%)") : "LEVEL BENSIN (FUEL)"}
                     value=${state.speedoFuelPercent}
                     displayValue=${!enableFuel ? (isRunning ? 0 : state.speedoFuelPercent) : (isFuelSweeping ? liveFuel : state.speedoFuelPercent)}
                     unit="%"
                     min="0"
                     max="100"
                     step=${state.speedoFuelStep || 5}
+                    accentColor="var(--neon-yellow)"
                     subInfo=${!enableFuel 
-                        ? "CH: OFF (Muted) — Pin 15 diam" 
+                        ? "CH 4 OFF (Muted) — Pin 15 diam" 
                         : (isFuelDacActive 
-                            ? ("DAC OUT 1 (0x60) -> " + fuelDacVolt + "V DC Murni [Untuk LM358 Sink]") 
-                            : ("Pin 15 PWM 5kHz -> " + fuelPwmDuty + "% Duty [Filter LC/RC]"))}
+                            ? ("DAC 1 (0x60) -> " + fuelDacVolt + "V DC Murni") 
+                            : ("Pin 15 PWM -> " + fuelPwmDuty + "% Duty"))}
                     onChange=${(val) => sendAction('setSpeedoFuel', val)}
                     disabled=${!state.connected || isFuelSweeping}
                 />
@@ -180,12 +226,11 @@ export function DashboardSpeedo({ state, sendAction, modeSelector }) {
 
         ${modeSelector}
         
-        <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: var(--space-md); grid-column: 1 / -1;">
+        <div class="sticky-run-bar">
             <button 
                 class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
-                style="box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
             >
                 ${state.isRunning ? 'MASTER RUN: ON (AKTIF)' : 'MASTER RUN: OFF (STANDBY)'}
             </button>
@@ -194,198 +239,420 @@ export function DashboardSpeedo({ state, sendAction, modeSelector }) {
         <!-- ADVANCED SETTINGS & HARDWARE CROSS-ROUTING ACCORDION -->
         <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
             <summary class="panel-header" style="cursor: pointer; user-select: none; padding-bottom: 4px;">
-                <span style="font-weight: 700; letter-spacing: 0.08em;">PENGATURAN JALUR OUTPUT HARDWARE & KALIBRASI ▾</span>
+                <span style="font-weight: 700; letter-spacing: 0.08em;">PENGATURAN HARDWARE & KALIBRASI PER CHANNEL ▾</span>
             </summary>
             
             <div style="display: flex; flex-direction: column; gap: var(--space-md); padding-top: var(--space-md);">
                 
-                <!-- HARDWARE ROUTING SELECTION -->
-                <div style="background-color: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid var(--border-sharp);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; color: var(--neon-blue);">
-                            PILIHAN JALUR HARDWARE FUEL & TEMP (DUAL PILIHAN):
-                        </span>
-                        <div style="display: flex; gap: 6px;">
-                            <span class="status-badge" style="font-size: 0.68rem; border-color: ${dacFuelDetected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${dacFuelDetected ? 'var(--neon-green)' : 'var(--text-muted)'};">
-                                ${dacFuelDetected ? 'DAC 1 (0x60 FUEL): ON' : 'DAC 1 (0x60): OFFLINE'}
+                <!-- CARD CH 1: SPEEDOMETER & PPK SETTINGS -->
+                <div class="panel-channel panel-channel-kmh" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="channel-tag" style="background: rgba(255,255,255,0.05); color: var(--neon-blue); border: 1px solid rgba(0,210,255,0.4);">CH 1</span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--neon-blue); letter-spacing: 0.05em;">PENGATURAN SPEEDOMETER (KM/H & PPK)</span>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-muted);">
+                            PULSES PER KM (PPK PRESETS):
+                        </label>
+                        <div class="preset-btn-group">
+                            ${ppkPresets.map(p => html`
+                                <button 
+                                    class="btn ${ppk === p.val ? 'btn-active' : ''}"
+                                    onClick=${() => sendAction('setPulsePerKm', p.val)}
+                                    disabled=${!state.connected || isSweepActive}
+                                >
+                                    ${p.label}
+                                </button>
+                            `)}
+                        </div>
+                    </div>
+                    <div class="responsive-grid-2">
+                        <${Dial} 
+                            label="FINE TUNE PPK"
+                            value=${state.pulsePerKm}
+                            unit="P/KM"
+                            min="500"
+                            max="50000"
+                            step="10"
+                            accentColor="var(--neon-blue)"
+                            onChange=${(val) => sendAction('setPulsePerKm', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="KMH STEP (ENCODER/UI)"
+                            value=${state.speedoKmhStep}
+                            unit="KM/H"
+                            min="1"
+                            max="50"
+                            step="1"
+                            accentColor="var(--neon-blue)"
+                            onChange=${(val) => sendAction('setSpeedoKmhStep', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                </div>
+
+                <!-- CARD CH 2: TACHOMETER (RPM) SETTINGS -->
+                <div class="panel-channel panel-channel-rpm" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="channel-tag" style="background: rgba(255,255,255,0.05); color: var(--neon-green); border: 1px solid rgba(0,255,102,0.4);">CH 2</span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--neon-green); letter-spacing: 0.05em;">PENGATURAN TACHOMETER (RPM & PPR)</span>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-muted);">
+                            TACHOMETER PULSES PER REV (PPR / CYLINDERS):
+                        </label>
+                        <div class="preset-btn-group">
+                            ${pprPresets.map(p => html`
+                                <button 
+                                    class="btn ${ppr === p.val ? 'btn-active' : ''}"
+                                    onClick=${() => sendAction('setTachoPpr', p.val)}
+                                    disabled=${!state.connected || isSweepActive}
+                                >
+                                    ${p.label}
+                                </button>
+                            `)}
+                        </div>
+                    </div>
+                    <div class="responsive-grid-2">
+                        <${Dial} 
+                            label="MAX RPM SCALE (TACHO)"
+                            value=${maxRpm}
+                            unit="RPM"
+                            min="1000"
+                            max="20000"
+                            step="500"
+                            accentColor="var(--neon-green)"
+                            onChange=${(val) => sendAction('setSpeedoMaxRpm', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="RPM STEP (ENCODER/UI)"
+                            value=${state.speedoRpmStep}
+                            unit="RPM"
+                            min="10"
+                            max="1000"
+                            step="10"
+                            accentColor="var(--neon-green)"
+                            onChange=${(val) => sendAction('setSpeedoRpmStep', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                </div>
+
+                <!-- CARD CH 3: TEMPERATURE GAUGE SETTINGS -->
+                <div class="panel-channel panel-channel-temp" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="channel-tag" style="background: rgba(255,255,255,0.05); color: var(--neon-orange); border: 1px solid rgba(255,153,0,0.4);">CH 3</span>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--neon-orange); letter-spacing: 0.05em;">KALIBRASI 3-TITIK JARUM SUHU (TEMP)</span>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <button 
+                                class="btn" 
+                                style="padding: 3px 8px; font-size: 0.7rem;" 
+                                onClick=${() => sendAction('setSpeedoTempCal', { min: 0, mid: 50, max: 100 })}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                RESET (0/50/100)
+                            </button>
+                            <button 
+                                class="btn" 
+                                style="padding: 3px 8px; font-size: 0.7rem;" 
+                                onClick=${() => sendAction('setSpeedoTempCal', { min: 10, mid: 42, max: 85 })}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                NTC GAUGE (10/42/85)
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <${Dial} 
+                            label="MIN (COLD / 0%)"
+                            value=${state.speedoTempCalMin !== undefined ? state.speedoTempCalMin : 0}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-orange)"
+                            onChange=${(val) => sendAction('setSpeedoTempCal', { min: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="MID (NORM / 50%)"
+                            value=${state.speedoTempCalMid !== undefined ? state.speedoTempCalMid : 50}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-orange)"
+                            onChange=${(val) => sendAction('setSpeedoTempCal', { mid: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="MAX (HOT / 100%)"
+                            value=${state.speedoTempCalMax !== undefined ? state.speedoTempCalMax : 100}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-orange)"
+                            onChange=${(val) => sendAction('setSpeedoTempCal', { max: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                    <div>
+                        <${Dial} 
+                            label="TEMP STEP (ENCODER/UI)"
+                            value=${state.speedoTempStep}
+                            unit="%"
+                            min="1"
+                            max="25"
+                            step="1"
+                            accentColor="var(--neon-orange)"
+                            onChange=${(val) => sendAction('setSpeedoTempStep', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                </div>
+
+                <!-- CARD CH 4: FUEL GAUGE SETTINGS -->
+                <div class="panel-channel panel-channel-fuel" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="channel-tag" style="background: rgba(255,255,255,0.05); color: var(--neon-yellow); border: 1px solid rgba(255,215,0,0.4);">CH 4</span>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--neon-yellow); letter-spacing: 0.05em;">KALIBRASI 3-TITIK JARUM BENSIN (FUEL)</span>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <button 
+                                class="btn" 
+                                style="padding: 3px 8px; font-size: 0.7rem;" 
+                                onClick=${() => sendAction('setSpeedoFuelCal', { min: 0, mid: 50, max: 100 })}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                RESET (0/50/100)
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <${Dial} 
+                            label="MIN (EMPTY / 0%)"
+                            value=${state.speedoFuelCalMin !== undefined ? state.speedoFuelCalMin : 0}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-yellow)"
+                            onChange=${(val) => sendAction('setSpeedoFuelCal', { min: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="MID (HALF / 50%)"
+                            value=${state.speedoFuelCalMid !== undefined ? state.speedoFuelCalMid : 50}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-yellow)"
+                            onChange=${(val) => sendAction('setSpeedoFuelCal', { mid: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                        <${Dial} 
+                            label="MAX (FULL / 100%)"
+                            value=${state.speedoFuelCalMax !== undefined ? state.speedoFuelCalMax : 100}
+                            unit="%"
+                            min="0"
+                            max="100"
+                            step="1"
+                            accentColor="var(--neon-yellow)"
+                            onChange=${(val) => sendAction('setSpeedoFuelCal', { max: val })}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                    <div>
+                        <${Dial} 
+                            label="FUEL STEP (ENCODER/UI)"
+                            value=${state.speedoFuelStep}
+                            unit="%"
+                            min="1"
+                            max="25"
+                            step="1"
+                            accentColor="var(--neon-yellow)"
+                            onChange=${(val) => sendAction('setSpeedoFuelStep', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
+                </div>
+
+                <!-- CARD 5: SYSTEM & HARDWARE CROSS-ROUTING -->
+                <div class="panel" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid #666;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.05em;">
+                        PENGATURAN ROUTING HARDWARE & RESPON GAUGE
+                    </div>
+
+                    <!-- HARDWARE ROUTING SELECTION -->
+                    <div style="background-color: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid var(--border-sharp);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-primary);">
+                                JALUR HARDWARE FUEL & TEMP (DUAL MCP4725 / PWM):
                             </span>
-                            <span class="status-badge" style="font-size: 0.68rem; border-color: ${dacTempDetected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${dacTempDetected ? 'var(--neon-green)' : 'var(--text-muted)'};">
-                                ${dacTempDetected ? 'DAC 2 (0x61 TEMP): ON' : 'DAC 2 (0x61): OFFLINE'}
-                            </span>
+                            <div style="display: flex; gap: 6px;">
+                                <span class="status-badge" style="font-size: 0.68rem; border-color: ${dacFuelDetected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${dacFuelDetected ? 'var(--neon-green)' : 'var(--text-muted)'};">
+                                    ${dacFuelDetected ? 'DAC 1 (0x60 FUEL): ON' : 'DAC 1 (0x60): OFFLINE'}
+                                </span>
+                                <span class="status-badge" style="font-size: 0.68rem; border-color: ${dacTempDetected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${dacTempDetected ? 'var(--neon-green)' : 'var(--text-muted)'};">
+                                    ${dacTempDetected ? 'DAC 2 (0x61 TEMP): ON' : 'DAC 2 (0x61): OFFLINE'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                            <button 
+                                class="btn ${dacRouting === 3 ? 'btn-active' : ''}"
+                                style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 3 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoDacRouting', 3)}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                DUAL MCP4725 (0x60 FUEL + 0x61 TEMP DC MURNI)
+                            </button>
+                            <button 
+                                class="btn ${dacRouting === 1 ? 'btn-active' : ''}"
+                                style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 1 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoDacRouting', 1)}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                SINGLE MCP4725 FUEL (0x60) + PWM TEMP (PIN 13)
+                            </button>
+                            <button 
+                                class="btn ${dacRouting === 0 ? 'btn-active' : ''}"
+                                style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 0 ? 'var(--neon-orange)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoDacRouting', 0)}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                STANDAR DUAL PWM (PIN 13 & PIN 15 + FILTER LC/RC)
+                            </button>
+                            <button 
+                                class="btn ${dacRouting === 2 ? 'btn-active' : ''}"
+                                style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 2 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoDacRouting', 2)}
+                                disabled=${!state.connected || isSweepActive}
+                            >
+                                SINGLE MCP4725 TEMP (0x61) + PWM FUEL (PIN 15)
+                            </button>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
-                        <button 
-                            class="btn ${dacRouting === 3 ? 'btn-active' : ''}"
-                            style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 3 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoDacRouting', 3)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            DUAL MCP4725 (0x60 FUEL + 0x61 TEMP DC MURNI)
-                        </button>
-                        <button 
-                            class="btn ${dacRouting === 1 ? 'btn-active' : ''}"
-                            style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 1 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoDacRouting', 1)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            SINGLE MCP4725 FUEL (0x60) + PWM TEMP (PIN 13)
-                        </button>
-                        <button 
-                            class="btn ${dacRouting === 0 ? 'btn-active' : ''}"
-                            style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 0 ? 'var(--neon-orange)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoDacRouting', 0)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            STANDAR DUAL PWM (PIN 13 & PIN 15 + FILTER LC/RC)
-                        </button>
-                        <button 
-                            class="btn ${dacRouting === 2 ? 'btn-active' : ''}"
-                            style="padding: 10px 6px; font-size: 0.74rem; font-weight: bold; border-color: ${dacRouting === 2 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoDacRouting', 2)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            SINGLE MCP4725 TEMP (0x61) + PWM FUEL (PIN 15)
-                        </button>
-                    </div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
-                        • <b>Dual MCP4725:</b> Modul 1 (A0 ke GND -> Alamat 0x60) untuk Fuel dan Modul 2 (A0 ke VCC -> Alamat 0x61) untuk Temp. Keduanya menghasilkan tegangan analog 0-5V DC murni tanpa riak gelombang.<br/>
-                        • <b>Standar Dual PWM:</b> Mengeluarkan pulsa PWM 5kHz di Pin 13 dan Pin 15 untuk digunakan bersama rangkaian Filter Perata Elco / LC / RC eksternal.
-                    </div>
-                </div>
-
-                <!-- GAUGE CURVE SELECTION -->
-                <div style="background-color: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid var(--border-sharp);">
-                    <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 8px; color: var(--neon-green);">
-                        KURVA RESPON JARUM BENSIN & SUHU:
-                    </label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button 
-                            class="btn ${gaugeCurve === 0 ? 'btn-active' : ''}"
-                            style="padding: 10px 4px; font-size: 0.75rem; font-weight: bold; border-color: ${gaugeCurve === 0 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoGaugeCurve', 0)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            NON-LINIER (TERKALIBRASI THERMAL / AKAR KUADRAT)
-                        </button>
-                        <button 
-                            class="btn ${gaugeCurve === 1 ? 'btn-active' : ''}"
-                            style="padding: 10px 4px; font-size: 0.75rem; font-weight: bold; border-color: ${gaugeCurve === 1 ? 'var(--neon-orange)' : 'var(--border-sharp)'};"
-                            onClick=${() => sendAction('setSpeedoGaugeCurve', 1)}
-                            disabled=${!state.connected || isSweep}
-                        >
-                            LINIER 1:1 (STANDAR DC / PWM)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- TACHO PPR PRESETS -->
-                <div>
-                    <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 8px; color: var(--text-muted);">
-                        TACHOMETER PULSES PER REV (PPR / CYLINDERS):
-                    </label>
-                    <div class="preset-btn-group">
-                        ${pprPresets.map(p => html`
+                    <!-- GAUGE CURVE SELECTION -->
+                    <div style="background-color: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid var(--border-sharp);">
+                        <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 8px; color: var(--neon-green);">
+                            KURVA RESPON JARUM BENSIN & SUHU:
+                        </label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <button 
-                                class="btn ${ppr === p.val ? 'btn-active' : ''}"
-                                onClick=${() => sendAction('setTachoPpr', p.val)}
-                                disabled=${!state.connected || isSweep}
+                                class="btn ${gaugeCurve === 0 ? 'btn-active' : ''}"
+                                style="padding: 10px 4px; font-size: 0.75rem; font-weight: bold; border-color: ${gaugeCurve === 0 ? 'var(--neon-green)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoGaugeCurve', 0)}
+                                disabled=${!state.connected || isSweepActive}
                             >
-                                ${p.label}
+                                NON-LINIER (TERKALIBRASI THERMAL / AKAR KUADRAT)
                             </button>
-                        `)}
-                    </div>
-                </div>
-
-                <!-- PPK PRESETS -->
-                <div>
-                    <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 8px; color: var(--text-muted);">
-                        PULSES PER KM (PPK PRESETS):
-                    </label>
-                    <div class="preset-btn-group">
-                        ${ppkPresets.map(p => html`
                             <button 
-                                class="btn ${ppk === p.val ? 'btn-active' : ''}"
-                                onClick=${() => sendAction('setPulsePerKm', p.val)}
-                                disabled=${!state.connected || isSweep}
+                                class="btn ${gaugeCurve === 1 ? 'btn-active' : ''}"
+                                style="padding: 10px 4px; font-size: 0.75rem; font-weight: bold; border-color: ${gaugeCurve === 1 ? 'var(--neon-orange)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoGaugeCurve', 1)}
+                                disabled=${!state.connected || isSweepActive}
                             >
-                                ${p.label}
+                                LINIER 1:1 (STANDAR DC / PWM + 3-POINT CAL)
                             </button>
-                        `)}
+                        </div>
                     </div>
-                </div>
 
-                <!-- FINE TUNE PPK & SWEEP TIME -->
-                <div class="responsive-grid-2">
-                    <${Dial} 
-                        label="FINE TUNE PPK"
-                        value=${state.pulsePerKm}
-                        unit="P/KM"
-                        min="1000"
-                        max="20000"
-                        step="10"
-                        onChange=${(val) => sendAction('setPulsePerKm', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
-                    <${Dial} 
-                        label="SWEEP TIME"
-                        value=${state.sweepTimeSec}
-                        unit="SEC"
-                        min="1"
-                        max="60"
-                        step="1"
-                        onChange=${(val) => sendAction('setSweepTime', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
-                </div>
+                    <!-- FREKUENSI PWM GAUGE (FUEL & TEMP) -->
+                    <div style="background-color: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid var(--border-sharp);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; color: var(--neon-blue);">
+                                ⚡ FREKUENSI PWM GAUGE (PIN 13 & PIN 15):
+                            </label>
+                            <span style="font-size: 0.85rem; font-weight: 800; color: var(--neon-blue); font-family: monospace;">
+                                ${pwmFreq} Hz
+                            </span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 6px; margin-bottom: 12px;">
+                            <button 
+                                class="btn ${pwmFreq === 100 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 100 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 100)}
+                                disabled=${!state.connected}
+                            >
+                                100 Hz
+                            </button>
+                            <button 
+                                class="btn ${pwmFreq === 250 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 250 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 250)}
+                                disabled=${!state.connected}
+                            >
+                                250 Hz
+                            </button>
+                            <button 
+                                class="btn ${pwmFreq === 500 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 500 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 500)}
+                                disabled=${!state.connected}
+                            >
+                                500 Hz
+                            </button>
+                            <button 
+                                class="btn ${pwmFreq === 1000 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 1000 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 1000)}
+                                disabled=${!state.connected}
+                            >
+                                1 kHz
+                            </button>
+                            <button 
+                                class="btn ${pwmFreq === 2500 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 2500 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 2500)}
+                                disabled=${!state.connected}
+                            >
+                                2.5 kHz
+                            </button>
+                            <button 
+                                class="btn ${pwmFreq === 5000 ? 'btn-active' : ''}"
+                                style="padding: 8px 4px; font-size: 0.72rem; font-weight: bold; border-color: ${pwmFreq === 5000 ? 'var(--neon-blue)' : 'var(--border-sharp)'};"
+                                onClick=${() => sendAction('setSpeedoPwmFreq', 5000)}
+                                disabled=${!state.connected}
+                            >
+                                5 kHz (Def)
+                            </button>
+                        </div>
+                        <${Dial} 
+                            label="SETTING BEBAS FREKUENSI PWM"
+                            value=${pwmFreq}
+                            unit="Hz"
+                            min="10"
+                            max="5000"
+                            step="10"
+                            accentColor="var(--neon-blue)"
+                            onChange=${(val) => sendAction('setSpeedoPwmFreq', val)}
+                            disabled=${!state.connected}
+                        />
+                    </div>
 
-                <!-- STEP SIZES ROW 1: SPEED & RPM -->
-                <div class="responsive-grid-2">
-                    <${Dial} 
-                        label="KMH STEP (ENCODER/UI)"
-                        value=${state.speedoKmhStep}
-                        unit="KM/H"
-                        min="1"
-                        max="50"
-                        step="1"
-                        onChange=${(val) => sendAction('setSpeedoKmhStep', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
-                    <${Dial} 
-                        label="RPM STEP (ENCODER/UI)"
-                        value=${state.speedoRpmStep}
-                        unit="RPM"
-                        min="10"
-                        max="1000"
-                        step="10"
-                        onChange=${(val) => sendAction('setSpeedoRpmStep', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
-                </div>
-
-                <!-- STEP SIZES ROW 2: TEMP & FUEL -->
-                <div class="responsive-grid-2">
-                    <${Dial} 
-                        label="TEMP STEP (ENCODER/UI)"
-                        value=${state.speedoTempStep}
-                        unit="%"
-                        min="1"
-                        max="25"
-                        step="1"
-                        onChange=${(val) => sendAction('setSpeedoTempStep', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
-                    <${Dial} 
-                        label="FUEL STEP (ENCODER/UI)"
-                        value=${state.speedoFuelStep}
-                        unit="%"
-                        min="1"
-                        max="25"
-                        step="1"
-                        onChange=${(val) => sendAction('setSpeedoFuelStep', val)}
-                        disabled=${!state.connected || isSweep}
-                    />
+                    <div>
+                        <${Dial} 
+                            label="SWEEP TIME"
+                            value=${state.sweepTimeSec}
+                            unit="SEC"
+                            min="1"
+                            max="60"
+                            step="1"
+                            accentColor="var(--neon-purple)"
+                            onChange=${(val) => sendAction('setSweepTime', val)}
+                            disabled=${!state.connected || isSweepActive}
+                        />
+                    </div>
                 </div>
             </div>
         </details>

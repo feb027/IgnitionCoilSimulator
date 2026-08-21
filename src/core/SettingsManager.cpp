@@ -42,6 +42,15 @@ void SettingsManager::save() {
         _settings.speedoEnableTemp != _savedSettings.speedoEnableTemp ||
         _settings.speedoEnableFuel != _savedSettings.speedoEnableFuel ||
         _settings.speedoTachoPpr != _savedSettings.speedoTachoPpr ||
+        _settings.speedoGaugeCurve != _savedSettings.speedoGaugeCurve ||
+        _settings.speedoDacRouting != _savedSettings.speedoDacRouting ||
+        _settings.speedoPwmFreqHz != _savedSettings.speedoPwmFreqHz ||
+        _settings.speedoTempCalMin != _savedSettings.speedoTempCalMin ||
+        _settings.speedoTempCalMid != _savedSettings.speedoTempCalMid ||
+        _settings.speedoTempCalMax != _savedSettings.speedoTempCalMax ||
+        _settings.speedoFuelCalMin != _savedSettings.speedoFuelCalMin ||
+        _settings.speedoFuelCalMid != _savedSettings.speedoFuelCalMid ||
+        _settings.speedoFuelCalMax != _savedSettings.speedoFuelCalMax ||
         _settings.stepperSpeed != _savedSettings.stepperSpeed) {
         
         preferences.putInt("rpm", _settings.rpm);
@@ -67,6 +76,15 @@ void SettingsManager::save() {
         preferences.putBool("s_en_tmp", _settings.speedoEnableTemp);
         preferences.putBool("s_en_ful", _settings.speedoEnableFuel);
         preferences.putFloat("s_t_ppr", _settings.speedoTachoPpr);
+        preferences.putInt("s_g_crv", _settings.speedoGaugeCurve);
+        preferences.putInt("s_dac_rt", _settings.speedoDacRouting);
+        preferences.putInt("s_pwm_f", _settings.speedoPwmFreqHz);
+        preferences.putInt("s_t_cmin", _settings.speedoTempCalMin);
+        preferences.putInt("s_t_cmid", _settings.speedoTempCalMid);
+        preferences.putInt("s_t_cmax", _settings.speedoTempCalMax);
+        preferences.putInt("s_f_cmin", _settings.speedoFuelCalMin);
+        preferences.putInt("s_f_cmid", _settings.speedoFuelCalMid);
+        preferences.putInt("s_f_cmax", _settings.speedoFuelCalMax);
         preferences.putInt("st_spd", _settings.stepperSpeed);
         
         // Sync saved state
@@ -103,6 +121,15 @@ void SettingsManager::load() {
     _settings.speedoTachoPpr = preferences.getFloat("s_t_ppr", 2.0f);
     _settings.speedoGaugeCurve = preferences.getInt("s_g_crv", 0); // 0: Non-Linear Sqrt Curve
     _settings.speedoDacRouting = preferences.getInt("s_dac_rt", 3); // 3: Dual MCP4725 (0x60 Fuel + 0x61 Temp)
+    _settings.speedoPwmFreqHz = preferences.getInt("s_pwm_f", 5000); // Default 5000 Hz (5kHz)
+    if (_settings.speedoPwmFreqHz < 10) _settings.speedoPwmFreqHz = 10;
+    if (_settings.speedoPwmFreqHz > 5000) _settings.speedoPwmFreqHz = 5000;
+    _settings.speedoTempCalMin = preferences.getInt("s_t_cmin", 0);
+    _settings.speedoTempCalMid = preferences.getInt("s_t_cmid", 50);
+    _settings.speedoTempCalMax = preferences.getInt("s_t_cmax", 100);
+    _settings.speedoFuelCalMin = preferences.getInt("s_f_cmin", 0);
+    _settings.speedoFuelCalMid = preferences.getInt("s_f_cmid", 50);
+    _settings.speedoFuelCalMax = preferences.getInt("s_f_cmax", 100);
     _settings.speedoDacFuelFound = false;
     _settings.speedoDacTempFound = false;
     _settings.stepperSpeed = preferences.getInt("st_spd", 50);
@@ -116,7 +143,7 @@ void SettingsManager::load() {
     // Injector Defaults
     _settings.injectorMs = preferences.getFloat("inj_ms", 3.0f);
     _settings.injectorRpm = preferences.getInt("inj_rpm", 1500);
-    _settings.injectorFlowPulses = preferences.getInt("inj_flw", 100);
+    _settings.injectorFlowPulses = preferences.getInt("inj_pul", 100);
     _settings.injectorPulsesLeft = 0;
     _settings.injectorFlowRunning = false;
     _settings.injectorPeakCurrentA = 0.0f;
@@ -168,7 +195,7 @@ void SettingsManager::resetToDefaults() {
     _settings.dutyCycle = 50.0f;
     _settings.iscDuty = 50.0f;
     _settings.iscFreq = 250;
-    _settings.pulseMode = PULSE_COIL_PASSIVE;
+    _settings.pulseMode = PULSE_DWELL;
     _settings.mode = MODE_CONTINUOUS;
     _settings.sweepTimeSec = 5;
     _settings.pulsePerKm = 4000;
@@ -187,6 +214,13 @@ void SettingsManager::resetToDefaults() {
     _settings.speedoTachoPpr = 2.0f;
     _settings.speedoGaugeCurve = 0;
     _settings.speedoDacRouting = 3;
+    _settings.speedoPwmFreqHz = 5000;
+    _settings.speedoTempCalMin = 0;
+    _settings.speedoTempCalMid = 50;
+    _settings.speedoTempCalMax = 100;
+    _settings.speedoFuelCalMin = 0;
+    _settings.speedoFuelCalMid = 50;
+    _settings.speedoFuelCalMax = 100;
     _settings.speedoDacFuelFound = false;
     _settings.speedoDacTempFound = false;
     _settings.stepperSpeed = 50;

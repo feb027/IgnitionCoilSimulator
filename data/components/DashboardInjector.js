@@ -64,7 +64,7 @@ export function DashboardInjector({ state, sendAction, modeSelector }) {
         ${modeSelector}
         
         <!-- MASTER RUN BUTTON -->
-        <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: var(--space-md); grid-column: 1 / -1;">
+        <div class="sticky-run-bar">
             <button 
                 class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
                 onClick=${() => {
@@ -73,7 +73,6 @@ export function DashboardInjector({ state, sendAction, modeSelector }) {
                     else sendAction('toggleRun');
                 }}
                 disabled=${!state.connected}
-                style="box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
             >
                 ${isAutoDiag ? 'AUTO DIAG IN PROGRESS - ABORT' : 
                   (isFlow ? ('FLOW TEST IN PROGRESS (' + pulsesLeft + ' LEFT) - STOP') : 

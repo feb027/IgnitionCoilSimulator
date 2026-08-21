@@ -35,6 +35,19 @@ private:
     bool _dacTempFound;
     uint32_t _lastDacPollMs;
     
+    // Hardware state cache to prevent continuous LEDC timer register resets and I2C flooding
+    float _lastHzRpm;
+    float _lastHzKmh;
+    bool  _lastRpmActive;
+    bool  _lastKmhActive;
+    bool  _lastTempActive;
+    bool  _lastFuelActive;
+    uint32_t _lastDutyTemp;
+    uint32_t _lastDutyFuel;
+    int   _lastPwmFreq;
+    float _lastDacFuelVolt;
+    float _lastDacTempVolt;
+    
     void detectDacs();
     void writeDac(uint8_t addr, float volts);
     void updateTimerConfig();

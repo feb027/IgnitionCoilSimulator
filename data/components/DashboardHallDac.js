@@ -292,12 +292,11 @@ export function DashboardHallDac({ state, sendAction, modeSelector }) {
         ${modeSelector}
         
         <!-- TOMBOL RUN UTAMA -->
-        <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: var(--space-md); grid-column: 1 / -1;">
+        <div class="sticky-run-bar">
             <button 
                 class="btn btn-run ${isRunning ? 'is-running' : ''}"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
-                style="box-shadow: 0 4px 20px rgba(0,0,0,0.6);"
             >
                 ${isRunning ? (domain === 1 ? 'OUTPUT SENSOR 12V: AKTIF (ON)' : 'OUTPUT SENSOR 5V: AKTIF (ON)') : 'OUTPUT SENSOR: MATI (MUTED)'}
             </button>

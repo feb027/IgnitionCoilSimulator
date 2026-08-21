@@ -23,6 +23,7 @@ function App() {
         iscFreq: 250,
         speedoKmh: 120,
         speedoRpm: 4000,
+        speedoMaxRpm: parseInt(localStorage.getItem('speedoMaxRpm')) || 16000,
         speedoTempPercent: 50,
         speedoFuelPercent: 50,
         speedoEnableRpm: true,
@@ -30,6 +31,13 @@ function App() {
         speedoEnableTemp: true,
         speedoEnableFuel: true,
         speedoTachoPpr: 2.0,
+        speedoTempCalMin: 0,
+        speedoTempCalMid: 50,
+        speedoTempCalMax: 100,
+        speedoFuelCalMin: 0,
+        speedoFuelCalMid: 50,
+        speedoFuelCalMax: 100,
+        speedoPwmFreqHz: 5000,
         currentSpeedoKmh: 0,
         dutyCycle: 15.0,
         sweepTimeSec: 5,
@@ -140,6 +148,16 @@ function App() {
             if (action === 'setIscFreq') setState(s => ({ ...s, iscFreq: value }));
             if (action === 'setSpeedoKmh') setState(s => ({ ...s, speedoKmh: value }));
             if (action === 'setSpeedoRpm') setState(s => ({ ...s, speedoRpm: value }));
+            if (action === 'setSpeedoMaxRpm') {
+                const maxVal = Number(value) || 16000;
+                localStorage.setItem('speedoMaxRpm', maxVal);
+                setState(s => {
+                    if (s.speedoRpm > maxVal) {
+                        setTimeout(() => sendAction('setSpeedoRpm', maxVal), 10);
+                    }
+                    return { ...s, speedoMaxRpm: maxVal };
+                });
+            }
             if (action === 'setSpeedoTemp') setState(s => ({ ...s, speedoTempPercent: value }));
             if (action === 'setSpeedoFuel') setState(s => ({ ...s, speedoFuelPercent: value }));
             if (action === 'toggleSpeedoChannel') {
@@ -151,6 +169,23 @@ function App() {
             if (action === 'setTachoPpr') setState(s => ({ ...s, speedoTachoPpr: value }));
             if (action === 'setSpeedoGaugeCurve') setState(s => ({ ...s, speedoGaugeCurve: value }));
             if (action === 'setSpeedoDacRouting') setState(s => ({ ...s, speedoDacRouting: value }));
+            if (action === 'setSpeedoPwmFreq') setState(s => ({ ...s, speedoPwmFreqHz: value }));
+            if (action === 'setSpeedoTempCal') {
+                setState(s => ({
+                    ...s,
+                    speedoTempCalMin: value.min !== undefined ? value.min : s.speedoTempCalMin,
+                    speedoTempCalMid: value.mid !== undefined ? value.mid : s.speedoTempCalMid,
+                    speedoTempCalMax: value.max !== undefined ? value.max : s.speedoTempCalMax
+                }));
+            }
+            if (action === 'setSpeedoFuelCal') {
+                setState(s => ({
+                    ...s,
+                    speedoFuelCalMin: value.min !== undefined ? value.min : s.speedoFuelCalMin,
+                    speedoFuelCalMid: value.mid !== undefined ? value.mid : s.speedoFuelCalMid,
+                    speedoFuelCalMax: value.max !== undefined ? value.max : s.speedoFuelCalMax
+                }));
+            }
             if (action === 'setDuty') setState(s => ({ ...s, dutyCycle: value }));
             if (action === 'setSweepTime') setState(s => ({ ...s, sweepTimeSec: value }));
             if (action === 'setPulsePerKm') setState(s => ({ ...s, pulsePerKm: value }));

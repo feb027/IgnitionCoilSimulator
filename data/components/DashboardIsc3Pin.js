@@ -76,12 +76,11 @@ export function DashboardIsc3Pin({ state, sendAction, modeSelector }) {
 
         ${modeSelector}
         
-        <div style="position: sticky; bottom: 16px; z-index: 100; margin-top: 16px; grid-column: 1 / -1;">
+        <div class="sticky-run-bar">
             <button 
                 class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
-                style="box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
             >
                 ${state.isRunning ? 'ON' : 'OFF'}
             </button>
