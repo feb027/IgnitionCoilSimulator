@@ -163,6 +163,8 @@ void NetworkManager::broadcastState() {
     doc["coilLeakCount"] = s.coilLeakCount;
     doc["coilLeakRate"] = s.coilLeakRate;
     doc["coilLeakDetected"] = s.coilLeakDetected;
+    doc["coilLeakSeverity"] = s.coilLeakSeverity;
+    doc["coilCurrentStatus"] = s.coilCurrentStatus;
     
     // Injector Telemetry
     doc["injectorMs"] = s.injectorMs;
@@ -251,6 +253,8 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["coilLeakCount"] = s.coilLeakCount;
         doc["coilLeakRate"] = s.coilLeakRate;
         doc["coilLeakDetected"] = s.coilLeakDetected;
+        doc["coilLeakSeverity"] = s.coilLeakSeverity;
+        doc["coilCurrentStatus"] = s.coilCurrentStatus;
         
         doc["injectorMs"] = s.injectorMs;
         doc["injectorRpm"] = s.injectorRpm;

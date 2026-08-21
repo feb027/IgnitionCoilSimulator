@@ -76,15 +76,35 @@ void PeripheralCoilActive3P::update() {
 
 void PeripheralCoilActive3P::samplePrimaryCurrent() {
     uint32_t now = millis();
-    if (now - _lastCurrentSampleTime > 100) {
+    if (now - _lastCurrentSampleTime > 50) {
         AppSettings& s = _settingsMgr.getSettings();
         if (s.isRunning) {
             int rawAdc = analogRead(PIN_COIL_ISENSE);
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-            float amps = voltage * 6.5f;
-            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.7f) + (amps * 0.3f);
+            float amps = 0.0f;
+            if (voltage > 2.20f) {
+                // ACS712-30A (66mV/A) with peak-hold detector
+                amps = (voltage - 2.20f) / 0.066f;
+            } else if (voltage > 0.05f) {
+                // Direct current shunt or scaled divider
+                amps = voltage * 4.5f;
+            }
+            if (amps > 30.0f) amps = 30.0f;
+            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
+            
+            // Real-time Current Saturation Status
+            if (s.coilPeakCurrentA >= 5.5f && s.coilPeakCurrentA <= 10.5f) {
+                strncpy(s.coilCurrentStatus, "OPTIMAL (6-10A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.5f) {
+                strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilPeakCurrentA > 10.5f) {
+                strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            } else {
+                strncpy(s.coilCurrentStatus, "NO CURRENT", sizeof(s.coilCurrentStatus));
+            }
         } else {
             s.coilPeakCurrentA = 0.0f;
+            strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
         }
         _lastCurrentSampleTime = now;
     }

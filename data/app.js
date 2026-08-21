@@ -75,6 +75,8 @@ function App() {
         coilLeakCount: 0,
         coilLeakRate: 0,
         coilLeakDetected: false,
+        coilLeakSeverity: "PERFECT (0 LEAK)",
+        coilCurrentStatus: "STANDBY",
         connected: false,
         isDrawerOpen: false
     });

@@ -117,6 +117,8 @@ struct AppSettings {
     uint32_t coilLeakCount;     // Total body leakage arcs detected
     uint16_t coilLeakRate;      // Leakage sparks per second (Hz)
     bool coilLeakDetected;      // True if leakage detected in current window
+    char coilLeakSeverity[32];  // "PERFECT (0 LEAK)", "MICRO-LEAKAGE", "MEDIUM ARCING", "SEVERE BREAKDOWN"
+    char coilCurrentStatus[32]; // "OPTIMAL (6-10A)", "WEAK (<5A)", "OVERCURRENT (>11A)", "STANDBY"
 };
 
 class SettingsManager {

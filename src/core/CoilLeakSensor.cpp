@@ -29,18 +29,29 @@ void CoilLeakSensor::update(AppSettings& s) {
         s.coilLeakRate = (uint16_t)(isr_leak_total - prev_leak_snapshot);
         prev_leak_snapshot = isr_leak_total;
         last_rate_check_time = now;
+        
+        // 4-Tier Severity Classification
+        if (s.coilLeakRate == 0 && isr_leak_total == 0) {
+            strncpy(s.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(s.coilLeakSeverity));
+        } else if (s.coilLeakRate <= 10) {
+            strncpy(s.coilLeakSeverity, "MICRO-LEAKAGE", sizeof(s.coilLeakSeverity));
+        } else if (s.coilLeakRate <= 50) {
+            strncpy(s.coilLeakSeverity, "MEDIUM ARCING", sizeof(s.coilLeakSeverity));
+        } else {
+            strncpy(s.coilLeakSeverity, "SEVERE BREAKDOWN", sizeof(s.coilLeakSeverity));
+        }
     }
     
     // Active detection window (active within last 250ms)
     bool isLeakingNow = (now - isr_leak_last_time_ms < 250) && (isr_leak_total > 0);
     s.coilLeakDetected = isLeakingNow;
     
-    // Buzzer alarm control
+    // Buzzer alarm control (fast pulsing on severe leakage)
     if (isLeakingNow && s.isRunning) {
-        // Trigger buzzer beep pattern
         if (now > buzzer_off_time) {
             digitalWrite(PIN_BUZZER, HIGH);
-            buzzer_off_time = now + 40; // 40ms pulse
+            uint32_t pulseDuration = (s.coilLeakRate > 50) ? 25 : 40;
+            buzzer_off_time = now + pulseDuration;
         }
     } else {
         if (now >= buzzer_off_time) {
@@ -56,5 +67,6 @@ void CoilLeakSensor::reset(AppSettings& s) {
     s.coilLeakCount = 0;
     s.coilLeakRate = 0;
     s.coilLeakDetected = false;
+    strncpy(s.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(s.coilLeakSeverity));
     digitalWrite(PIN_BUZZER, LOW);
 }

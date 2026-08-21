@@ -64,8 +64,11 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: var(--space-md);">
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 14px; text-align: center;">
                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">PEAK PRIMARY CURRENT (I_peak)</div>
-                    <div style="font-size: 2.2rem; font-weight: 700; color: var(--neon-orange); margin-top: 4px;">
+                    <div style="font-size: 2.2rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
                         ${currentA} A
+                    </div>
+                    <div style="font-size: 0.8rem; font-weight: bold; margin-top: 4px; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
+                        STATUS: ${state.coilCurrentStatus || "STANDBY"}
                     </div>
                 </div>
 

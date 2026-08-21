@@ -112,15 +112,35 @@ void PeripheralCoilActive4P::update() {
 
 void PeripheralCoilActive4P::samplePrimaryCurrent() {
     uint32_t now = millis();
-    if (now - _lastCurrentSampleTime > 100) {
+    if (now - _lastCurrentSampleTime > 50) {
         AppSettings& s = _settingsMgr.getSettings();
         if (s.isRunning) {
             int rawAdc = analogRead(PIN_COIL_ISENSE);
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-            float amps = voltage * 6.5f;
-            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.7f) + (amps * 0.3f);
+            float amps = 0.0f;
+            if (voltage > 2.20f) {
+                // ACS712-30A (66mV/A) with peak-hold detector
+                amps = (voltage - 2.20f) / 0.066f;
+            } else if (voltage > 0.05f) {
+                // Direct current shunt or scaled divider
+                amps = voltage * 4.5f;
+            }
+            if (amps > 30.0f) amps = 30.0f;
+            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
+            
+            // Real-time Current Saturation Status
+            if (s.coilPeakCurrentA >= 5.5f && s.coilPeakCurrentA <= 10.5f) {
+                strncpy(s.coilCurrentStatus, "OPTIMAL (6-10A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.5f) {
+                strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilPeakCurrentA > 10.5f) {
+                strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            } else {
+                strncpy(s.coilCurrentStatus, "NO CURRENT", sizeof(s.coilCurrentStatus));
+            }
         } else {
             s.coilPeakCurrentA = 0.0f;
+            strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
         }
         _lastCurrentSampleTime = now;
     }
@@ -129,6 +149,7 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
 void PeripheralCoilActive4P::startAutoDiag() {
     AppSettings& s = _settingsMgr.getSettings();
     resetCounters();
+    CoilLeakSensor::reset(s);
     s.coilAutoDiagRunning = true;
     s.coilDiagPhase = 1;
     s.coilDiagProgress = 0;
@@ -158,6 +179,8 @@ void PeripheralCoilActive4P::resetCounters() {
     s.coilMissedCount = 0;
     s.coilHealthPercent = 100.0f;
     s.coilPeakCurrentA = 0.0f;
+    strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+    CoilLeakSensor::reset(s);
 }
 
 void PeripheralCoilActive4P::updateAutoDiag() {
@@ -166,20 +189,29 @@ void PeripheralCoilActive4P::updateAutoDiag() {
     const uint32_t TOTAL_DIAG_MS = 20000; // 20-second test
     
     if (elapsedMs >= TOTAL_DIAG_MS) {
-        // Test Complete - Generate Final Verdict
+        // Multi-parameter Diagnostic Health Calculation
         s.coilAutoDiagRunning = false;
         s.coilDiagPhase = 4;
         s.coilDiagProgress = 100;
         stop();
         
+        // Comprehensive Verdict Logic
         if (s.coilFiredCount < 50) {
             strncpy(s.coilDiagVerdict, "NO SIGNAL / ABORTED", sizeof(s.coilDiagVerdict));
-        } else if (s.coilHealthPercent >= 99.0f) {
-            strncpy(s.coilDiagVerdict, "HEALTHY (PASSED)", sizeof(s.coilDiagVerdict));
+        } else if (s.coilLeakCount > 20) {
+            strncpy(s.coilDiagVerdict, "FAIL (INSULATION LEAK)", sizeof(s.coilDiagVerdict));
+            s.coilHealthPercent = 35.0f;
+        } else if (s.coilPeakCurrentA > 11.5f) {
+            strncpy(s.coilDiagVerdict, "FAIL (PRIMARY SHORT)", sizeof(s.coilDiagVerdict));
+            s.coilHealthPercent = 40.0f;
+        } else if (s.coilHealthPercent < 85.0f) {
+            strncpy(s.coilDiagVerdict, "FAIL (IGNITER MISFIRE)", sizeof(s.coilDiagVerdict));
+        } else if (s.coilHealthPercent >= 98.0f && s.coilLeakCount == 0 && s.coilPeakCurrentA >= 5.5f) {
+            strncpy(s.coilDiagVerdict, "EXCELLENT (100% HEALTHY)", sizeof(s.coilDiagVerdict));
         } else if (s.coilHealthPercent >= 90.0f) {
-            strncpy(s.coilDiagVerdict, "DEGRADED (MISFIRE)", sizeof(s.coilDiagVerdict));
+            strncpy(s.coilDiagVerdict, "GOOD (PASSED)", sizeof(s.coilDiagVerdict));
         } else {
-            strncpy(s.coilDiagVerdict, "DEFECTIVE (FAILED)", sizeof(s.coilDiagVerdict));
+            strncpy(s.coilDiagVerdict, "DEGRADED (MARGINAL)", sizeof(s.coilDiagVerdict));
         }
         _settingsMgr.save();
         return;

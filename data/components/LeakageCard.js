@@ -4,19 +4,24 @@ export function LeakageCard({ state, sendAction }) {
     const isLeaking = state.coilLeakDetected;
     const count = state.coilLeakCount || 0;
     const rate = state.coilLeakRate || 0;
+    const severity = state.coilLeakSeverity || (count === 0 ? "PERFECT (0 LEAK)" : "MICRO-LEAKAGE");
 
     let cardColor = "var(--neon-green)";
-    let badgeText = "INSULATION NORMAL (0 LEAK)";
-    let statusText = "NO BODY LEAKAGE DETECTED";
+    let badgeText = severity;
+    let statusText = "NO BODY LEAKAGE DETECTED (INSULATION PERFECT)";
 
-    if (isLeaking) {
+    if (severity.includes("SEVERE") || rate > 50) {
         cardColor = "var(--neon-red)";
-        badgeText = "🚨 LEAKAGE ACTIVE!";
-        statusText = "HIGH VOLTAGE ARCING TO PROBE DETECTED!";
-    } else if (count > 0) {
+        badgeText = "🚨 CRITICAL: " + severity;
+        statusText = "SEVERE HIGH-VOLTAGE BREAKDOWN DETECTED (REPLACE COIL)!";
+    } else if (severity.includes("MEDIUM") || rate > 10) {
         cardColor = "var(--neon-orange)";
-        badgeText = "⚠️ PREVIOUS LEAK DETECTED";
-        statusText = "LEAKAGE RECORDED (VERIFY INSPECTION POINT)";
+        badgeText = "⚠️ CAUTION: " + severity;
+        statusText = "MEDIUM ARCING / INSULATION DEGRADATION DETECTED";
+    } else if (severity.includes("MICRO") || rate > 0 || count > 0) {
+        cardColor = "var(--neon-yellow, #ffcc00)";
+        badgeText = "⚡ WARNING: " + severity;
+        statusText = "MICRO-LEAKAGE (CORONA DISCHARGE / HAIRLINE CRACK DETECTED)";
     }
 
     return html`
