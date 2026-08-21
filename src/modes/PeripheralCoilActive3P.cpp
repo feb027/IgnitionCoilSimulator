@@ -39,7 +39,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
 }
 
 PeripheralCoilActive3P::PeripheralCoilActive3P(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _lastAutoPingTime(0) {}
 
 void PeripheralCoilActive3P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
@@ -91,6 +91,7 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             }
             if (amps > 30.0f) amps = 30.0f;
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
+            s.coilConnected = (s.coilPeakCurrentA > 0.5f);
             
             // Real-time Current Saturation Status
             if (s.coilPeakCurrentA >= 5.5f && s.coilPeakCurrentA <= 10.5f) {
@@ -104,7 +105,32 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             }
         } else {
             s.coilPeakCurrentA = 0.0f;
-            strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+            
+            // Standby Auto-Ping Probe (Ping every 1500ms with a safe 0.8ms pulse)
+            if (now - _lastAutoPingTime >= 1500) {
+                _lastAutoPingTime = now;
+                
+                digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
+                delayMicroseconds(800);
+                int rawAdc = analogRead(PIN_COIL_ISENSE);
+                digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+                
+                float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
+                float pingAmps = 0.0f;
+                if (voltage > 2.20f) {
+                    pingAmps = (voltage - 2.20f) / 0.066f;
+                } else if (voltage > 0.05f) {
+                    pingAmps = voltage * 4.5f;
+                }
+                
+                if (pingAmps > 0.8f) {
+                    s.coilConnected = true;
+                    strncpy(s.coilCurrentStatus, "COIL DETECTED (READY)", sizeof(s.coilCurrentStatus));
+                } else {
+                    s.coilConnected = false;
+                    strncpy(s.coilCurrentStatus, "DISCONNECTED", sizeof(s.coilCurrentStatus));
+                }
+            }
         }
         _lastCurrentSampleTime = now;
     }

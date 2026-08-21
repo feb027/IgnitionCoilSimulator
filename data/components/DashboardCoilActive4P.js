@@ -24,8 +24,13 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
     return html`
         <div class="panel-main">
-            <div style="margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: ${healthColor}; letter-spacing: 0.05em;">
-                ⚡ HARDWARE: IGT OUT (PIN 25) | IGF IN (PIN 34) | SENSE (PIN 35)
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
+                    ⚡ IGT (PIN 25) | IGF (PIN 34) | SENSE (PIN 35)
+                </div>
+                <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
+                    ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
+                </span>
             </div>
             <${Dial} 
                 label=${isAutoDiag ? "AUTO DIAGNOSTIC RPM" : ((isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}

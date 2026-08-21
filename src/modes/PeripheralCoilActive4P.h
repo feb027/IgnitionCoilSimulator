@@ -39,6 +39,7 @@ private:
     
     uint32_t _diagStartTime;
     uint32_t _lastCurrentSampleTime;
+    uint32_t _lastAutoPingTime;
     
     void updateTimerConfig();
     void updateAutoDiag();

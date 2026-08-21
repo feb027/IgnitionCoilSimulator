@@ -32,6 +32,7 @@ private:
     SettingsManager& _settingsMgr;
     SweepController& _sweepController;
     uint32_t _lastCurrentSampleTime;
+    uint32_t _lastAutoPingTime;
     
     void updateTimerConfig();
     void samplePrimaryCurrent();

@@ -180,6 +180,7 @@ void SettingsManager::load() {
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
     _settings.coilLeakDetected = false;
+    _settings.coilConnected = false;
     strncpy(_settings.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(_settings.coilLeakSeverity));
     strncpy(_settings.coilCurrentStatus, "STANDBY", sizeof(_settings.coilCurrentStatus));
 
