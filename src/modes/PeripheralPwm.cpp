@@ -1,47 +1,5 @@
 #include "PeripheralPwm.h"
 #include "config/Pins.h"
-#include <esp_arduino_version.h>
-
-static hw_timer_t * pwm_timer = NULL;
-static volatile bool isPwmOn = false;
-static volatile uint32_t pwm_dwellTicks = 0;
-static volatile uint32_t pwm_periodTicks = 0;
-static volatile uint32_t pwm_pulsesRemaining = 0;
-static volatile bool pwm_autoStopped = false;
-
-static void IRAM_ATTR onPwmTimer() {
-    if (isPwmOn) {
-        // Fast direct register write for GPIO 32 (PIN_SOLENOID)
-        GPIO.out1_w1tc.val = (1 << (PIN_SOLENOID - 32));
-        isPwmOn = false;
-        
-        if (pwm_pulsesRemaining > 0) {
-            pwm_pulsesRemaining--;
-            if (pwm_pulsesRemaining == 0) {
-                pwm_autoStopped = true;
-                timerAlarmDisable(pwm_timer);
-                timerStop(pwm_timer);
-                return; // Do not re-arm the timer
-            }
-        }
-        
-        uint32_t offTicks = (pwm_periodTicks > pwm_dwellTicks) 
-                            ? (pwm_periodTicks - pwm_dwellTicks) 
-                            : 1000;
-        timerWrite(pwm_timer, 0);
-        timerAlarmWrite(pwm_timer, offTicks, true);
-        timerAlarmEnable(pwm_timer);
-    } else {
-        // Fast direct register write for GPIO 32 (PIN_SOLENOID)
-        GPIO.out1_w1ts.val = (1 << (PIN_SOLENOID - 32));
-        isPwmOn = true;
-        
-        uint32_t onTicks = (pwm_dwellTicks > 0) ? pwm_dwellTicks : 10;
-        timerWrite(pwm_timer, 0);
-        timerAlarmWrite(pwm_timer, onTicks, true);
-        timerAlarmEnable(pwm_timer);
-    }
-}
 
 PeripheralPwm::PeripheralPwm(SettingsManager& settingsMgr, SweepController& sweepController)
     : _settingsMgr(settingsMgr), _sweepController(sweepController) {}
@@ -49,24 +7,13 @@ PeripheralPwm::PeripheralPwm(SettingsManager& settingsMgr, SweepController& swee
 void PeripheralPwm::begin() {
     pinMode(PIN_SOLENOID, OUTPUT);
     digitalWrite(PIN_SOLENOID, LOW);
-    
-    // Timer 0
-    if (pwm_timer == NULL) {
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
-        pwm_timer = timerBegin(1000000); // 1MHz frequency API (ESP-IDF 5)
-#else
-        pwm_timer = timerBegin(1, 80, true); // Timer 1 for PWM (prevents conflict with Coil on Timer 0)
-#endif
-        timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
-    }
+    ledcSetup(0, 100, 8); // Channel 0, default 100Hz, 8-bit
+    ledcAttachPin(PIN_SOLENOID, 0);
+    ledcWrite(0, 0);
 }
 
 void PeripheralPwm::update() {
     AppSettings& s = _settingsMgr.getSettings();
-    if (pwm_autoStopped) {
-        pwm_autoStopped = false;
-        stop(); // Cleanly shutdown hardware and update state
-    }
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
             updateTimerConfig();
@@ -83,69 +30,40 @@ void PeripheralPwm::updateTimerConfig() {
     int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.rpm;
     
     if (activeRpm > 12000) activeRpm = 12000;
-    if (activeRpm < 0) activeRpm = 0; 
+    if (activeRpm < 60) activeRpm = 60; // Min 1 Hz
     
-    if (activeRpm == 0) {
-        pwm_periodTicks = 1000000;
-        if (s.dutyCycle > 100.0f) s.dutyCycle = 100.0f;
-        if (s.dutyCycle < 0.0f) s.dutyCycle = 0.0f;
-        pwm_dwellTicks = (uint32_t)(pwm_periodTicks * (s.dutyCycle / 100.0f));
-        
-        if (pwm_dwellTicks > pwm_periodTicks) {
-            pwm_dwellTicks = pwm_periodTicks;
-        }
-        if (pwm_dwellTicks < 10) pwm_dwellTicks = 10;
-        
-        s.dwellMs = (float)pwm_dwellTicks / 1000.0f;
-        return;
-    }
+    uint32_t freqHz = activeRpm / 60;
+    if (freqHz < 1) freqHz = 1;
+    if (freqHz > 5000) freqHz = 5000;
     
-    pwm_periodTicks = 60000000 / activeRpm;
+    ledcSetup(0, freqHz, 8);
     
     if (s.dutyCycle > 100.0f) s.dutyCycle = 100.0f;
     if (s.dutyCycle < 0.0f) s.dutyCycle = 0.0f;
     
-    pwm_dwellTicks = (uint32_t)(pwm_periodTicks * (s.dutyCycle / 100.0f));
-    
-    if (pwm_dwellTicks > pwm_periodTicks) {
-        pwm_dwellTicks = pwm_periodTicks;
+    uint32_t dutyVal = (uint32_t)(s.dutyCycle * 255.0f / 100.0f);
+    if (s.isRunning) {
+        ledcWrite(0, dutyVal);
+    } else {
+        ledcWrite(0, 0);
     }
-    if (pwm_dwellTicks < 10) pwm_dwellTicks = 10;
     
-    // Calculate display dwell for UI
-    s.dwellMs = (float)pwm_dwellTicks / 1000.0f;
+    uint32_t periodTicks = 1000000 / freqHz;
+    uint32_t dwellTicks = (uint32_t)(periodTicks * (s.dutyCycle / 100.0f));
+    s.dwellMs = (float)dwellTicks / 1000.0f;
 }
 
 void PeripheralPwm::start() {
     AppSettings& s = _settingsMgr.getSettings();
-    _sweepController.beginSweep();
-    updateTimerConfig();
+    if (s.mode == MODE_SWEEP) _sweepController.beginSweep();
     s.isRunning = true;
     s.lastFiredMs = millis();
-    pwm_autoStopped = false;
-    
-    if (s.mode == MODE_SINGLE) pwm_pulsesRemaining = 1;
-    else if (s.mode == MODE_BURST) pwm_pulsesRemaining = 5;
-    else pwm_pulsesRemaining = 0; 
-    
-    digitalWrite(PIN_SOLENOID, HIGH);
-    isPwmOn = true;
-    timerWrite(pwm_timer, 0); // Reset timer counter
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
-    timerRestart(pwm_timer);
-    timerAlarm(pwm_timer, pwm_dwellTicks, true, 0);
-#else
-    timerAlarmWrite(pwm_timer, pwm_dwellTicks, true); // Autoreload TRUE!
-#endif
-    timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
-    timerAlarmEnable(pwm_timer); // CRITICAL: Re-enable interrupt!
-    timerStart(pwm_timer); // Explicitly start the timer
+    updateTimerConfig();
 }
 
 void PeripheralPwm::stop() {
-    if (pwm_timer != NULL) timerAlarmDisable(pwm_timer);
+    ledcWrite(0, 0);
     digitalWrite(PIN_SOLENOID, LOW);
-    isPwmOn = false;
     
     AppSettings& s = _settingsMgr.getSettings();
     bool wasRunning = s.isRunning;
@@ -153,6 +71,7 @@ void PeripheralPwm::stop() {
     
     if (wasRunning && s.mode == MODE_SWEEP) {
         _sweepController.reset();
+        s.currentRpm = s.rpm;
         updateTimerConfig();
     }
 }

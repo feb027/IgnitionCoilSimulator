@@ -55,7 +55,7 @@ void PeripheralInjector::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         inj_timer = timerBegin(1000000);
 #else
-        inj_timer = timerBegin(2, 80, true);
+        inj_timer = timerBegin(3, 80, true);
 #endif
         timerAttachInterrupt(inj_timer, &onInjTimer, true);
     }
@@ -216,11 +216,11 @@ void PeripheralInjector::start() {
         inj_pulsesRemaining = 0;
     }
     
+    uint32_t onTicks = (inj_pulseTicks > 0) ? inj_pulseTicks : 1000;
     GPIO.out1_w1ts.val = (1 << (PIN_INJECTOR - 32));
     isInjOn = true;
     timerWrite(inj_timer, 0);
-    timerAttachInterrupt(inj_timer, &onInjTimer, true);
-    timerAlarmWrite(inj_timer, inj_pulseTicks, true);
+    timerAlarmWrite(inj_timer, onTicks, true);
     timerAlarmEnable(inj_timer);
     timerStart(inj_timer);
     s.isRunning = true;
@@ -234,6 +234,7 @@ void PeripheralInjector::stop() {
     }
     GPIO.out1_w1tc.val = (1 << (PIN_INJECTOR - 32));
     isInjOn = false;
+    inj_pulsesRemaining = 0;
     
     AppSettings& s = _settingsMgr.getSettings();
     s.isRunning = false;

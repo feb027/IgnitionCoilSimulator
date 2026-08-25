@@ -74,7 +74,7 @@ void PeripheralCoilActive4P::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         coil_active4p_timer = timerBegin(1000000);
 #else
-        coil_active4p_timer = timerBegin(0, 80, true);
+        coil_active4p_timer = timerBegin(2, 80, true);
 #endif
         timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
     }
@@ -320,11 +320,11 @@ void PeripheralCoilActive4P::start() {
         coil_act4p_pulsesRemaining = 0;
     }
     
+    uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
     GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
     isActive4pCoilOn = true;
     timerWrite(coil_active4p_timer, 0);
-    timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
-    timerAlarmWrite(coil_active4p_timer, coil_act4p_dwellTicks, true);
+    timerAlarmWrite(coil_active4p_timer, onTicks, true);
     timerAlarmEnable(coil_active4p_timer);
     timerStart(coil_active4p_timer);
     s.isRunning = true;
@@ -338,6 +338,7 @@ void PeripheralCoilActive4P::stop() {
     }
     GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
     isActive4pCoilOn = false;
+    coil_act4p_pulsesRemaining = 0;
     
     AppSettings& s = _settingsMgr.getSettings();
     s.isRunning = false;
