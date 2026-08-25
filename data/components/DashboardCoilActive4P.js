@@ -265,7 +265,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
                     <strong style="color: var(--neon-green);">4. UJI OTOMATIS (20-DETIK AUTO HEALTH SCAN):</strong>
                     <div style="font-size: 0.8rem; margin-top: 6px;">
-                        Tekan tombol <strong>`START AUTO HEALTH SCAN`</strong> di atas. Sistem akan menguji 3 tahap otomatis (Dwell Sweep → WOT Burst → High-RPM Stress) dan menghitung persentase kesehatan (Health Score %) serta vonis akhir koil secara akurat.
+                        Tekan tombol <strong>START AUTO HEALTH SCAN</strong> di atas. Sistem akan menguji 3 tahap otomatis (Dwell Sweep → WOT Burst → High-RPM Stress) dan menghitung persentase kesehatan (Health Score %) serta vonis akhir koil secara akurat.
                     </div>
                 </div>
 
