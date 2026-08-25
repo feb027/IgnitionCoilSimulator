@@ -40,8 +40,7 @@ void DisplayManager::drawDashboard(MenuSystem& menu) {
     // ZONE 1: Header (Status & Mode)
     _u8g2.setFont(u8g2_font_helvB08_tr); 
     
-    bool isFiring = s.isRunning || (millis() - s.lastFiredMs < 1000);
-    if (isFiring) {
+    if (s.isRunning) {
         // Feature 5: Graphic Icon (Lightning Bolt)
         _u8g2.drawLine(5, 2, 2, 8);
         _u8g2.drawLine(2, 8, 8, 8);

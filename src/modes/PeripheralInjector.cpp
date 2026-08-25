@@ -163,9 +163,7 @@ void PeripheralInjector::update() {
         updateAutoDiag();
     } else if (inj_autoStopped) {
         inj_autoStopped = false;
-        s.isRunning = false;
-        s.injectorFlowRunning = false;
-        s.injectorPulsesLeft = 0;
+        stop();
     } else if (s.injectorFlowRunning) {
         s.injectorPulsesLeft = inj_pulsesRemaining;
     } else if (s.mode == MODE_SWEEP && s.isRunning) {

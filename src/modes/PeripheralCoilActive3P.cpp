@@ -64,11 +64,12 @@ void PeripheralCoilActive3P::begin() {
 }
 
 void PeripheralCoilActive3P::update() {
-    AppSettings& s = _settingsMgr.getSettings();
     if (coil_act3p_autoStopped) {
         coil_act3p_autoStopped = false;
-        s.isRunning = false;
+        stop();
     }
+    
+    AppSettings& s = _settingsMgr.getSettings();
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);

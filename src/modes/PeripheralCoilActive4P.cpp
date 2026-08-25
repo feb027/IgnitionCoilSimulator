@@ -81,11 +81,12 @@ void PeripheralCoilActive4P::begin() {
 }
 
 void PeripheralCoilActive4P::update() {
-    AppSettings& s = _settingsMgr.getSettings();
     if (coil_act4p_autoStopped) {
         coil_act4p_autoStopped = false;
-        s.isRunning = false;
+        stop();
     }
+    
+    AppSettings& s = _settingsMgr.getSettings();
     
     // Sync ISR counters to settings struct
     s.coilFiredCount = isr_act4p_firedCount;

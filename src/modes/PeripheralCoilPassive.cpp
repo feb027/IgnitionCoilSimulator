@@ -64,11 +64,12 @@ void PeripheralCoilPassive::begin() {
 }
 
 void PeripheralCoilPassive::update() {
-    AppSettings& s = _settingsMgr.getSettings();
     if (coil_pass_autoStopped) {
         coil_pass_autoStopped = false;
-        s.isRunning = false;
+        stop();
     }
+    
+    AppSettings& s = _settingsMgr.getSettings();
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
