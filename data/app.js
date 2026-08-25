@@ -1,4 +1,4 @@
-import { html, render, useState, useEffect, useRef } from './preact.mjs';
+import { html, render, useState, useEffect, useRef } from './preact.js';
 import { Dial } from './components/Dial.js';
 import { ModeSelector } from './components/ModeSelector.js';
 import { DashboardCoilPassive } from './components/DashboardCoilPassive.js';
