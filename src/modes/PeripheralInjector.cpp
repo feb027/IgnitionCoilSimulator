@@ -19,21 +19,27 @@ static void IRAM_ATTR onInjTimer() {
             inj_pulsesRemaining--;
             if (inj_pulsesRemaining == 0) {
                 timerAlarmDisable(inj_timer);
+                timerStop(inj_timer);
                 inj_autoStopped = true;
                 return;
             }
         }
         
-        if (inj_periodTicks > inj_pulseTicks) {
-            timerAlarmWrite(inj_timer, inj_periodTicks - inj_pulseTicks, true);
-        } else {
-            timerAlarmWrite(inj_timer, 1000, true); 
-        }
+        uint32_t offTicks = (inj_periodTicks > inj_pulseTicks) 
+                            ? (inj_periodTicks - inj_pulseTicks) 
+                            : 1000;
+        timerWrite(inj_timer, 0);
+        timerAlarmWrite(inj_timer, offTicks, true);
+        timerAlarmEnable(inj_timer);
     } else {
         // Turn Injector MOSFET ON (GPIO 32 HIGH)
         GPIO.out1_w1ts.val = (1 << (PIN_INJECTOR - 32));
         isInjOn = true;
-        timerAlarmWrite(inj_timer, inj_pulseTicks, true);
+        
+        uint32_t onTicks = (inj_pulseTicks > 0) ? inj_pulseTicks : 1000;
+        timerWrite(inj_timer, 0);
+        timerAlarmWrite(inj_timer, onTicks, true);
+        timerAlarmEnable(inj_timer);
     }
 }
 

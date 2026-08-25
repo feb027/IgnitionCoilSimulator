@@ -20,20 +20,26 @@ static void IRAM_ATTR onPwmTimer() {
             if (pwm_pulsesRemaining == 0) {
                 pwm_autoStopped = true;
                 timerAlarmDisable(pwm_timer);
+                timerStop(pwm_timer);
                 return; // Do not re-arm the timer
             }
         }
         
-        if (pwm_periodTicks > pwm_dwellTicks) {
-            timerAlarmWrite(pwm_timer, pwm_periodTicks - pwm_dwellTicks, true);
-        } else {
-            timerAlarmWrite(pwm_timer, 1000, true); 
-        }
+        uint32_t offTicks = (pwm_periodTicks > pwm_dwellTicks) 
+                            ? (pwm_periodTicks - pwm_dwellTicks) 
+                            : 1000;
+        timerWrite(pwm_timer, 0);
+        timerAlarmWrite(pwm_timer, offTicks, true);
+        timerAlarmEnable(pwm_timer);
     } else {
         // Fast direct register write for GPIO 32 (PIN_SOLENOID)
         GPIO.out1_w1ts.val = (1 << (PIN_SOLENOID - 32));
         isPwmOn = true;
-        timerAlarmWrite(pwm_timer, pwm_dwellTicks, true);
+        
+        uint32_t onTicks = (pwm_dwellTicks > 0) ? pwm_dwellTicks : 10;
+        timerWrite(pwm_timer, 0);
+        timerAlarmWrite(pwm_timer, onTicks, true);
+        timerAlarmEnable(pwm_timer);
     }
 }
 

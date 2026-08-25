@@ -33,16 +33,21 @@ static void IRAM_ATTR onActive4pCoilTimer() {
             }
         }
         
-        if (coil_act4p_periodTicks > coil_act4p_dwellTicks) {
-            timerAlarmWrite(coil_active4p_timer, coil_act4p_periodTicks - coil_act4p_dwellTicks, true);
-        } else {
-            timerAlarmWrite(coil_active4p_timer, 1000, true); 
-        }
+        uint32_t offTicks = (coil_act4p_periodTicks > coil_act4p_dwellTicks) 
+                            ? (coil_act4p_periodTicks - coil_act4p_dwellTicks) 
+                            : 1000;
+        timerWrite(coil_active4p_timer, 0);
+        timerAlarmWrite(coil_active4p_timer, offTicks, true);
+        timerAlarmEnable(coil_active4p_timer);
     } else {
         // Turn IGT Pin 25 HIGH (Start Dwell charging)
         GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = true;
-        timerAlarmWrite(coil_active4p_timer, coil_act4p_dwellTicks, true);
+        
+        uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
+        timerWrite(coil_active4p_timer, 0);
+        timerAlarmWrite(coil_active4p_timer, onTicks, true);
+        timerAlarmEnable(coil_active4p_timer);
     }
 }
 

@@ -20,21 +20,27 @@ static void IRAM_ATTR onPassiveCoilTimer() {
             coil_pass_pulsesRemaining--;
             if (coil_pass_pulsesRemaining == 0) {
                 timerAlarmDisable(coil_passive_timer);
+                timerStop(coil_passive_timer);
                 coil_pass_autoStopped = true;
                 return;
             }
         }
         
-        if (coil_pass_periodTicks > coil_pass_dwellTicks) {
-            timerAlarmWrite(coil_passive_timer, coil_pass_periodTicks - coil_pass_dwellTicks, true);
-        } else {
-            timerAlarmWrite(coil_passive_timer, 1000, true); 
-        }
+        uint32_t offTicks = (coil_pass_periodTicks > coil_pass_dwellTicks) 
+                            ? (coil_pass_periodTicks - coil_pass_dwellTicks) 
+                            : 1000;
+        timerWrite(coil_passive_timer, 0);
+        timerAlarmWrite(coil_passive_timer, offTicks, true);
+        timerAlarmEnable(coil_passive_timer);
     } else {
         // Turn IGBT Gate ON (GPIO 33 HIGH)
         GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = true;
-        timerAlarmWrite(coil_passive_timer, coil_pass_dwellTicks, true);
+        
+        uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
+        timerWrite(coil_passive_timer, 0);
+        timerAlarmWrite(coil_passive_timer, onTicks, true);
+        timerAlarmEnable(coil_passive_timer);
     }
 }
 
