@@ -142,7 +142,12 @@ function App() {
             ws.current.send(JSON.stringify(payload));
 
             // Optimistic UI updates
-            if (action === 'toggleRun') setState(s => ({ ...s, isRunning: !s.isRunning }));
+            if (action === 'toggleRun') {
+                setState(s => ({
+                    ...s,
+                    isRunning: (s.runMode === 2 || s.runMode === 1) ? true : !s.isRunning
+                }));
+            }
             if (action === 'setRpm') setState(s => ({ ...s, rpm: value }));
             if (action === 'setDwell') setState(s => ({ ...s, dwellMs: value }));
             if (action === 'setMode') setState(s => ({ ...s, pulseMode: value }));

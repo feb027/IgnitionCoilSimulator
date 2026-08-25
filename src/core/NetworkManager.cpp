@@ -49,14 +49,16 @@ void NetworkManager::begin() {
 void NetworkManager::update() {
     _ws.cleanupClients();
     
-    // Broadcast state updates every 100ms or if state changed significantly
+    AppSettings& current = _settingsMgr.getSettings();
     uint32_t now = millis();
-    if (now - _lastBroadcastMs > 100) {
-        AppSettings& current = _settingsMgr.getSettings();
-        
-        bool isSweeping = (current.isRunning && current.mode == MODE_SWEEP);
-        bool dirty = isSweeping ||
-                     (current.isRunning != _lastBroadcastedState.isRunning) ||
+    
+    bool isRunningChanged = (current.isRunning != _lastBroadcastedState.isRunning);
+    bool isSweeping = (current.isRunning && current.mode == MODE_SWEEP);
+    bool shouldBroadcast = isRunningChanged || (now - _lastBroadcastMs > 100);
+    
+    if (shouldBroadcast) {
+        bool dirty = isRunningChanged ||
+                     isSweeping ||
                      (current.pulseMode != _lastBroadcastedState.pulseMode) ||
                      (current.mode != _lastBroadcastedState.mode) ||
                      (current.rpm != _lastBroadcastedState.rpm) ||
@@ -309,12 +311,23 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         bool changed = false;
 
         if (action == "toggleRun") {
-            s.isRunning = !s.isRunning;
             if (s.isRunning) {
-                _peripheralMgr.start();
-            } else {
                 _peripheralMgr.stop();
+            } else {
+                _peripheralMgr.start();
             }
+            broadcastState();
+            _lastBroadcastedState = _settingsMgr.getSettings();
+            changed = true;
+        } else if (action == "start") {
+            _peripheralMgr.start();
+            broadcastState();
+            _lastBroadcastedState = _settingsMgr.getSettings();
+            changed = true;
+        } else if (action == "stop") {
+            _peripheralMgr.stop();
+            broadcastState();
+            _lastBroadcastedState = _settingsMgr.getSettings();
             changed = true;
         } else if (action == "setMode") {
             int m = doc["value"].as<int>();

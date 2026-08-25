@@ -51,7 +51,11 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
             >
-                ${state.isRunning ? 'IGBT DRIVE: ON' : 'IGBT DRIVE: OFF'}
+                ${state.runMode === 2 
+                    ? (state.isRunning ? 'FIRING SINGLE PULSE...' : '⚡ TRIGGER SINGLE PULSE') 
+                    : (state.runMode === 1
+                        ? (state.isRunning ? 'FIRING BURST (10x)...' : '⚡ TRIGGER BURST (10x)')
+                        : (state.isRunning ? 'IGBT DRIVE: ON (CLICK TO STOP)' : 'IGBT DRIVE: OFF (CLICK TO START)'))}
             </button>
         </div>
         

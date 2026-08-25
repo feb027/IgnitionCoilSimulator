@@ -51,7 +51,11 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
             >
-                ${state.isRunning ? 'IGT TRIGGER: ON' : 'IGT TRIGGER: OFF'}
+                ${state.runMode === 2 
+                    ? (state.isRunning ? 'FIRING SINGLE PULSE...' : '⚡ TRIGGER SINGLE PULSE') 
+                    : (state.runMode === 1
+                        ? (state.isRunning ? 'FIRING BURST (10x)...' : '⚡ TRIGGER BURST (10x)')
+                        : (state.isRunning ? 'IGT TRIGGER: ON (CLICK TO STOP)' : 'IGT TRIGGER: OFF (CLICK TO START)'))}
             </button>
         </div>
         
