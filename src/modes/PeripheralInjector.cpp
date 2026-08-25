@@ -68,7 +68,9 @@ void PeripheralInjector::samplePrimaryCurrent() {
         if (s.isRunning) {
             int rawAdc = analogRead(PIN_COIL_ISENSE);
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-            float amps = voltage * 6.5f;
+            float deltaV = fabs(voltage - 2.50f);
+            float amps = deltaV / 0.066f;
+            if (amps > 15.0f) amps = 15.0f;
             s.injectorPeakCurrentA = (s.injectorPeakCurrentA * 0.7f) + (amps * 0.3f);
             
             if (s.injectorPeakCurrentA > 0.05f) {

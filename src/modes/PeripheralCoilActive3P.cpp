@@ -10,8 +10,15 @@ static volatile uint32_t coil_act3p_periodTicks = 0;
 static volatile uint32_t coil_act3p_pulsesRemaining = 0;
 static volatile bool coil_act3p_autoStopped = false;
 
+static volatile uint16_t coil_act3p_peakRawAdc = 0;
+static volatile bool coil_act3p_hasNewAdc = false;
+
 static void IRAM_ATTR onActive3pCoilTimer() {
     if (isActive3pCoilOn) {
+        // Sample peak primary charging current right at the end of Dwell ramp
+        coil_act3p_peakRawAdc = analogRead(PIN_COIL_ISENSE);
+        coil_act3p_hasNewAdc = true;
+
         // Turn IGT Pin 25 LOW (Direct register write)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = false;
@@ -45,7 +52,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
 }
 
 PeripheralCoilActive3P::PeripheralCoilActive3P(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _lastAutoPingTime(0) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _zeroCurrentVoltage(2.50f) {}
 
 void PeripheralCoilActive3P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
@@ -83,21 +90,20 @@ void PeripheralCoilActive3P::update() {
 
 void PeripheralCoilActive3P::samplePrimaryCurrent() {
     uint32_t now = millis();
-    if (now - _lastCurrentSampleTime > 50) {
-        AppSettings& s = _settingsMgr.getSettings();
-        if (s.isRunning) {
-            int rawAdc = analogRead(PIN_COIL_ISENSE);
+    AppSettings& s = _settingsMgr.getSettings();
+    
+    if (s.isRunning) {
+        if (coil_act3p_hasNewAdc) {
+            coil_act3p_hasNewAdc = false;
+            int rawAdc = coil_act3p_peakRawAdc;
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-            float amps = 0.0f;
-            if (voltage > 2.20f) {
-                // ACS712-30A (66mV/A) with peak-hold detector
-                amps = (voltage - 2.20f) / 0.066f;
-            } else if (voltage > 0.05f) {
-                // Direct current shunt or scaled divider
-                amps = voltage * 4.5f;
-            }
+            
+            // ACS712-30A: 66mV/A sensitivity around zero-current offset
+            float deltaV = fabs(voltage - _zeroCurrentVoltage);
+            float amps = deltaV / 0.066f;
             if (amps > 30.0f) amps = 30.0f;
-            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
+            
+            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.7f) + (amps * 0.3f);
             s.coilConnected = (s.coilPeakCurrentA > 0.5f);
             
             // Real-time Current Saturation Status
@@ -110,36 +116,20 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             } else {
                 strncpy(s.coilCurrentStatus, "NO CURRENT", sizeof(s.coilCurrentStatus));
             }
-        } else {
-            s.coilPeakCurrentA = 0.0f;
-            
-            // Standby Auto-Ping Probe (Ping every 1500ms with a safe 0.8ms pulse)
-            if (now - _lastAutoPingTime >= 1500) {
-                _lastAutoPingTime = now;
-                
-                digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
-                delayMicroseconds(800);
-                int rawAdc = analogRead(PIN_COIL_ISENSE);
-                digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
-                
-                float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-                float pingAmps = 0.0f;
-                if (voltage > 2.20f) {
-                    pingAmps = (voltage - 2.20f) / 0.066f;
-                } else if (voltage > 0.05f) {
-                    pingAmps = voltage * 4.5f;
-                }
-                
-                if (pingAmps > 0.8f) {
-                    s.coilConnected = true;
-                    strncpy(s.coilCurrentStatus, "COIL DETECTED (READY)", sizeof(s.coilCurrentStatus));
-                } else {
-                    s.coilConnected = false;
-                    strncpy(s.coilCurrentStatus, "DISCONNECTED", sizeof(s.coilCurrentStatus));
-                }
+        }
+    } else {
+        // When OFF: strictly 0A and auto-zero calibrate ACS712 quiescent offset
+        s.coilPeakCurrentA = 0.0f;
+        strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+        
+        if (now - _lastCurrentSampleTime >= 100) {
+            _lastCurrentSampleTime = now;
+            int rawAdc = analogRead(PIN_COIL_ISENSE);
+            float v = ((float)rawAdc / 4095.0f) * 3.3f;
+            if (v > 0.1f) {
+                _zeroCurrentVoltage = (_zeroCurrentVoltage * 0.95f) + (v * 0.05f);
             }
         }
-        _lastCurrentSampleTime = now;
     }
 }
 
