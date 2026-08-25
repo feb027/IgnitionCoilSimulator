@@ -20,6 +20,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
             coil_act3p_pulsesRemaining--;
             if (coil_act3p_pulsesRemaining == 0) {
                 timerAlarmDisable(coil_active3p_timer);
+                timerStop(coil_active3p_timer);
                 coil_act3p_autoStopped = true;
                 return;
             }
@@ -180,16 +181,22 @@ void PeripheralCoilActive3P::start() {
         coil_act3p_pulsesRemaining = 0;
     }
     
-    isActive3pCoilOn = false;
+    GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+    isActive3pCoilOn = true;
+    timerWrite(coil_active3p_timer, 0);
     timerAttachInterrupt(coil_active3p_timer, &onActive3pCoilTimer, true);
-    timerAlarmWrite(coil_active3p_timer, 1000, true);
+    timerAlarmWrite(coil_active3p_timer, coil_act3p_dwellTicks, true);
     timerAlarmEnable(coil_active3p_timer);
+    timerStart(coil_active3p_timer);
     s.isRunning = true;
     s.lastFiredMs = millis();
 }
 
 void PeripheralCoilActive3P::stop() {
-    timerAlarmDisable(coil_active3p_timer);
+    if (coil_active3p_timer != NULL) {
+        timerAlarmDisable(coil_active3p_timer);
+        timerStop(coil_active3p_timer);
+    }
     GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
     isActive3pCoilOn = false;
     

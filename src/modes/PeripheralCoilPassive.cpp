@@ -182,16 +182,22 @@ void PeripheralCoilPassive::start() {
         coil_pass_pulsesRemaining = 0;
     }
     
-    isPassiveCoilOn = false;
+    GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    isPassiveCoilOn = true;
+    timerWrite(coil_passive_timer, 0);
     timerAttachInterrupt(coil_passive_timer, &onPassiveCoilTimer, true);
-    timerAlarmWrite(coil_passive_timer, 1000, true);
+    timerAlarmWrite(coil_passive_timer, coil_pass_dwellTicks, true);
     timerAlarmEnable(coil_passive_timer);
+    timerStart(coil_passive_timer);
     s.isRunning = true;
     s.lastFiredMs = millis();
 }
 
 void PeripheralCoilPassive::stop() {
-    timerAlarmDisable(coil_passive_timer);
+    if (coil_passive_timer != NULL) {
+        timerAlarmDisable(coil_passive_timer);
+        timerStop(coil_passive_timer);
+    }
     GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     isPassiveCoilOn = false;
     

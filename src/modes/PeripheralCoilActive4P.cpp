@@ -27,6 +27,7 @@ static void IRAM_ATTR onActive4pCoilTimer() {
             coil_act4p_pulsesRemaining--;
             if (coil_act4p_pulsesRemaining == 0) {
                 timerAlarmDisable(coil_active4p_timer);
+                timerStop(coil_active4p_timer);
                 coil_act4p_autoStopped = true;
                 return;
             }
@@ -314,16 +315,22 @@ void PeripheralCoilActive4P::start() {
         coil_act4p_pulsesRemaining = 0;
     }
     
-    isActive4pCoilOn = false;
+    GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+    isActive4pCoilOn = true;
+    timerWrite(coil_active4p_timer, 0);
     timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
-    timerAlarmWrite(coil_active4p_timer, 1000, true);
+    timerAlarmWrite(coil_active4p_timer, coil_act4p_dwellTicks, true);
     timerAlarmEnable(coil_active4p_timer);
+    timerStart(coil_active4p_timer);
     s.isRunning = true;
     s.lastFiredMs = millis();
 }
 
 void PeripheralCoilActive4P::stop() {
-    timerAlarmDisable(coil_active4p_timer);
+    if (coil_active4p_timer != NULL) {
+        timerAlarmDisable(coil_active4p_timer);
+        timerStop(coil_active4p_timer);
+    }
     GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
     isActive4pCoilOn = false;
     

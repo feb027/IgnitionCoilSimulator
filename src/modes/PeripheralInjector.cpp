@@ -210,16 +210,22 @@ void PeripheralInjector::start() {
         inj_pulsesRemaining = 0;
     }
     
-    isInjOn = false;
+    GPIO.out1_w1ts.val = (1 << (PIN_INJECTOR - 32));
+    isInjOn = true;
+    timerWrite(inj_timer, 0);
     timerAttachInterrupt(inj_timer, &onInjTimer, true);
-    timerAlarmWrite(inj_timer, 1000, true);
+    timerAlarmWrite(inj_timer, inj_pulseTicks, true);
     timerAlarmEnable(inj_timer);
+    timerStart(inj_timer);
     s.isRunning = true;
     s.lastFiredMs = millis();
 }
 
 void PeripheralInjector::stop() {
-    timerAlarmDisable(inj_timer);
+    if (inj_timer != NULL) {
+        timerAlarmDisable(inj_timer);
+        timerStop(inj_timer);
+    }
     GPIO.out1_w1tc.val = (1 << (PIN_INJECTOR - 32));
     isInjOn = false;
     
