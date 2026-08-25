@@ -1,4 +1,4 @@
-import { html, useRef, useEffect } from '../preact.mjs';
+import { html, useRef, useEffect } from '../preact.js';
 
 export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue, accentColor, panelClass }) {
     const trackRef = useRef(null);

@@ -1,4 +1,4 @@
-import { html } from '../preact.mjs';
+import { html } from '../preact.js';
 
 export function LeakageCard({ state, sendAction }) {
     const isLeaking = state.coilLeakDetected;

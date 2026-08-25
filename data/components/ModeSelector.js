@@ -1,4 +1,4 @@
-import { html } from '../preact.mjs';
+import { html } from '../preact.js';
 
 export function ModeSelector({ mode, runMode, isOpen, onClose, onSelect, onSelectRunMode, disabled }) {
     const categories = [

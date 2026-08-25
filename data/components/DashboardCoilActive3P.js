@@ -1,4 +1,4 @@
-import { html } from  '../preact.mjs';
+import { html } from  '../preact.js';
 import { Dial } from './Dial.js';
 import { LeakageCard } from './LeakageCard.js';
 
