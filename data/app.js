@@ -1,4 +1,4 @@
-import { html, render, useState, useEffect, useRef } from './preact.js';
+import { html, render, useState, useEffect, useRef } from './preact.mjs';
 import { Dial } from './components/Dial.js';
 import { ModeSelector } from './components/ModeSelector.js';
 import { DashboardCoilPassive } from './components/DashboardCoilPassive.js';
@@ -143,15 +143,20 @@ function App() {
 
             // Optimistic UI updates
             if (action === 'toggleRun') {
-                setState(s => ({
-                    ...s,
-                    isRunning: (s.runMode === 2 || s.runMode === 1) ? true : !s.isRunning
-                }));
+                if (state.runMode === 2) { // SINGLE
+                    setState(s => ({ ...s, isRunning: true }));
+                    setTimeout(() => setState(s => ({ ...s, isRunning: false })), 200);
+                } else if (state.runMode === 1) { // BURST
+                    setState(s => ({ ...s, isRunning: true }));
+                    setTimeout(() => setState(s => ({ ...s, isRunning: false })), 600);
+                } else {
+                    setState(s => ({ ...s, isRunning: !s.isRunning }));
+                }
             }
             if (action === 'setRpm') setState(s => ({ ...s, rpm: value }));
             if (action === 'setDwell') setState(s => ({ ...s, dwellMs: value }));
-            if (action === 'setMode') setState(s => ({ ...s, pulseMode: value }));
-            if (action === 'setRunMode') setState(s => ({ ...s, runMode: value }));
+            if (action === 'setMode') setState(s => ({ ...s, pulseMode: value, isRunning: false }));
+            if (action === 'setRunMode') setState(s => ({ ...s, runMode: value, isRunning: false }));
             if (action === 'setIscDuty') setState(s => ({ ...s, iscDuty: value }));
             if (action === 'setIscFreq') setState(s => ({ ...s, iscFreq: value }));
             if (action === 'setSpeedoKmh') setState(s => ({ ...s, speedoKmh: value }));

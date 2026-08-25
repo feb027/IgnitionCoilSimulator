@@ -49,61 +49,57 @@ void NetworkManager::begin() {
 void NetworkManager::update() {
     _ws.cleanupClients();
     
-    AppSettings& current = _settingsMgr.getSettings();
     uint32_t now = millis();
+    AppSettings& current = _settingsMgr.getSettings();
     
-    bool isRunningChanged = (current.isRunning != _lastBroadcastedState.isRunning);
     bool isSweeping = (current.isRunning && current.mode == MODE_SWEEP);
-    bool shouldBroadcast = isRunningChanged || (now - _lastBroadcastMs > 100);
+    bool runStateChanged = (current.isRunning != _lastBroadcastedState.isRunning);
+    bool modeChanged = (current.pulseMode != _lastBroadcastedState.pulseMode) || (current.mode != _lastBroadcastedState.mode);
+    bool timeDue = (now - _lastBroadcastMs > 100);
     
-    if (shouldBroadcast) {
-        bool dirty = isRunningChanged ||
-                     isSweeping ||
-                     (current.pulseMode != _lastBroadcastedState.pulseMode) ||
-                     (current.mode != _lastBroadcastedState.mode) ||
-                     (current.rpm != _lastBroadcastedState.rpm) ||
-                     (current.dwellMs != _lastBroadcastedState.dwellMs) ||
-                     (current.iscDuty != _lastBroadcastedState.iscDuty) ||
-                     (current.iscFreq != _lastBroadcastedState.iscFreq) ||
-                     (current.speedoEnableRpm != _lastBroadcastedState.speedoEnableRpm) ||
-                     (current.speedoEnableKmh != _lastBroadcastedState.speedoEnableKmh) ||
-                     (current.speedoEnableTemp != _lastBroadcastedState.speedoEnableTemp) ||
-                     (current.speedoEnableFuel != _lastBroadcastedState.speedoEnableFuel) ||
-                     (current.speedoTachoPpr != _lastBroadcastedState.speedoTachoPpr) ||
-                     (current.speedoGaugeCurve != _lastBroadcastedState.speedoGaugeCurve) ||
-                     (current.speedoDacRouting != _lastBroadcastedState.speedoDacRouting) ||
-                     (current.speedoTempCalMin != _lastBroadcastedState.speedoTempCalMin) ||
-                     (current.speedoTempCalMid != _lastBroadcastedState.speedoTempCalMid) ||
-                     (current.speedoTempCalMax != _lastBroadcastedState.speedoTempCalMax) ||
-                     (current.speedoFuelCalMin != _lastBroadcastedState.speedoFuelCalMin) ||
-                     (current.speedoFuelCalMid != _lastBroadcastedState.speedoFuelCalMid) ||
-                     (current.speedoFuelCalMax != _lastBroadcastedState.speedoFuelCalMax) ||
-                     (current.speedoKmh != _lastBroadcastedState.speedoKmh) ||
-                     (current.speedoRpm != _lastBroadcastedState.speedoRpm) ||
-                     (current.speedoTempPercent != _lastBroadcastedState.speedoTempPercent) ||
-                     (current.speedoFuelPercent != _lastBroadcastedState.speedoFuelPercent) ||
-                     (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh) ||
-                     (current.currentSpeedoRpm != _lastBroadcastedState.currentSpeedoRpm) ||
-                     (current.currentSpeedoTempPercent != _lastBroadcastedState.currentSpeedoTempPercent) ||
-                     (current.currentSpeedoFuelPercent != _lastBroadcastedState.currentSpeedoFuelPercent) ||
-                     (current.currentRpm != _lastBroadcastedState.currentRpm) ||
-                     (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
-                     (current.coilIgfCount != _lastBroadcastedState.coilIgfCount) ||
-                     (current.coilAutoDiagRunning != _lastBroadcastedState.coilAutoDiagRunning) ||
-                     (current.coilDiagProgress != _lastBroadcastedState.coilDiagProgress);
-                     
-        if (dirty) {
-            broadcastState();
-            _lastBroadcastedState = current;
-        }
+    bool dirty = isSweeping || runStateChanged || modeChanged || (timeDue && (
+                 (current.rpm != _lastBroadcastedState.rpm) ||
+                 (current.dwellMs != _lastBroadcastedState.dwellMs) ||
+                 (current.iscDuty != _lastBroadcastedState.iscDuty) ||
+                 (current.iscFreq != _lastBroadcastedState.iscFreq) ||
+                 (current.speedoEnableRpm != _lastBroadcastedState.speedoEnableRpm) ||
+                 (current.speedoEnableKmh != _lastBroadcastedState.speedoEnableKmh) ||
+                 (current.speedoEnableTemp != _lastBroadcastedState.speedoEnableTemp) ||
+                 (current.speedoEnableFuel != _lastBroadcastedState.speedoEnableFuel) ||
+                 (current.speedoTachoPpr != _lastBroadcastedState.speedoTachoPpr) ||
+                 (current.speedoGaugeCurve != _lastBroadcastedState.speedoGaugeCurve) ||
+                 (current.speedoDacRouting != _lastBroadcastedState.speedoDacRouting) ||
+                 (current.speedoTempCalMin != _lastBroadcastedState.speedoTempCalMin) ||
+                 (current.speedoTempCalMid != _lastBroadcastedState.speedoTempCalMid) ||
+                 (current.speedoTempCalMax != _lastBroadcastedState.speedoTempCalMax) ||
+                 (current.speedoFuelCalMin != _lastBroadcastedState.speedoFuelCalMin) ||
+                 (current.speedoFuelCalMid != _lastBroadcastedState.speedoFuelCalMid) ||
+                 (current.speedoFuelCalMax != _lastBroadcastedState.speedoFuelCalMax) ||
+                 (current.speedoKmh != _lastBroadcastedState.speedoKmh) ||
+                 (current.speedoRpm != _lastBroadcastedState.speedoRpm) ||
+                 (current.speedoTempPercent != _lastBroadcastedState.speedoTempPercent) ||
+                 (current.speedoFuelPercent != _lastBroadcastedState.speedoFuelPercent) ||
+                 (current.currentSpeedoKmh != _lastBroadcastedState.currentSpeedoKmh) ||
+                 (current.currentSpeedoRpm != _lastBroadcastedState.currentSpeedoRpm) ||
+                 (current.currentSpeedoTempPercent != _lastBroadcastedState.currentSpeedoTempPercent) ||
+                 (current.currentSpeedoFuelPercent != _lastBroadcastedState.currentSpeedoFuelPercent) ||
+                 (current.currentRpm != _lastBroadcastedState.currentRpm) ||
+                 (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
+                 (current.coilIgfCount != _lastBroadcastedState.coilIgfCount) ||
+                 (current.coilAutoDiagRunning != _lastBroadcastedState.coilAutoDiagRunning) ||
+                 (current.coilDiagProgress != _lastBroadcastedState.coilDiagProgress)));
+                 
+    if (dirty) {
+        broadcastState();
         _lastBroadcastMs = now;
     }
 }
 
 void NetworkManager::broadcastState() {
+    AppSettings& s = _settingsMgr.getSettings();
+    _lastBroadcastedState = s;
     if (_ws.count() == 0) return;
     
-    AppSettings& s = _settingsMgr.getSettings();
     JsonDocument doc;
     
     doc["type"] = "state";
@@ -311,23 +307,12 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         bool changed = false;
 
         if (action == "toggleRun") {
+            s.isRunning = !s.isRunning;
             if (s.isRunning) {
-                _peripheralMgr.stop();
-            } else {
                 _peripheralMgr.start();
+            } else {
+                _peripheralMgr.stop();
             }
-            broadcastState();
-            _lastBroadcastedState = _settingsMgr.getSettings();
-            changed = true;
-        } else if (action == "start") {
-            _peripheralMgr.start();
-            broadcastState();
-            _lastBroadcastedState = _settingsMgr.getSettings();
-            changed = true;
-        } else if (action == "stop") {
-            _peripheralMgr.stop();
-            broadcastState();
-            _lastBroadcastedState = _settingsMgr.getSettings();
             changed = true;
         } else if (action == "setMode") {
             int m = doc["value"].as<int>();

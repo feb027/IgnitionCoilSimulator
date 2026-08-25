@@ -1,4 +1,4 @@
-import { html } from '../preact.js';
+import { html } from '../preact.mjs';
 import { Dial } from './Dial.js';
 
 export function DashboardInjector({ state, sendAction, modeSelector }) {
@@ -76,11 +76,7 @@ export function DashboardInjector({ state, sendAction, modeSelector }) {
             >
                 ${isAutoDiag ? 'AUTO DIAG IN PROGRESS - ABORT' : 
                   (isFlow ? ('FLOW TEST IN PROGRESS (' + pulsesLeft + ' LEFT) - STOP') : 
-                  (state.runMode === 2 
-                    ? (state.isRunning ? 'FIRING SINGLE PULSE...' : '⚡ TRIGGER SINGLE PULSE') 
-                    : (state.runMode === 1
-                        ? (state.isRunning ? 'FIRING BURST (10x)...' : '⚡ TRIGGER BURST (10x)')
-                        : (state.isRunning ? 'INJECTOR SPRAY: ACTIVE (STOP)' : 'INJECTOR SPRAY: OFF (START)'))))}
+                  (state.isRunning ? 'INJECTOR SPRAY: ACTIVE' : 'INJECTOR SPRAY: OFF'))}
             </button>
         </div>
         

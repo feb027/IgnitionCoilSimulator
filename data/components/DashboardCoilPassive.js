@@ -1,4 +1,4 @@
-import { html } from '../preact.js';
+import { html } from '../preact.mjs';
 import { Dial } from './Dial.js';
 import { LeakageCard } from './LeakageCard.js';
 
@@ -52,10 +52,10 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                 disabled=${!state.connected}
             >
                 ${state.runMode === 2 
-                    ? (state.isRunning ? 'FIRING SINGLE PULSE...' : '⚡ TRIGGER SINGLE PULSE') 
+                    ? (state.isRunning ? '⚡ FIRING SINGLE...' : '⚡ FIRE SINGLE PULSE')
                     : (state.runMode === 1
-                        ? (state.isRunning ? 'FIRING BURST (10x)...' : '⚡ TRIGGER BURST (10x)')
-                        : (state.isRunning ? 'IGBT DRIVE: ON (CLICK TO STOP)' : 'IGBT DRIVE: OFF (CLICK TO START)'))}
+                        ? (state.isRunning ? '⚡ FIRING BURST...' : '⚡ FIRE BURST (10x)')
+                        : (state.isRunning ? 'IGBT DRIVE: ON' : 'IGBT DRIVE: OFF'))}
             </button>
         </div>
         
