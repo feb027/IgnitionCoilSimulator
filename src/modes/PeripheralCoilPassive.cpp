@@ -183,6 +183,7 @@ void PeripheralCoilPassive::start() {
     }
     
     isPassiveCoilOn = false;
+    timerAttachInterrupt(coil_passive_timer, &onPassiveCoilTimer, true);
     timerAlarmWrite(coil_passive_timer, 1000, true);
     timerAlarmEnable(coil_passive_timer);
     s.isRunning = true;

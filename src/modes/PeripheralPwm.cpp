@@ -131,6 +131,7 @@ void PeripheralPwm::start() {
 #else
     timerAlarmWrite(pwm_timer, pwm_dwellTicks, true); // Autoreload TRUE!
 #endif
+    timerAttachInterrupt(pwm_timer, &onPwmTimer, true);
     timerAlarmEnable(pwm_timer); // CRITICAL: Re-enable interrupt!
     timerStart(pwm_timer); // Explicitly start the timer
 }

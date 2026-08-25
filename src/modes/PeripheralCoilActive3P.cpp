@@ -181,6 +181,7 @@ void PeripheralCoilActive3P::start() {
     }
     
     isActive3pCoilOn = false;
+    timerAttachInterrupt(coil_active3p_timer, &onActive3pCoilTimer, true);
     timerAlarmWrite(coil_active3p_timer, 1000, true);
     timerAlarmEnable(coil_active3p_timer);
     s.isRunning = true;

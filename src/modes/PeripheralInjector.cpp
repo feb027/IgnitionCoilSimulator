@@ -49,7 +49,7 @@ void PeripheralInjector::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         inj_timer = timerBegin(1000000);
 #else
-        inj_timer = timerBegin(0, 80, true);
+        inj_timer = timerBegin(2, 80, true);
 #endif
         timerAttachInterrupt(inj_timer, &onInjTimer, true);
     }
@@ -211,6 +211,7 @@ void PeripheralInjector::start() {
     }
     
     isInjOn = false;
+    timerAttachInterrupt(inj_timer, &onInjTimer, true);
     timerAlarmWrite(inj_timer, 1000, true);
     timerAlarmEnable(inj_timer);
     s.isRunning = true;

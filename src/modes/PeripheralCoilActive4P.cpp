@@ -315,6 +315,7 @@ void PeripheralCoilActive4P::start() {
     }
     
     isActive4pCoilOn = false;
+    timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
     timerAlarmWrite(coil_active4p_timer, 1000, true);
     timerAlarmEnable(coil_active4p_timer);
     s.isRunning = true;
