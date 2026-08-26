@@ -106,11 +106,11 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                     </div>
                     <button 
                         class="btn" 
-                        style="margin-top: 6px; width: 100%; padding: 4px; font-size: 0.65rem; border-color: var(--neon-cyan); color: var(--neon-cyan);"
+                        style="margin-top: 6px; width: 100%; padding: 6px 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; background: #FFE600; color: #000000; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 230, 0, 0.35); cursor: pointer;"
                         onClick=${() => sendAction('probeCoil')}
                         disabled=${!state.connected || state.isRunning || isAutoDiag}
                     >
-                        🔍 PROBE (1x TEST)
+                        🔍 CHECK COIL (3-PULSE)
                     </button>
                 </div>
 

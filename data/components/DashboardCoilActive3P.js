@@ -81,11 +81,11 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                     </div>
                     <button 
                         class="btn" 
-                        style="margin-top: 10px; width: 100%; padding: 6px; font-size: 0.75rem; border-color: var(--neon-cyan); color: var(--neon-cyan);"
+                        style="margin-top: 10px; width: 100%; padding: 8px 10px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.05em; background: #FFE600; color: #000000; border: 1px solid #FFD700; box-shadow: 0 0 10px rgba(255, 230, 0, 0.35); cursor: pointer;"
                         onClick=${() => sendAction('probeCoil')}
                         disabled=${!state.connected || state.isRunning}
                     >
-                        🔍 CHECK COIL / PROBE (1x TEST)
+                        🔍 CHECK COIL / PROBE (3-PULSE TEST)
                     </button>
                 </div>
 
