@@ -162,6 +162,16 @@ void PeripheralCoilPassive::probeCoil() {
     s.coilSparkCurrentmA = sparkmA;
     s.coilPeakCurrentA = peakAmps;
     
+    // Register test pulse in counters
+    isr_pass_firedCount++;
+    s.coilFiredCount = isr_pass_firedCount;
+    if (sparkmA >= 3.0f) {
+        isr_pass_sparkReturnCount++;
+    }
+    s.coilSparkReturnCount = isr_pass_sparkReturnCount;
+    s.coilIgfCount = isr_pass_sparkReturnCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    
     // Dynamic 5-Tier Health Criteria based on Spark Intensity (mA) + Dwell
     float minHealthyAmps = (s.dwellMs <= 0.8f) ? 2.5f : ((s.dwellMs <= 1.5f) ? 4.0f : 5.0f);
     
@@ -234,6 +244,11 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
             float sparkmA = sparkV * 25.0f;
             if (sparkmA > 100.0f) sparkmA = 100.0f;
             s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.7f) + (sparkmA * 0.3f);
+            
+            // Smart Spark Confirmation: If analog voltage confirms spark (>= 3mA), sync return count
+            if (s.coilSparkCurrentmA >= 3.0f && isr_pass_sparkReturnCount < isr_pass_firedCount) {
+                isr_pass_sparkReturnCount = isr_pass_firedCount;
+            }
             
             // Continuous 5-Tier Health Evaluation
             if (s.coilPeakCurrentA > 11.5f) {
