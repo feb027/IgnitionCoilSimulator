@@ -73,12 +73,14 @@ void PeripheralCoilPassive::begin() {
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     
-    // Dedicated External Spark Pulse Interrupt (LM358 Schmitt Trigger on GPIO 26)
-    pinMode(PIN_COIL_SPARK_PULSE, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onPassiveSparkReturnInterrupt, RISING);
+    // Dedicated External Spark Pulse Interrupt (4N35 / TLP Optocoupler on GPIO 26)
+    pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onPassiveSparkReturnInterrupt, FALLING);
     
-    // Fallback legacy interrupt support on Pin 39 / Pin 34
+    // Support on Pin 39 / Pin 34
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onPassiveSparkReturnInterrupt, FALLING);
+    pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onPassiveSparkReturnInterrupt, FALLING);
     
     if (coil_passive_timer == NULL) {

@@ -81,15 +81,15 @@ void PeripheralCoilActive4P::begin() {
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
     // Internal IGF Input Pin (GPIO 34) with Hardware Interrupt
-    pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
+    pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
     
-    // Dedicated External Spark Pulse Interrupt (LM358 Schmitt Trigger on GPIO 26)
-    pinMode(PIN_COIL_SPARK_PULSE, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, RISING);
+    // Dedicated External Spark Pulse Interrupt (4N35 / TLP Optocoupler on GPIO 26)
+    pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, FALLING);
     
     // External Spark Energy Analog Input (GPIO 39)
-    pinMode(PIN_COIL_SPARK_SENSE, INPUT);
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive4pSparkInterrupt, FALLING);
     
     // Current Sense ADC Pin (GPIO 35)
