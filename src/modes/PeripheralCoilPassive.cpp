@@ -12,6 +12,12 @@ static volatile bool coil_pass_autoStopped = false;
 
 static volatile uint16_t coil_pass_peakRawAdc = 0;
 static volatile bool coil_pass_hasNewAdc = false;
+static volatile uint32_t isr_pass_firedCount = 0;
+static volatile uint32_t isr_pass_sparkReturnCount = 0;
+
+static void IRAM_ATTR onPassiveSparkReturnInterrupt() {
+    isr_pass_sparkReturnCount++;
+}
 
 static void IRAM_ATTR onPassiveCoilTimer() {
     if (isPassiveCoilOn) {
@@ -22,6 +28,7 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         // Turn IGBT Gate OFF (GPIO 33 LOW)
         GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = false;
+        isr_pass_firedCount++;
         
         if (coil_pass_pulsesRemaining > 0) {
             coil_pass_pulsesRemaining--;
@@ -59,6 +66,8 @@ void PeripheralCoilPassive::begin() {
     digitalWrite(PIN_COIL_PASSIVE_IGBT, LOW);
     
     pinMode(PIN_COIL_ISENSE, INPUT);
+    pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onPassiveSparkReturnInterrupt, FALLING);
     
     if (coil_passive_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -78,6 +87,9 @@ void PeripheralCoilPassive::update() {
     
     AppSettings& s = _settingsMgr.getSettings();
     
+    s.coilFiredCount = isr_pass_firedCount;
+    s.coilIgfCount = isr_pass_sparkReturnCount;
+    
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
@@ -91,6 +103,8 @@ void PeripheralCoilPassive::update() {
 void PeripheralCoilPassive::probeCoil() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.isRunning) return;
+    
+    uint32_t prevSpark = isr_pass_sparkReturnCount;
     
     // Stage 1: 500us Safe Micro-Ping on IGBT Gate (Short-circuit check)
     GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
@@ -127,6 +141,8 @@ void PeripheralCoilPassive::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
+    delayMicroseconds(800); // Allow spark pulse latch
+    bool gotSpark = (isr_pass_sparkReturnCount > prevSpark);
     s.coilPeakCurrentA = peakAmps;
     
     // Dynamic Health Criteria based on Dwell Setting
@@ -134,7 +150,11 @@ void PeripheralCoilPassive::probeCoil() {
     
     if (peakAmps >= minHealthyAmps && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA @ %.1fms)", peakAmps, s.dwellMs);
+        if (gotSpark) {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY+SPARK (%.1fA)", peakAmps);
+        } else {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ NO SPARK (%.1fA - BOCOR)", peakAmps);
+        }
     } else if (peakAmps > 0.8f && peakAmps < minHealthyAmps) {
         s.coilConnected = true;
         snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
@@ -165,17 +185,35 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
             if (amps > 25.0f) amps = 25.0f;
             
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
-            s.coilConnected = (s.coilPeakCurrentA > 0.5f);
+            s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
-            // Real-time Current Saturation Status
-            if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
-                strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
-                strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 10.5f) {
-                strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            // Dual Confirmation Evaluation (Primary Current + Spark Return)
+            if (s.coilFiredCount >= 10) {
+                float sparkRatio = (s.coilFiredCount > 0) ? ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
+                
+                if (s.coilIgfCount == 0 && s.coilPeakCurrentA >= 4.5f) {
+                    strncpy(s.coilCurrentStatus, "❌ NO SPARK (MISFIRE 100%)", sizeof(s.coilCurrentStatus));
+                } else if (sparkRatio < 75.0f && s.coilPeakCurrentA >= 4.5f) {
+                    snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ MISFIRE (%.0f%% SPARK)", sparkRatio);
+                } else if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (SPARK OK)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             } else {
-                strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             }
         }
     } else {
@@ -227,6 +265,11 @@ void PeripheralCoilPassive::updateTimerConfig() {
 void PeripheralCoilPassive::start() {
     AppSettings& s = _settingsMgr.getSettings();
     updateTimerConfig();
+    
+    isr_pass_firedCount = 0;
+    isr_pass_sparkReturnCount = 0;
+    s.coilFiredCount = 0;
+    s.coilIgfCount = 0;
     
     if (s.mode == MODE_SINGLE) {
         coil_pass_pulsesRemaining = 1;

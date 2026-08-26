@@ -5,6 +5,11 @@ import { LeakageCard } from './LeakageCard.js';
 export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
+    const fired = state.coilFiredCount || 0;
+    const confirmed = state.coilIgfCount || 0;
+    const missed = fired > confirmed ? fired - confirmed : 0;
+    const health = fired > 0 ? (confirmed / fired) * 100 : 100;
+    const healthColor = fired === 0 ? 'var(--neon-purple)' : (health >= 95 ? 'var(--neon-green)' : (health >= 75 ? 'var(--neon-orange)' : 'var(--neon-red)'));
     
     return html`
         <div class="panel-main">
@@ -59,46 +64,71 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             </button>
         </div>
         
-        <!-- PRIMARY CURRENT MONITOR CARD -->
-        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-orange);">
+        <!-- PRIMARY CURRENT & SPARK RETURN DIAGNOSTIC CARD -->
+        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
             <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
-                <span style="font-weight: 700; letter-spacing: 0.1em; color: var(--neon-orange);">
-                    ⚡ PRIMARY CURRENT SENSING & WINDING HEALTH (PIN 35)
+                <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
+                    ⚡ 2-PIN DUAL-CONFIRMATION ANALYZER (IGBT CURRENT + SPARK RETURN)
                 </span>
-                <span class="status-badge" style="border-color: var(--neon-orange); color: var(--neon-orange);">
-                    IGBT SATURATION
+                <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
+                    ${fired === 0 ? "STANDBY" : (health >= 95 ? "SPARK OK (100%)" : (health >= 75 ? "INTERMITTENT" : "MISFIRE DETECTED"))}
                 </span>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: var(--space-md);">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 14px; text-align: center;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">PEAK PRIMARY CURRENT (I_peak)</div>
-                    <div style="font-size: 2.2rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
+            <!-- Telemetry Stats Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK DELIVERY</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
+                        ${fired > 0 ? health.toFixed(1) + "%" : "--%"}
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
                         ${currentA} A
                     </div>
-                    <div style="font-size: 0.8rem; font-weight: bold; margin-top: 4px; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
-                        STATUS: ${state.coilCurrentStatus || "STANDBY"}
+                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
+                        ${state.coilCurrentStatus || "STANDBY"}
                     </div>
                     <button 
                         class="btn" 
-                        style="margin-top: 10px; width: 100%; padding: 8px 10px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.05em; background: #FFE600; color: #000000; border: 1px solid #FFD700; box-shadow: 0 0 10px rgba(255, 230, 0, 0.35); cursor: pointer;"
+                        style="margin-top: 6px; width: 100%; padding: 6px 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; background: #FFE600; color: #000000; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 230, 0, 0.35); cursor: pointer;"
                         onClick=${() => sendAction('probeCoil')}
                         disabled=${!state.connected || state.isRunning}
                     >
-                        🔍 CHECK COIL / PROBE (3-PULSE TEST)
+                        🔍 CHECK COIL (PROBE)
                     </button>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">TARGET RANGE:</div>
-                    <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-primary);">
-                        • Normal: 5.5A - 9.0A (At 2.0-3.0ms Dwell)<br/>
-                        • Weak Coil: Di bawah 5.0A | Shorted: Di atas 11.0A
-                    </div>
-                    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-sharp); font-size: 0.78rem; color: var(--neon-orange); line-height: 1.4;">
-                        ⚠️ <strong>DETEKSI RUSAK SEKUNDER:</strong> Jika arus normal (5-6A) & IGBT berdetak tetapi api busi mati/kecil, koil mengalami bocor tegangan tinggi internal (*Dielectric Breakdown*).
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">FIRED (PULSES)</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+                        ${fired}
                     </div>
                 </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARKS CONFIRMED</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
+                        ${confirmed}
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">MISSED / BOCOR</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
+                        ${missed}
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; font-size: 0.82rem; line-height: 1.5;">
+                <strong style="color: var(--neon-orange);">💡 DIAGNOSA DUAL-CONFIRMATION:</strong><br/>
+                • <strong>Arus 5.5A - 9.0A + Sparks Confirmed 100%:</strong> Koil Pasif Prima & Bunga Api Biru Tebal.<br/>
+                • <strong>Arus Normal 6A + Sparks 0 (Missed 100%):</strong> ❌ <strong>RUSAK TOTAL / DIELECTRIC BREAKDOWN</strong> (Api loncat di dalam lilitan koil).<br/>
+                • <strong>Rangkaian Sensor Api (Pin 34):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 34 ESP32</strong>.
             </div>
         </div>
         

@@ -12,6 +12,12 @@ static volatile bool coil_act3p_autoStopped = false;
 
 static volatile uint16_t coil_act3p_peakRawAdc = 0;
 static volatile bool coil_act3p_hasNewAdc = false;
+static volatile uint32_t isr_act3p_firedCount = 0;
+static volatile uint32_t isr_act3p_sparkReturnCount = 0;
+
+static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
+    isr_act3p_sparkReturnCount++;
+}
 
 static void IRAM_ATTR onActive3pCoilTimer() {
     if (isActive3pCoilOn) {
@@ -19,9 +25,10 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         coil_act3p_peakRawAdc = analogRead(PIN_COIL_ISENSE);
         coil_act3p_hasNewAdc = true;
 
-        // Turn IGT Pin 25 LOW (Direct register write)
+        // Turn IGT Pin 25 LOW (Spark Fired)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = false;
+        isr_act3p_firedCount++;
         
         if (coil_act3p_pulsesRemaining > 0) {
             coil_act3p_pulsesRemaining--;
@@ -59,6 +66,8 @@ void PeripheralCoilActive3P::begin() {
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
     pinMode(PIN_COIL_ISENSE, INPUT);
+    pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive3pSparkReturnInterrupt, FALLING);
     
     if (coil_active3p_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -78,6 +87,9 @@ void PeripheralCoilActive3P::update() {
     
     AppSettings& s = _settingsMgr.getSettings();
     
+    s.coilFiredCount = isr_act3p_firedCount;
+    s.coilIgfCount = isr_act3p_sparkReturnCount;
+    
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
@@ -91,6 +103,8 @@ void PeripheralCoilActive3P::update() {
 void PeripheralCoilActive3P::probeCoil() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.isRunning) return;
+    
+    uint32_t prevSpark = isr_act3p_sparkReturnCount;
     
     // Stage 1: 500us Safe Micro-Ping (Short-circuit check)
     digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
@@ -127,6 +141,8 @@ void PeripheralCoilActive3P::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
+    delayMicroseconds(800); // Allow spark pulse latch
+    bool gotSpark = (isr_act3p_sparkReturnCount > prevSpark);
     s.coilPeakCurrentA = peakAmps;
     
     // Dynamic Health Criteria based on Dwell Setting
@@ -134,7 +150,11 @@ void PeripheralCoilActive3P::probeCoil() {
     
     if (peakAmps >= minHealthyAmps && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA @ %.1fms)", peakAmps, s.dwellMs);
+        if (gotSpark) {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY+SPARK (%.1fA)", peakAmps);
+        } else {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ NO SPARK (%.1fA - BOCOR)", peakAmps);
+        }
     } else if (peakAmps > 0.8f && peakAmps < minHealthyAmps) {
         s.coilConnected = true;
         snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
@@ -165,17 +185,35 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             if (amps > 25.0f) amps = 25.0f;
             
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
-            s.coilConnected = (s.coilPeakCurrentA > 0.5f);
+            s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
-            // Real-time Current Saturation Status
-            if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
-                strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
-                strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 10.5f) {
-                strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            // Dual Confirmation Evaluation (Primary Current + Spark Return)
+            if (s.coilFiredCount >= 10) {
+                float sparkRatio = (s.coilFiredCount > 0) ? ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
+                
+                if (s.coilIgfCount == 0 && s.coilPeakCurrentA >= 4.5f) {
+                    strncpy(s.coilCurrentStatus, "❌ NO SPARK (MISFIRE 100%)", sizeof(s.coilCurrentStatus));
+                } else if (sparkRatio < 75.0f && s.coilPeakCurrentA >= 4.5f) {
+                    snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ MISFIRE (%.0f%% SPARK)", sparkRatio);
+                } else if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (SPARK OK)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             } else {
-                strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             }
         }
     } else {
@@ -226,6 +264,11 @@ void PeripheralCoilActive3P::updateTimerConfig() {
 void PeripheralCoilActive3P::start() {
     AppSettings& s = _settingsMgr.getSettings();
     updateTimerConfig();
+    
+    isr_act3p_firedCount = 0;
+    isr_act3p_sparkReturnCount = 0;
+    s.coilFiredCount = 0;
+    s.coilIgfCount = 0;
     
     if (s.mode == MODE_SINGLE) {
         coil_act3p_pulsesRemaining = 1;
