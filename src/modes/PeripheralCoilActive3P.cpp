@@ -14,8 +14,12 @@ static volatile uint16_t coil_act3p_peakRawAdc = 0;
 static volatile bool coil_act3p_hasNewAdc = false;
 static volatile uint32_t isr_act3p_firedCount = 0;
 static volatile uint32_t isr_act3p_sparkReturnCount = 0;
+static volatile uint32_t isr_act3p_lastSparkUs = 0;
 
 static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
+    uint32_t nowUs = micros();
+    if (nowUs - isr_act3p_lastSparkUs < 1500) return; // 1.5ms anti-ringing dead-time filter
+    isr_act3p_lastSparkUs = nowUs;
     isr_act3p_sparkReturnCount++;
 }
 
@@ -67,9 +71,15 @@ void PeripheralCoilActive3P::begin() {
     
     pinMode(PIN_COIL_ISENSE, INPUT);
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive3pSparkReturnInterrupt, FALLING);
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
+    
+    // Dedicated External Spark Pulse Interrupt (LM358 Schmitt Trigger on GPIO 26)
+    pinMode(PIN_COIL_SPARK_PULSE, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive3pSparkReturnInterrupt, RISING);
+    
+    // Fallback legacy interrupt support on Pin 39 / Pin 34
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive3pSparkReturnInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive3pSparkReturnInterrupt, FALLING);
     
     if (coil_active3p_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3

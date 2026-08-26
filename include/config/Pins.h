@@ -15,10 +15,11 @@
 #define PIN_ISC_RSC           32 // Rotary Solenoid Close (Duty 100-D%)
 
 // --- Diagnostic Input Pins ---
-#define PIN_COIL_ACTIVE_IGF   34 // Internal Ignition Feedback (IGF) Input for 4-Pin Smart Coil (4N35 Opto, GPIO 34)
-#define PIN_COIL_ISENSE       35 // Primary Current Sense ADC Input (GPIO 35)
-#define PIN_COIL_LEAK_SENSE   36 // Body Leakage Probe Input (PC817/4N35 Opto, GPIO 36)
-#define PIN_COIL_SPARK_SENSE  39 // External Spark Gap Return Sensor Input (PC817 Opto, GPIO 39)
+#define PIN_COIL_ACTIVE_IGF   34 // Internal Ignition Feedback (IGF) Input for 4-Pin Smart Coil (GPIO 34)
+#define PIN_COIL_ISENSE       35 // Primary Current Sense ADC Input (ACS712-30A, GPIO 35)
+#define PIN_COIL_LEAK_SENSE   36 // Body Leakage Probe Input (GPIO 36 / VP)
+#define PIN_COIL_SPARK_SENSE  39 // External Spark Energy Analog Input from LM358 Pin 1 (GPIO 39 / VN)
+#define PIN_COIL_SPARK_PULSE  26 // External Spark Digital Cadence/Pulse Input from LM358 Pin 7 (GPIO 26)
 #define PIN_BUZZER            12 // Alarm Buzzer Output (Active/Passive Piezo, GPIO 12)
 
 // --- Speedometer Cluster Output Pins ---

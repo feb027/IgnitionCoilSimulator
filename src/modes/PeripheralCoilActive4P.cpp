@@ -58,13 +58,18 @@ static void IRAM_ATTR onActive4pCoilTimer() {
     }
 }
 
+static volatile uint32_t isr_act4p_lastSparkUs = 0;
+
 // Hardware Interrupt for Internal IGF confirmation pulses from 4-Pin Smart Coil (GPIO 34)
 static void IRAM_ATTR onActive4pIgfInterrupt() {
     isr_act4p_igfCount++;
 }
 
-// Hardware Interrupt for External Spark Gap Return Sensor (GPIO 39)
+// Hardware Interrupt for External Spark Gap Return Sensor (GPIO 26 / GPIO 39)
 static void IRAM_ATTR onActive4pSparkInterrupt() {
+    uint32_t nowUs = micros();
+    if (nowUs - isr_act4p_lastSparkUs < 1500) return; // 1.5ms anti-ringing dead-time filter
+    isr_act4p_lastSparkUs = nowUs;
     isr_act4p_sparkCount++;
 }
 
@@ -79,7 +84,11 @@ void PeripheralCoilActive4P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
     
-    // External Spark Return Input Pin (GPIO 39) with Hardware Interrupt
+    // Dedicated External Spark Pulse Interrupt (LM358 Schmitt Trigger on GPIO 26)
+    pinMode(PIN_COIL_SPARK_PULSE, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, RISING);
+    
+    // External Spark Energy Analog Input (GPIO 39)
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive4pSparkInterrupt, FALLING);
     
