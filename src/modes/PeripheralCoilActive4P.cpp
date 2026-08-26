@@ -176,7 +176,7 @@ void PeripheralCoilActive4P::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
-    delayMicroseconds(800);
+    delay(5); // Allow full secondary discharge and optocoupler pulse latch (5ms)
     bool gotIgf = (isr_act4p_igfCount > prevIgf);
     bool gotSpark = (isr_act4p_sparkCount > prevSpark);
     s.coilPeakCurrentA = peakAmps;

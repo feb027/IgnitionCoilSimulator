@@ -22,6 +22,7 @@ public:
     virtual void stop() = 0;
     virtual void trigger() = 0;
     virtual void probeCoil() {}
+    virtual void resetCounters() {}
 
     // Menu System
     virtual bool shouldShowMenuItem(int menuIndex) { return true; }

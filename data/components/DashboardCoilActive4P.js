@@ -79,13 +79,23 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
         
         <!-- COIL HEALTH & DUAL COMPARATIVE DIAGNOSTIC ANALYZER -->
         <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
                     ⚡ 4-PIN DUAL-CHANNEL COMPARATOR (INTERNAL IGF + EXTERNAL SPARK)
                 </span>
-                <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
-                    ${healthBadge}
-                </span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button 
+                        class="btn" 
+                        style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08); border: 1px solid var(--border-sharp); color: var(--text-primary); cursor: pointer;"
+                        onClick=${() => sendAction('resetCounters')}
+                        disabled=${!state.connected || isAutoDiag}
+                    >
+                        🔄 RESET COUNTER
+                    </button>
+                    <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
+                        ${healthBadge}
+                    </span>
+                </div>
             </div>
 
             <!-- Telemetry Stats Grid -->

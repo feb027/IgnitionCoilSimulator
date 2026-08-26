@@ -66,13 +66,23 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
         
         <!-- PRIMARY CURRENT & SPARK RETURN DIAGNOSTIC CARD -->
         <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
                     ⚡ 2-PIN DUAL-CONFIRMATION ANALYZER (IGBT CURRENT + SPARK RETURN)
                 </span>
-                <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
-                    ${fired === 0 ? "STANDBY" : (health >= 95 ? "SPARK OK (100%)" : (health >= 75 ? "INTERMITTENT" : "MISFIRE DETECTED"))}
-                </span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button 
+                        class="btn" 
+                        style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08); border: 1px solid var(--border-sharp); color: var(--text-primary); cursor: pointer;"
+                        onClick=${() => sendAction('resetCounters')}
+                        disabled=${!state.connected}
+                    >
+                        🔄 RESET COUNTER
+                    </button>
+                    <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
+                        ${fired === 0 ? "STANDBY" : (health >= 95 ? "SPARK OK (100%)" : (health >= 75 ? "INTERMITTENT" : "MISFIRE DETECTED"))}
+                    </span>
+                </div>
             </div>
 
             <!-- Telemetry Stats Grid -->
@@ -128,7 +138,8 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                 <strong style="color: var(--neon-orange);">💡 DIAGNOSA DUAL-CONFIRMATION:</strong><br/>
                 • <strong>Arus 5.5A - 9.0A + Sparks Confirmed 100%:</strong> Koil Pasif Prima & Bunga Api Biru Tebal.<br/>
                 • <strong>Arus Normal 6A + Sparks 0 (Missed 100%):</strong> ❌ <strong>RUSAK TOTAL / DIELECTRIC BREAKDOWN</strong> (Api loncat di dalam lilitan koil).<br/>
-                • <strong>Rangkaian Sensor Api (Pin 39 / VN):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 39 (VN) ESP32</strong> (dengan R Pull-Up 10k ke 3.3V).
+                • <strong>Rangkaian Sensor Api (Pin 39 / VN):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 39 (VN) ESP32</strong> (dengan R Pull-Up 10k ke 3.3V).<br/>
+                • ⚠️ <strong>TIPS POLARITAS OPTOCOUPLER:</strong> Jika ada bunga api fisik tapi <em>Sparks Confirmed</em> tetap 0, <strong>coba balikkan kedua kabel Pin 1 dan Pin 2 Opto</strong> pada ground busi (karena polaritas tegangan tinggi koil dapat berupa pulsa negatif).
             </div>
         </div>
         

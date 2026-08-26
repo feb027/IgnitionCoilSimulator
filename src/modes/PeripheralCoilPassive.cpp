@@ -144,7 +144,7 @@ void PeripheralCoilPassive::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
-    delayMicroseconds(800); // Allow spark pulse latch
+    delay(5); // Allow full secondary discharge and optocoupler pulse latch (5ms)
     bool gotSpark = (isr_pass_sparkReturnCount > prevSpark);
     s.coilPeakCurrentA = peakAmps;
     
@@ -170,6 +170,20 @@ void PeripheralCoilPassive::probeCoil() {
         strncpy(s.coilCurrentStatus, "❌ DISCONNECTED (0A)", sizeof(s.coilCurrentStatus));
     }
     s.lastFiredMs = millis();
+}
+
+void PeripheralCoilPassive::resetCounters() {
+    AppSettings& s = _settingsMgr.getSettings();
+    isr_pass_firedCount = 0;
+    isr_pass_sparkReturnCount = 0;
+    s.coilFiredCount = 0;
+    s.coilIgfCount = 0;
+    s.coilSparkReturnCount = 0;
+    s.coilMissedCount = 0;
+    s.coilHealthPercent = 100.0f;
+    s.coilPeakCurrentA = 0.0f;
+    strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+    CoilLeakSensor::reset(s);
 }
 
 void PeripheralCoilPassive::samplePrimaryCurrent() {

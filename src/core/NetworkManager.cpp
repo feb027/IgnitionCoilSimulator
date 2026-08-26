@@ -552,11 +552,11 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
                 ((PeripheralCoilActive4P*)_peripheralMgr.getActive())->stopAutoDiag();
                 changed = true;
             }
-        } else if (action == "resetCoilCounters") {
-            if (s.pulseMode == PULSE_COIL_ACTIVE_4P && _peripheralMgr.getActive() != nullptr) {
-                ((PeripheralCoilActive4P*)_peripheralMgr.getActive())->resetCounters();
-                changed = true;
+        } else if (action == "resetCoilCounters" || action == "resetCounters") {
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->resetCounters();
             }
+            changed = true;
         } else if (action == "resetLeakCounter") {
             CoilLeakSensor::reset(s);
             changed = true;
