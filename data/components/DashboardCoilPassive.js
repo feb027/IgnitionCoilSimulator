@@ -1,6 +1,7 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
 import { LeakageCard } from './LeakageCard.js';
+import { SparkCadenceCard } from './SparkCadenceCard.js';
 
 export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
@@ -64,88 +65,8 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             </button>
         </div>
         
-        <!-- PRIMARY CURRENT & SPARK RETURN DIAGNOSTIC CARD -->
-        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
-                    ⚡ 2-PIN DUAL-CONFIRMATION ANALYZER (IGBT CURRENT + SPARK RETURN)
-                </span>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button 
-                        class="btn" 
-                        style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08); border: 1px solid var(--border-sharp); color: var(--text-primary); cursor: pointer;"
-                        onClick=${() => sendAction('resetCounters')}
-                        disabled=${!state.connected}
-                    >
-                        🔄 RESET COUNTER
-                    </button>
-                    <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
-                        ${fired === 0 ? "STANDBY" : (health >= 95 ? "SPARK OK (100%)" : (health >= 75 ? "INTERMITTENT" : "MISFIRE DETECTED"))}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Telemetry Stats Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK ENERGY (mA)</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${(state.coilSparkCurrentmA || 0) >= 45 ? 'var(--neon-green)' : ((state.coilSparkCurrentmA || 0) >= 30 ? 'var(--neon-orange)' : 'var(--neon-red)')}; margin-top: 4px;">
-                        ${(state.coilSparkCurrentmA || 0).toFixed(1)} mA
-                    </div>
-                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${(state.coilSparkHealthScore || 0) >= 90 ? 'var(--neon-green)' : ((state.coilSparkHealthScore || 0) >= 70 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
-                        ${(state.coilSparkHealthScore || 0) >= 90 ? '🟢 100% PRIMA' : ((state.coilSparkHealthScore || 0) >= 70 ? '🟡 75% BAIK' : ((state.coilSparkHealthScore || 0) >= 45 ? '🟠 50% DROP BEBAN' : ((state.coilSparkHealthScore || 0) >= 20 ? '🔴 25% SEKARAT' : '❌ 0% MATI')))}
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
-                        ${currentA} A
-                    </div>
-                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
-                        ${state.coilCurrentStatus || "STANDBY"}
-                    </div>
-                    <button 
-                        class="btn" 
-                        style="margin-top: 6px; width: 100%; padding: 6px 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; background: #FFE600; color: #000000; border: 1px solid #FFD700; box-shadow: 0 0 8px rgba(255, 230, 0, 0.35); cursor: pointer;"
-                        onClick=${() => sendAction('probeCoil')}
-                        disabled=${!state.connected || state.isRunning}
-                    >
-                        🔍 CHECK COIL (PROBE)
-                    </button>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">FIRED (PULSES)</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
-                        ${fired}
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARKS CONFIRMED</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
-                        ${confirmed}
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">MISSED / BOCOR</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
-                        ${missed}
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-top: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; font-size: 0.82rem; line-height: 1.5;">
-                <strong style="color: var(--neon-orange);">💡 5 TINGKAT SKALA KESEHATAN KOIL (STANDAR BEBAN KOMPRESI):</strong><br/>
-                • 🟢 <strong>100% PRIMA (>45mA / >5.5A):</strong> Api Biru Tebal, siap untuk kompresi tinggi & putaran atas.<br/>
-                • 🟡 <strong>75% BAIK (30-45mA / >4.5A):</strong> Layak pakai, degradasi lilitan sangat minim.<br/>
-                • 🟠 <strong>50% DROP BEBAN (15-30mA):</strong> ⚠️ <em>Menyala di meja, tapi pasti BREBET/PINCANG di mobil saat nanjak/AC ON!</em><br/>
-                • 🔴 <strong>25% SEKARAT (<15mA):</strong> Api lilin kuning tipis, sering gagal meledakkan campuran bensin.<br/>
-                • ❌ <strong>0% MATI (0mA):</strong> Misfire total / bocor leher dielektrik tembus ke bodi.
-            </div>
-        </div>
+        <!-- 2-PIN DUAL-DIMENSION IGNITION ANALYZER (DUAL GAUGES + COMPOSITE HEALTH + LIVE GRAPH) -->
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="2-PIN DUAL-DIMENSION IGNITION ANALYZER" />
         
         <!-- BODY LEAKAGE DETECTION CARD -->
         <${LeakageCard} state=${state} sendAction=${sendAction} />
