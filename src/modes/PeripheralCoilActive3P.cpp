@@ -252,25 +252,27 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
                 isr_act3p_sparkReturnCount = isr_act3p_firedCount;
             }
             
-            // Continuous 5-Tier Health Evaluation
+            // Continuous 5-Tier Health Evaluation (Supports both 4N35 Digital Cadence & Analog mA)
+            float deliveryPct = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
+            
             if (s.coilPeakCurrentA > 11.5f) {
                 s.coilSparkHealthScore = 0.0f;
                 strncpy(s.coilCurrentStatus, "❌ OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilSparkCurrentmA >= 45.0f && s.coilPeakCurrentA >= 5.0f) {
+            } else if ((s.coilSparkCurrentmA >= 45.0f || (s.coilSparkReturnCount > 0 && deliveryPct >= 95.0f)) && s.coilPeakCurrentA >= 3.5f) {
                 s.coilSparkHealthScore = 100.0f;
-                strncpy(s.coilCurrentStatus, "🟢 100% PRIMA (API BIRU)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilSparkCurrentmA >= 30.0f && s.coilPeakCurrentA >= 4.0f) {
+                snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟢 100%% PRIMA (SPARK OK / %.1fA)", s.coilPeakCurrentA);
+            } else if ((s.coilSparkCurrentmA >= 30.0f || (s.coilSparkReturnCount > 0 && deliveryPct >= 80.0f)) && s.coilPeakCurrentA >= 3.0f) {
                 s.coilSparkHealthScore = 75.0f;
-                strncpy(s.coilCurrentStatus, "🟡 75% BAIK (LAYAK PAKAI)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilSparkCurrentmA >= 15.0f) {
+                snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟡 75%% BAIK (%.0f%% SINKRON)", deliveryPct);
+            } else if (s.coilSparkCurrentmA >= 15.0f || (s.coilSparkReturnCount > 0 && deliveryPct >= 50.0f)) {
                 s.coilSparkHealthScore = 50.0f;
-                strncpy(s.coilCurrentStatus, "🟠 50% MARGINAL (DROP BEBAN)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilSparkCurrentmA >= 3.0f || s.coilPeakCurrentA > 2.0f) {
+                snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟠 50%% DROP BEBAN (ARITMIA)", deliveryPct);
+            } else if (s.coilSparkCurrentmA >= 3.0f || s.coilSparkReturnCount > 0 || s.coilPeakCurrentA > 2.0f) {
                 s.coilSparkHealthScore = 25.0f;
-                strncpy(s.coilCurrentStatus, "🔴 25% SEKARAT (API LILIN)", sizeof(s.coilCurrentStatus));
+                strncpy(s.coilCurrentStatus, "🔴 25% SEKARAT (MISFIRE)", sizeof(s.coilCurrentStatus));
             } else {
                 s.coilSparkHealthScore = 0.0f;
-                strncpy(s.coilCurrentStatus, "❌ 0% MATI / MISFIRE", sizeof(s.coilCurrentStatus));
+                strncpy(s.coilCurrentStatus, "❌ 0% MATI / NO SPARK", sizeof(s.coilCurrentStatus));
             }
         }
     } else {
