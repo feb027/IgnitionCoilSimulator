@@ -15,7 +15,7 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
         <div class="panel-main">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
                 <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
-                    🔌 DEDICATED IGBT DRIVER (PIN 33)
+                    🔌 IGBT DRIVER (PIN 26) | SENSOR API (PIN 39 / VN) | SENSE (PIN 35)
                 </div>
                 <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
                     ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
@@ -128,7 +128,7 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                 <strong style="color: var(--neon-orange);">💡 DIAGNOSA DUAL-CONFIRMATION:</strong><br/>
                 • <strong>Arus 5.5A - 9.0A + Sparks Confirmed 100%:</strong> Koil Pasif Prima & Bunga Api Biru Tebal.<br/>
                 • <strong>Arus Normal 6A + Sparks 0 (Missed 100%):</strong> ❌ <strong>RUSAK TOTAL / DIELECTRIC BREAKDOWN</strong> (Api loncat di dalam lilitan koil).<br/>
-                • <strong>Rangkaian Sensor Api (Pin 34):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 34 ESP32</strong>.
+                • <strong>Rangkaian Sensor Api (Pin 39 / VN):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 39 (VN) ESP32</strong> (dengan R Pull-Up 10k ke 3.3V).
             </div>
         </div>
         
