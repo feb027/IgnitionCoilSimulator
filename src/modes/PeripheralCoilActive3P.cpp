@@ -90,23 +90,62 @@ void PeripheralCoilActive3P::update() {
 
 void PeripheralCoilActive3P::probeCoil() {
     AppSettings& s = _settingsMgr.getSettings();
+    if (s.isRunning) return;
     
-    // 800us safe micro-probe pulse
+    // Stage 1: 800us Safe Micro-Ping (Short-circuit check)
     digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
     delayMicroseconds(800);
-    int rawAdc = analogRead(PIN_COIL_ISENSE);
+    int raw1 = analogRead(PIN_COIL_ISENSE);
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
-    float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-    float deltaV = (voltage > _zeroCurrentVoltage) ? (voltage - _zeroCurrentVoltage) : 0.0f;
-    float pingAmps = (deltaV / 0.066f) * 3.2f;
+    float v1 = ((float)raw1 / 4095.0f) * 3.3f;
+    float dV1 = (v1 > _zeroCurrentVoltage) ? (v1 - _zeroCurrentVoltage) : 0.0f;
+    float amps1 = (dV1 / 0.066f) * 3.2f;
     
-    if (pingAmps > 0.5f) {
+    if (amps1 > 12.0f) {
+        s.coilPeakCurrentA = amps1;
+        s.coilConnected = false;
+        strncpy(s.coilCurrentStatus, "❌ SHORT CIRCUIT (>12A)", sizeof(s.coilCurrentStatus));
+        s.lastFiredMs = millis();
+        return;
+    }
+    
+    delay(20);
+    
+    // Stage 2: 1500us Medium Ramp
+    digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
+    delayMicroseconds(1500);
+    analogRead(PIN_COIL_ISENSE);
+    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+    
+    delay(25);
+    
+    // Stage 3: 2000us Full Saturation Dwell
+    digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
+    delayMicroseconds(2000);
+    int raw3 = analogRead(PIN_COIL_ISENSE);
+    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+    
+    float v3 = ((float)raw3 / 4095.0f) * 3.3f;
+    float dV3 = (v3 > _zeroCurrentVoltage) ? (v3 - _zeroCurrentVoltage) : 0.0f;
+    float peakAmps = (dV3 / 0.066f) * 3.2f;
+    if (peakAmps > 25.0f) peakAmps = 25.0f;
+    
+    s.coilPeakCurrentA = peakAmps;
+    
+    if (peakAmps >= 5.0f && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        strncpy(s.coilCurrentStatus, "COIL DETECTED (READY)", sizeof(s.coilCurrentStatus));
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA) - SAFE", peakAmps);
+    } else if (peakAmps > 0.8f && peakAmps < 5.0f) {
+        s.coilConnected = true;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
+    } else if (peakAmps > 11.0f) {
+        s.coilConnected = false;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ OVERCURRENT (%.1fA)", peakAmps);
     } else {
         s.coilConnected = false;
-        strncpy(s.coilCurrentStatus, "DISCONNECTED", sizeof(s.coilCurrentStatus));
+        s.coilPeakCurrentA = 0.0f;
+        strncpy(s.coilCurrentStatus, "❌ DISCONNECTED (0A)", sizeof(s.coilCurrentStatus));
     }
     s.lastFiredMs = millis();
 }

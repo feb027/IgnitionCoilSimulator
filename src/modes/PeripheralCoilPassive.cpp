@@ -90,23 +90,62 @@ void PeripheralCoilPassive::update() {
 
 void PeripheralCoilPassive::probeCoil() {
     AppSettings& s = _settingsMgr.getSettings();
+    if (s.isRunning) return;
     
-    // 800us safe micro-probe pulse on IGBT gate
+    // Stage 1: 800us Safe Micro-Ping on IGBT Gate (Short-circuit check)
     GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     delayMicroseconds(800);
-    int rawAdc = analogRead(PIN_COIL_ISENSE);
+    int raw1 = analogRead(PIN_COIL_ISENSE);
     GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     
-    float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
-    float deltaV = (voltage > _zeroCurrentVoltage) ? (voltage - _zeroCurrentVoltage) : 0.0f;
-    float pingAmps = (deltaV / 0.066f) * 3.2f;
+    float v1 = ((float)raw1 / 4095.0f) * 3.3f;
+    float dV1 = (v1 > _zeroCurrentVoltage) ? (v1 - _zeroCurrentVoltage) : 0.0f;
+    float amps1 = (dV1 / 0.066f) * 3.2f;
     
-    if (pingAmps > 0.5f) {
+    if (amps1 > 12.0f) {
+        s.coilPeakCurrentA = amps1;
+        s.coilConnected = false;
+        strncpy(s.coilCurrentStatus, "❌ SHORT CIRCUIT (>12A)", sizeof(s.coilCurrentStatus));
+        s.lastFiredMs = millis();
+        return;
+    }
+    
+    delay(20);
+    
+    // Stage 2: 1500us Medium Ramp
+    GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    delayMicroseconds(1500);
+    analogRead(PIN_COIL_ISENSE);
+    GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    
+    delay(25);
+    
+    // Stage 3: 2000us Full Saturation Dwell
+    GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    delayMicroseconds(2000);
+    int raw3 = analogRead(PIN_COIL_ISENSE);
+    GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    
+    float v3 = ((float)raw3 / 4095.0f) * 3.3f;
+    float dV3 = (v3 > _zeroCurrentVoltage) ? (v3 - _zeroCurrentVoltage) : 0.0f;
+    float peakAmps = (dV3 / 0.066f) * 3.2f;
+    if (peakAmps > 25.0f) peakAmps = 25.0f;
+    
+    s.coilPeakCurrentA = peakAmps;
+    
+    if (peakAmps >= 5.0f && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        strncpy(s.coilCurrentStatus, "COIL DETECTED (READY)", sizeof(s.coilCurrentStatus));
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA) - SAFE", peakAmps);
+    } else if (peakAmps > 0.8f && peakAmps < 5.0f) {
+        s.coilConnected = true;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
+    } else if (peakAmps > 11.0f) {
+        s.coilConnected = false;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ OVERCURRENT (%.1fA)", peakAmps);
     } else {
         s.coilConnected = false;
-        strncpy(s.coilCurrentStatus, "DISCONNECTED", sizeof(s.coilCurrentStatus));
+        s.coilPeakCurrentA = 0.0f;
+        strncpy(s.coilCurrentStatus, "❌ DISCONNECTED (0A)", sizeof(s.coilCurrentStatus));
     }
     s.lastFiredMs = millis();
 }
