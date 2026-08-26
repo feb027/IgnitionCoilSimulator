@@ -84,6 +84,9 @@ void NetworkManager::update() {
                  (current.currentSpeedoTempPercent != _lastBroadcastedState.currentSpeedoTempPercent) ||
                  (current.currentSpeedoFuelPercent != _lastBroadcastedState.currentSpeedoFuelPercent) ||
                  (current.currentRpm != _lastBroadcastedState.currentRpm) ||
+                 (fabs(current.coilPeakCurrentA - _lastBroadcastedState.coilPeakCurrentA) > 0.05f) ||
+                 (current.coilConnected != _lastBroadcastedState.coilConnected) ||
+                 (strcmp(current.coilCurrentStatus, _lastBroadcastedState.coilCurrentStatus) != 0) ||
                  (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
                  (current.coilIgfCount != _lastBroadcastedState.coilIgfCount) ||
                  (current.coilAutoDiagRunning != _lastBroadcastedState.coilAutoDiagRunning) ||

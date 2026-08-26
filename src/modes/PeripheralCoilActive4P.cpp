@@ -13,9 +13,15 @@ static volatile bool coil_act4p_autoStopped = false;
 // Diagnostic Telemetry ISR Counters
 static volatile uint32_t isr_act4p_firedCount = 0;
 static volatile uint32_t isr_act4p_igfCount = 0;
+static volatile uint16_t coil_act4p_peakRawAdc = 0;
+static volatile bool coil_act4p_hasNewAdc = false;
 
 static void IRAM_ATTR onActive4pCoilTimer() {
     if (isActive4pCoilOn) {
+        // Sample peak primary charging current right at the end of Dwell ramp
+        coil_act4p_peakRawAdc = analogRead(PIN_COIL_ISENSE);
+        coil_act4p_hasNewAdc = true;
+
         // Turn IGT Pin 25 LOW (Spark Fired)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = false;
@@ -147,9 +153,9 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
     AppSettings& s = _settingsMgr.getSettings();
     
     if (s.isRunning) {
-        if (now - _lastCurrentSampleTime >= 30) {
-            _lastCurrentSampleTime = now;
-            int rawAdc = analogRead(PIN_COIL_ISENSE);
+        if (coil_act4p_hasNewAdc) {
+            coil_act4p_hasNewAdc = false;
+            int rawAdc = coil_act4p_peakRawAdc;
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
             
             // ACS712-30A with 1N4148 Peak Detector (Gain factor: 3.2x)
@@ -157,7 +163,7 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
             float amps = (deltaV / 0.066f) * 3.2f;
             if (amps > 25.0f) amps = 25.0f;
             
-            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.7f) + (amps * 0.3f);
+            s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
             // Real-time Current Saturation Status
