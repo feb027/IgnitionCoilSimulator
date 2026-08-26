@@ -21,6 +21,7 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
     virtual void trigger() = 0;
+    virtual void probeCoil() {}
 
     // Menu System
     virtual bool shouldShowMenuItem(int menuIndex) { return true; }

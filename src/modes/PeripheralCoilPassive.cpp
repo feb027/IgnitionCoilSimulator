@@ -10,15 +10,8 @@ static volatile uint32_t coil_pass_periodTicks = 0;
 static volatile uint32_t coil_pass_pulsesRemaining = 0;
 static volatile bool coil_pass_autoStopped = false;
 
-static volatile uint16_t coil_pass_peakRawAdc = 0;
-static volatile bool coil_pass_hasNewAdc = false;
-
 static void IRAM_ATTR onPassiveCoilTimer() {
     if (isPassiveCoilOn) {
-        // Sample peak primary charging current right at the end of Dwell ramp
-        coil_pass_peakRawAdc = analogRead(PIN_COIL_ISENSE);
-        coil_pass_hasNewAdc = true;
-
         // Turn IGBT Gate OFF (GPIO 33 LOW)
         GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = false;
@@ -52,7 +45,7 @@ static void IRAM_ATTR onPassiveCoilTimer() {
 }
 
 PeripheralCoilPassive::PeripheralCoilPassive(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _zeroCurrentVoltage(2.50f) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _zeroCurrentVoltage(1.85f) {}
 
 void PeripheralCoilPassive::begin() {
     pinMode(PIN_COIL_PASSIVE_IGBT, OUTPUT);
@@ -88,33 +81,56 @@ void PeripheralCoilPassive::update() {
     }
 }
 
+void PeripheralCoilPassive::probeCoil() {
+    AppSettings& s = _settingsMgr.getSettings();
+    
+    // 800us safe micro-probe pulse on IGBT gate
+    GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    delayMicroseconds(800);
+    int rawAdc = analogRead(PIN_COIL_ISENSE);
+    GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+    
+    float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
+    float deltaV = (voltage > _zeroCurrentVoltage) ? (voltage - _zeroCurrentVoltage) : 0.0f;
+    float pingAmps = (deltaV / 0.066f) * 3.2f;
+    
+    if (pingAmps > 0.5f) {
+        s.coilConnected = true;
+        strncpy(s.coilCurrentStatus, "COIL DETECTED (READY)", sizeof(s.coilCurrentStatus));
+    } else {
+        s.coilConnected = false;
+        strncpy(s.coilCurrentStatus, "DISCONNECTED", sizeof(s.coilCurrentStatus));
+    }
+    s.lastFiredMs = millis();
+}
+
 void PeripheralCoilPassive::samplePrimaryCurrent() {
     uint32_t now = millis();
     AppSettings& s = _settingsMgr.getSettings();
     
     if (s.isRunning) {
-        if (coil_pass_hasNewAdc) {
-            coil_pass_hasNewAdc = false;
-            int rawAdc = coil_pass_peakRawAdc;
+        if (now - _lastCurrentSampleTime >= 30) {
+            _lastCurrentSampleTime = now;
+            int rawAdc = analogRead(PIN_COIL_ISENSE);
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
             
-            // ACS712-30A: 66mV/A sensitivity around zero-current offset
-            float deltaV = fabs(voltage - _zeroCurrentVoltage);
-            float amps = deltaV / 0.066f;
-            if (amps > 30.0f) amps = 30.0f;
+            // ACS712-30A with 1N4148 Peak Detector (Gain factor: 3.2x)
+            float deltaV = (voltage > _zeroCurrentVoltage) ? (voltage - _zeroCurrentVoltage) : 0.0f;
+            float amps = (deltaV / 0.066f) * 3.2f;
+            if (amps > 25.0f) amps = 25.0f;
             
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.7f) + (amps * 0.3f);
             s.coilConnected = (s.coilPeakCurrentA > 0.5f);
             
             // Real-time Current Saturation Status
-            if (s.coilPeakCurrentA >= 5.5f && s.coilPeakCurrentA <= 10.5f) {
-                strncpy(s.coilCurrentStatus, "OPTIMAL (6-10A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.5f) {
+            if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
                 strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
             } else if (s.coilPeakCurrentA > 10.5f) {
                 strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
             } else {
-                strncpy(s.coilCurrentStatus, "NO CURRENT", sizeof(s.coilCurrentStatus));
+                strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
             }
         }
     } else {
@@ -122,12 +138,12 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
         s.coilPeakCurrentA = 0.0f;
         strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
         
-        if (now - _lastCurrentSampleTime >= 100) {
+        if (now - _lastCurrentSampleTime >= 50) {
             _lastCurrentSampleTime = now;
             int rawAdc = analogRead(PIN_COIL_ISENSE);
             float v = ((float)rawAdc / 4095.0f) * 3.3f;
             if (v > 0.1f) {
-                _zeroCurrentVoltage = (_zeroCurrentVoltage * 0.95f) + (v * 0.05f);
+                _zeroCurrentVoltage = (_zeroCurrentVoltage * 0.9f) + (v * 0.1f);
             }
         }
     }

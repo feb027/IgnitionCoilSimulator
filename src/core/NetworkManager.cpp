@@ -555,6 +555,11 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         } else if (action == "resetLeakCounter") {
             CoilLeakSensor::reset(s);
             changed = true;
+        } else if (action == "probeCoil") {
+            if (_peripheralMgr.getActive() != nullptr) {
+                _peripheralMgr.getActive()->probeCoil();
+                changed = true;
+            }
         }
 
         if (changed) {

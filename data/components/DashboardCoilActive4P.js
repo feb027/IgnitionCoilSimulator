@@ -98,12 +98,20 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
                         ${currentA} A
                     </div>
-                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
+                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
                         ${state.coilCurrentStatus || "STANDBY"}
                     </div>
+                    <button 
+                        class="btn" 
+                        style="margin-top: 6px; width: 100%; padding: 4px; font-size: 0.65rem; border-color: var(--neon-cyan); color: var(--neon-cyan);"
+                        onClick=${() => sendAction('probeCoil')}
+                        disabled=${!state.connected || state.isRunning || isAutoDiag}
+                    >
+                        🔍 PROBE (1x TEST)
+                    </button>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">

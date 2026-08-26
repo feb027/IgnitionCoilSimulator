@@ -153,6 +153,7 @@ function App() {
                     setState(s => ({ ...s, isRunning: !s.isRunning }));
                 }
             }
+            if (action === 'probeCoil') setState(s => ({ ...s, coilCurrentStatus: 'PROBING...' }));
             if (action === 'setRpm') setState(s => ({ ...s, rpm: value }));
             if (action === 'setDwell') setState(s => ({ ...s, dwellMs: value }));
             if (action === 'setMode') setState(s => ({ ...s, pulseMode: value, isRunning: false }));

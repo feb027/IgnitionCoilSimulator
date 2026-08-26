@@ -17,6 +17,7 @@ public:
     void start() override;
     void stop() override;
     void trigger() override;
+    void probeCoil() override;
 
     void drawDashboard(U8G2& u8g2, int focusIndex, bool isEditMode) override;
     
