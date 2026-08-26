@@ -84,13 +84,12 @@ void PeripheralCoilActive4P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 / TLP Optocoupler on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, FALLING);
     
     // External Spark Energy Analog Input (GPIO 39)
-    pinMode(PIN_COIL_SPARK_SENSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive4pSparkInterrupt, FALLING);
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     
     // Current Sense ADC Pin (GPIO 35)
     pinMode(PIN_COIL_ISENSE, INPUT);
@@ -117,17 +116,8 @@ void PeripheralCoilActive4P::update() {
     s.coilFiredCount = isr_act4p_firedCount;
     s.coilIgfCount = isr_act4p_igfCount;
     s.coilSparkReturnCount = isr_act4p_sparkCount;
-    
-    if (s.coilFiredCount > 0) {
-        if (s.coilIgfCount > s.coilFiredCount) {
-            s.coilIgfCount = s.coilFiredCount;
-        }
-        s.coilMissedCount = s.coilFiredCount - s.coilIgfCount;
-        s.coilHealthPercent = ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f;
-    } else {
-        s.coilMissedCount = 0;
-        s.coilHealthPercent = 100.0f;
-    }
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     // Sample primary current
     samplePrimaryCurrent();

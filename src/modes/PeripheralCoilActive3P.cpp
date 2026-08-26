@@ -70,18 +70,11 @@ void PeripheralCoilActive3P::begin() {
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
     pinMode(PIN_COIL_ISENSE, INPUT);
-    pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 / TLP Optocoupler on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive3pSparkReturnInterrupt, FALLING);
-    
-    // Support on Pin 39 / Pin 34
-    pinMode(PIN_COIL_SPARK_SENSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive3pSparkReturnInterrupt, FALLING);
-    pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive3pSparkReturnInterrupt, FALLING);
     
     if (coil_active3p_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -102,8 +95,10 @@ void PeripheralCoilActive3P::update() {
     AppSettings& s = _settingsMgr.getSettings();
     
     s.coilFiredCount = isr_act3p_firedCount;
-    s.coilIgfCount = isr_act3p_sparkReturnCount;
     s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
+    s.coilIgfCount = isr_act3p_sparkReturnCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);

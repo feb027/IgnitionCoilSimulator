@@ -70,18 +70,11 @@ void PeripheralCoilPassive::begin() {
     digitalWrite(PIN_COIL_PASSIVE_IGBT, LOW);
     
     pinMode(PIN_COIL_ISENSE, INPUT);
-    pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 / TLP Optocoupler on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onPassiveSparkReturnInterrupt, FALLING);
-    
-    // Support on Pin 39 / Pin 34
-    pinMode(PIN_COIL_SPARK_SENSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onPassiveSparkReturnInterrupt, FALLING);
-    pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onPassiveSparkReturnInterrupt, FALLING);
     
     if (coil_passive_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -102,8 +95,10 @@ void PeripheralCoilPassive::update() {
     AppSettings& s = _settingsMgr.getSettings();
     
     s.coilFiredCount = isr_pass_firedCount;
-    s.coilIgfCount = isr_pass_sparkReturnCount;
     s.coilSparkReturnCount = isr_pass_sparkReturnCount;
+    s.coilIgfCount = isr_pass_sparkReturnCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
