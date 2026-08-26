@@ -85,6 +85,8 @@ void NetworkManager::update() {
                  (current.currentSpeedoFuelPercent != _lastBroadcastedState.currentSpeedoFuelPercent) ||
                  (current.currentRpm != _lastBroadcastedState.currentRpm) ||
                  (fabs(current.coilPeakCurrentA - _lastBroadcastedState.coilPeakCurrentA) > 0.05f) ||
+                 (fabs(current.coilSparkCurrentmA - _lastBroadcastedState.coilSparkCurrentmA) > 0.5f) ||
+                 (current.coilSparkHealthScore != _lastBroadcastedState.coilSparkHealthScore) ||
                  (current.coilConnected != _lastBroadcastedState.coilConnected) ||
                  (strcmp(current.coilCurrentStatus, _lastBroadcastedState.coilCurrentStatus) != 0) ||
                  (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
@@ -159,6 +161,8 @@ void NetworkManager::broadcastState() {
     doc["coilMissedCount"] = s.coilMissedCount;
     doc["coilHealthPercent"] = s.coilHealthPercent;
     doc["coilPeakCurrentA"] = s.coilPeakCurrentA;
+    doc["coilSparkCurrentmA"] = s.coilSparkCurrentmA;
+    doc["coilSparkHealthScore"] = s.coilSparkHealthScore;
     doc["coilAutoDiagRunning"] = s.coilAutoDiagRunning;
     doc["coilDiagPhase"] = s.coilDiagPhase;
     doc["coilDiagProgress"] = s.coilDiagProgress;

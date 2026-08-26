@@ -144,30 +144,42 @@ void PeripheralCoilActive3P::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
-    delay(5); // Allow full secondary discharge and optocoupler pulse latch (5ms)
-    bool gotSpark = (isr_act3p_sparkReturnCount > prevSpark);
+    delay(10); // Allow full secondary discharge & peak detector capacitor hold (10ms)
+    int rawSpark = analogRead(PIN_COIL_SPARK_SENSE);
+    float sparkV = ((float)rawSpark / 4095.0f) * 3.3f;
+    float sparkmA = sparkV * 25.0f;
+    if (sparkmA > 100.0f) sparkmA = 100.0f;
+    s.coilSparkCurrentmA = sparkmA;
     s.coilPeakCurrentA = peakAmps;
     
-    // Dynamic Health Criteria based on Dwell Setting
+    // Dynamic 5-Tier Health Criteria based on Spark Intensity (mA) + Dwell
     float minHealthyAmps = (s.dwellMs <= 0.8f) ? 2.5f : ((s.dwellMs <= 1.5f) ? 4.0f : 5.0f);
     
-    if (peakAmps >= minHealthyAmps && peakAmps <= 11.0f) {
-        s.coilConnected = true;
-        if (gotSpark) {
-            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY+SPARK (%.1fA)", peakAmps);
-        } else {
-            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ NO SPARK (%.1fA - BOCOR)", peakAmps);
-        }
-    } else if (peakAmps > 0.8f && peakAmps < minHealthyAmps) {
-        s.coilConnected = true;
-        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
-    } else if (peakAmps > 11.0f) {
+    if (peakAmps > 11.5f) {
         s.coilConnected = false;
+        s.coilSparkHealthScore = 0.0f;
         snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ OVERCURRENT (%.1fA)", peakAmps);
+    } else if (sparkmA >= 45.0f && peakAmps >= minHealthyAmps) {
+        s.coilConnected = true;
+        s.coilSparkHealthScore = 100.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟢 100%% PRIMA (%.0fmA / %.1fA)", sparkmA, peakAmps);
+    } else if (sparkmA >= 30.0f && peakAmps >= 3.5f) {
+        s.coilConnected = true;
+        s.coilSparkHealthScore = 75.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟡 75%% BAIK (%.0fmA / %.1fA)", sparkmA, peakAmps);
+    } else if (sparkmA >= 15.0f) {
+        s.coilConnected = true;
+        s.coilSparkHealthScore = 50.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟠 50%% MARGINAL (%.0fmA - DROP)", sparkmA);
+    } else if (sparkmA >= 3.0f || peakAmps > 1.5f) {
+        s.coilConnected = true;
+        s.coilSparkHealthScore = 25.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🔴 25%% SEKARAT (%.0fmA - BOCOR)", sparkmA);
     } else {
         s.coilConnected = false;
+        s.coilSparkHealthScore = 0.0f;
         s.coilPeakCurrentA = 0.0f;
-        strncpy(s.coilCurrentStatus, "❌ DISCONNECTED (0A)", sizeof(s.coilCurrentStatus));
+        strncpy(s.coilCurrentStatus, "❌ 0% MATI (0mA - MISFIRE)", sizeof(s.coilCurrentStatus));
     }
     s.lastFiredMs = millis();
 }
@@ -182,6 +194,8 @@ void PeripheralCoilActive3P::resetCounters() {
     s.coilMissedCount = 0;
     s.coilHealthPercent = 100.0f;
     s.coilPeakCurrentA = 0.0f;
+    s.coilSparkCurrentmA = 0.0f;
+    s.coilSparkHealthScore = 100.0f;
     strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
     CoilLeakSensor::reset(s);
 }
@@ -204,38 +218,38 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
-            // Dual Confirmation Evaluation (Primary Current + Spark Return)
-            if (s.coilFiredCount >= 10) {
-                float sparkRatio = (s.coilFiredCount > 0) ? ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
-                
-                if (s.coilIgfCount == 0 && s.coilPeakCurrentA >= 4.5f) {
-                    strncpy(s.coilCurrentStatus, "❌ NO SPARK (MISFIRE 100%)", sizeof(s.coilCurrentStatus));
-                } else if (sparkRatio < 75.0f && s.coilPeakCurrentA >= 4.5f) {
-                    snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ MISFIRE (%.0f%% SPARK)", sparkRatio);
-                } else if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
-                    strncpy(s.coilCurrentStatus, "OPTIMAL (SPARK OK)", sizeof(s.coilCurrentStatus));
-                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
-                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
-                } else if (s.coilPeakCurrentA > 10.5f) {
-                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
-                } else {
-                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
-                }
+            // Sample Secondary Spark Intensity via LM358 ADC Pin 39
+            int rawSparkAdc = analogRead(PIN_COIL_SPARK_SENSE);
+            float sparkV = ((float)rawSparkAdc / 4095.0f) * 3.3f;
+            float sparkmA = sparkV * 25.0f;
+            if (sparkmA > 100.0f) sparkmA = 100.0f;
+            s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.7f) + (sparkmA * 0.3f);
+            
+            // Continuous 5-Tier Health Evaluation
+            if (s.coilPeakCurrentA > 11.5f) {
+                s.coilSparkHealthScore = 0.0f;
+                strncpy(s.coilCurrentStatus, "❌ OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilSparkCurrentmA >= 45.0f && s.coilPeakCurrentA >= 5.0f) {
+                s.coilSparkHealthScore = 100.0f;
+                strncpy(s.coilCurrentStatus, "🟢 100% PRIMA (API BIRU)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilSparkCurrentmA >= 30.0f && s.coilPeakCurrentA >= 4.0f) {
+                s.coilSparkHealthScore = 75.0f;
+                strncpy(s.coilCurrentStatus, "🟡 75% BAIK (LAYAK PAKAI)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilSparkCurrentmA >= 15.0f) {
+                s.coilSparkHealthScore = 50.0f;
+                strncpy(s.coilCurrentStatus, "🟠 50% MARGINAL (DROP BEBAN)", sizeof(s.coilCurrentStatus));
+            } else if (s.coilSparkCurrentmA >= 3.0f || s.coilPeakCurrentA > 2.0f) {
+                s.coilSparkHealthScore = 25.0f;
+                strncpy(s.coilCurrentStatus, "🔴 25% SEKARAT (API LILIN)", sizeof(s.coilCurrentStatus));
             } else {
-                if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
-                    strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
-                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
-                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
-                } else if (s.coilPeakCurrentA > 10.5f) {
-                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
-                } else {
-                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
-                }
+                s.coilSparkHealthScore = 0.0f;
+                strncpy(s.coilCurrentStatus, "❌ 0% MATI / MISFIRE", sizeof(s.coilCurrentStatus));
             }
         }
     } else {
         // When OFF: strictly 0A and auto-zero calibrate ACS712 quiescent offset
         s.coilPeakCurrentA = 0.0f;
+        s.coilSparkCurrentmA = 0.0f;
         strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
         
         if (now - _lastCurrentSampleTime >= 50) {

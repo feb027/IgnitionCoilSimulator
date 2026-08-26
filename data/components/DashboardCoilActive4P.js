@@ -109,8 +109,11 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK SENSOR (PIN 39)</div>
-                    <div style="font-size: 1.4rem; font-weight: 700; color: ${sparkDelivery >= 95 ? 'var(--neon-green)' : (sparkDelivery >= 75 ? 'var(--neon-orange)' : 'var(--neon-red)')}; margin-top: 4px;">
-                        ${sparkReturn} <span style="font-size: 0.8rem; color: var(--text-muted);">(${fired > 0 ? sparkDelivery.toFixed(0) + "%" : "--"})</span>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: ${(state.coilSparkCurrentmA || 0) >= 45 ? 'var(--neon-green)' : ((state.coilSparkCurrentmA || 0) >= 30 ? 'var(--neon-orange)' : 'var(--neon-red)')}; margin-top: 4px;">
+                        ${(state.coilSparkCurrentmA || 0).toFixed(1)} mA
+                    </div>
+                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${(state.coilSparkHealthScore || 0) >= 90 ? 'var(--neon-green)' : ((state.coilSparkHealthScore || 0) >= 70 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
+                        ${(state.coilSparkHealthScore || 0) >= 90 ? '🟢 100% PRIMA' : ((state.coilSparkHealthScore || 0) >= 70 ? '🟡 75% BAIK' : ((state.coilSparkHealthScore || 0) >= 45 ? '🟠 50% DROP BEBAN' : ((state.coilSparkHealthScore || 0) >= 20 ? '🔴 25% SEKARAT' : '❌ 0% MATI')))}
                     </div>
                 </div>
 
@@ -148,10 +151,11 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
             </div>
 
             <div style="margin-top: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; font-size: 0.82rem; line-height: 1.5;">
-                <strong style="color: var(--neon-cyan);">💡 MATRIKS DIAGNOSA 4-PIN (INTERNAL IGF vs NYALA API FISIK):</strong><br/>
-                • <strong>IGF OK + Api OK:</strong> ✅ Koil 100% Sempurna.<br/>
-                • <strong>IGF Rusak + Api OK:</strong> ⚠️ Sirkuit IGF Koil Mati (Api ada, tetapi di mobil memicu DTC P0351 & Injektor dimatikan ECU).<br/>
-                • <strong>IGF OK + Api Rusak (Bocor):</strong> ❌ Koil Bocor Sekunder (Koil melapor ke ECU seolah normal, padahal busi mati).
+                <strong style="color: var(--neon-cyan);">💡 MATRIKS DIAGNOSA 4-PIN (INTERNAL IGF + INTENSITAS API FISIK):</strong><br/>
+                • <strong>IGF OK + Api >45mA:</strong> 🟢 <strong>100% PRIMA</strong> (Koil sempurna, siap beban kompresi).<br/>
+                • <strong>IGF OK + Api 15-30mA:</strong> 🟠 <strong>50% DROP BEBAN</strong> (Nyala di meja, tapi pincang saat nanjak/beban tinggi).<br/>
+                • <strong>IGF Mati + Api OK:</strong> ⚠️ Sirkuit IGF Mati (Api ada, tetapi ECU mobil mendeteksi DTC P0351 & memutus semprotan injektor).<br/>
+                • <strong>IGF OK + Api 0mA (Bocor):</strong> ❌ Bocor Leher Sekunder (Koil melapor normal ke ECU, tetapi api tidak sampai ke ruang bakar).
             </div>
 
             <!-- AUTO SCAN SUITE CONTROLS & PROGRESS -->

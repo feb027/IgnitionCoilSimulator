@@ -109,6 +109,8 @@ struct AppSettings {
     uint32_t coilMissedCount;       // Missed spark count
     float coilHealthPercent;        // Spark health efficiency % (0.0 - 100.0%)
     float coilPeakCurrentA;         // Peak primary current in Amperes
+    float coilSparkCurrentmA;       // Secondary spark discharge current in mA (0.0 - 100.0 mA via LM358 Pin 39 ADC)
+    float coilSparkHealthScore;     // Multi-tier health score (0%, 25%, 50%, 75%, 100%)
     bool coilAutoDiagRunning;       // Is auto health scan active?
     int coilDiagPhase;              // 0: Idle, 1: Dwell Sweep, 2: Accel Burst, 3: High-RPM Stress, 4: Finished
     int coilDiagProgress;           // 0 - 100% progress

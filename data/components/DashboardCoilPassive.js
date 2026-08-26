@@ -88,9 +88,12 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             <!-- Telemetry Stats Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK DELIVERY</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
-                        ${fired > 0 ? health.toFixed(1) + "%" : "--%"}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK ENERGY (mA)</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: ${(state.coilSparkCurrentmA || 0) >= 45 ? 'var(--neon-green)' : ((state.coilSparkCurrentmA || 0) >= 30 ? 'var(--neon-orange)' : 'var(--neon-red)')}; margin-top: 4px;">
+                        ${(state.coilSparkCurrentmA || 0).toFixed(1)} mA
+                    </div>
+                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${(state.coilSparkHealthScore || 0) >= 90 ? 'var(--neon-green)' : ((state.coilSparkHealthScore || 0) >= 70 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
+                        ${(state.coilSparkHealthScore || 0) >= 90 ? '🟢 100% PRIMA' : ((state.coilSparkHealthScore || 0) >= 70 ? '🟡 75% BAIK' : ((state.coilSparkHealthScore || 0) >= 45 ? '🟠 50% DROP BEBAN' : ((state.coilSparkHealthScore || 0) >= 20 ? '🔴 25% SEKARAT' : '❌ 0% MATI')))}
                     </div>
                 </div>
 
@@ -135,11 +138,12 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             </div>
 
             <div style="margin-top: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; font-size: 0.82rem; line-height: 1.5;">
-                <strong style="color: var(--neon-orange);">💡 DIAGNOSA DUAL-CONFIRMATION:</strong><br/>
-                • <strong>Arus 5.5A - 9.0A + Sparks Confirmed 100%:</strong> Koil Pasif Prima & Bunga Api Biru Tebal.<br/>
-                • <strong>Arus Normal 6A + Sparks 0 (Missed 100%):</strong> ❌ <strong>RUSAK TOTAL / DIELECTRIC BREAKDOWN</strong> (Api loncat di dalam lilitan koil).<br/>
-                • <strong>Rangkaian Sensor Api (Pin 39 / VN):</strong> Ground Celah Busi ➔ Anoda Opto PC817 (Pin 1) // Dioda 1N4007 // R 47Ω ➔ GND. Kolektor Opto (Pin 4) ➔ <strong>Pin 39 (VN) ESP32</strong> (dengan R Pull-Up 10k ke 3.3V).<br/>
-                • ⚠️ <strong>TIPS POLARITAS OPTOCOUPLER:</strong> Jika ada bunga api fisik tapi <em>Sparks Confirmed</em> tetap 0, <strong>coba balikkan kedua kabel Pin 1 dan Pin 2 Opto</strong> pada ground busi (karena polaritas tegangan tinggi koil dapat berupa pulsa negatif).
+                <strong style="color: var(--neon-orange);">💡 5 TINGKAT SKALA KESEHATAN KOIL (STANDAR BEBAN KOMPRESI):</strong><br/>
+                • 🟢 <strong>100% PRIMA (>45mA / >5.5A):</strong> Api Biru Tebal, siap untuk kompresi tinggi & putaran atas.<br/>
+                • 🟡 <strong>75% BAIK (30-45mA / >4.5A):</strong> Layak pakai, degradasi lilitan sangat minim.<br/>
+                • 🟠 <strong>50% DROP BEBAN (15-30mA):</strong> ⚠️ <em>Menyala di meja, tapi pasti BREBET/PINCANG di mobil saat nanjak/AC ON!</em><br/>
+                • 🔴 <strong>25% SEKARAT (<15mA):</strong> Api lilin kuning tipis, sering gagal meledakkan campuran bensin.<br/>
+                • ❌ <strong>0% MATI (0mA):</strong> Misfire total / bocor leher dielektrik tembus ke bodi.
             </div>
         </div>
         

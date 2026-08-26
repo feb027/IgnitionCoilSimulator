@@ -173,6 +173,8 @@ void SettingsManager::load() {
     _settings.coilMissedCount = 0;
     _settings.coilHealthPercent = 100.0f;
     _settings.coilPeakCurrentA = 0.0f;
+    _settings.coilSparkCurrentmA = 0.0f;
+    _settings.coilSparkHealthScore = 100.0f;
     _settings.coilAutoDiagRunning = false;
     _settings.coilDiagPhase = 0;
     _settings.coilDiagProgress = 0;
