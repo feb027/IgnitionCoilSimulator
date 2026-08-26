@@ -91,9 +91,12 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">TARGET RANGE:</div>
-                    <div style="font-size: 0.95rem; font-weight: bold; color: var(--text-primary);">
-                        • Normal: 6.5A - 9.0A (At 3.0ms Dwell)<br/>
+                    <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-primary);">
+                        • Normal: 5.5A - 9.0A (At 2.0-3.0ms Dwell)<br/>
                         • Weak Coil: Di bawah 5.0A | Shorted: Di atas 11.0A
+                    </div>
+                    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-sharp); font-size: 0.78rem; color: var(--neon-orange); line-height: 1.4;">
+                        ⚠️ <strong>DETEKSI RUSAK SEKUNDER:</strong> Jika arus normal (5-6A) & IGBT berdetak tetapi api busi mati/kecil, koil mengalami bocor tegangan tinggi internal (*Dielectric Breakdown*).
                     </div>
                 </div>
             </div>

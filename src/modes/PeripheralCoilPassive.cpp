@@ -92,9 +92,9 @@ void PeripheralCoilPassive::probeCoil() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.isRunning) return;
     
-    // Stage 1: 800us Safe Micro-Ping on IGBT Gate (Short-circuit check)
+    // Stage 1: 500us Safe Micro-Ping on IGBT Gate (Short-circuit check)
     GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
-    delayMicroseconds(800);
+    delayMicroseconds(500);
     int raw1 = analogRead(PIN_COIL_ISENSE);
     GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     
@@ -110,33 +110,32 @@ void PeripheralCoilPassive::probeCoil() {
         return;
     }
     
-    delay(20);
-    
-    // Stage 2: 1500us Medium Ramp
-    GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
-    delayMicroseconds(1500);
-    analogRead(PIN_COIL_ISENSE);
-    GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
-    
     delay(25);
     
-    // Stage 3: 2000us Full Saturation Dwell
+    // Stage 2: Target Active Dwell Test (User Selected Setting)
+    uint32_t activeDwellUs = (uint32_t)(s.dwellMs * 1000.0f);
+    if (activeDwellUs < 500) activeDwellUs = 500;
+    if (activeDwellUs > 5000) activeDwellUs = 5000;
+    
     GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
-    delayMicroseconds(2000);
-    int raw3 = analogRead(PIN_COIL_ISENSE);
+    delayMicroseconds(activeDwellUs);
+    int raw2 = analogRead(PIN_COIL_ISENSE);
     GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     
-    float v3 = ((float)raw3 / 4095.0f) * 3.3f;
-    float dV3 = (v3 > _zeroCurrentVoltage) ? (v3 - _zeroCurrentVoltage) : 0.0f;
-    float peakAmps = (dV3 / 0.066f) * 3.2f;
+    float v2 = ((float)raw2 / 4095.0f) * 3.3f;
+    float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
+    float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
     s.coilPeakCurrentA = peakAmps;
     
-    if (peakAmps >= 5.0f && peakAmps <= 11.0f) {
+    // Dynamic Health Criteria based on Dwell Setting
+    float minHealthyAmps = (s.dwellMs <= 0.8f) ? 2.5f : ((s.dwellMs <= 1.5f) ? 4.0f : 5.0f);
+    
+    if (peakAmps >= minHealthyAmps && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA) - SAFE", peakAmps);
-    } else if (peakAmps > 0.8f && peakAmps < 5.0f) {
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA @ %.1fms)", peakAmps, s.dwellMs);
+    } else if (peakAmps > 0.8f && peakAmps < minHealthyAmps) {
         s.coilConnected = true;
         snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ WEAK COIL (%.1fA)", peakAmps);
     } else if (peakAmps > 11.0f) {

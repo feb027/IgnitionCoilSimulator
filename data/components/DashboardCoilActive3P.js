@@ -92,9 +92,12 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">3-PIN DIAGNOSTIC CRITERIA:</div>
                     <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.5;">
-                        • <strong>6.5A - 9.0A:</strong> Transistor Internal Prima (Optimal)<br/>
+                        • <strong>5.5A - 8.5A:</strong> Transistor Primer Prima (Optimal)<br/>
                         • <strong>Di bawah 5.0A:</strong> Igniter Loyo / Degraded (Gejala Brebet)<br/>
                         • <strong>0.0A:</strong> Transistor Internal Putus / Rusak Total
+                    </div>
+                    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-sharp); font-size: 0.78rem; color: var(--neon-orange); line-height: 1.4;">
+                        ⚠️ <strong>DETEKSI RUSAK SEKUNDER:</strong> Jika arus normal (5-6A) & IGBT berdetak tetapi api busi mati/kecil, koil mengalami bocor tegangan tinggi internal (*Dielectric Breakdown*).
                     </div>
                 </div>
             </div>
