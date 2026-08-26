@@ -169,6 +169,7 @@ void SettingsManager::load() {
     // Coil Diagnostic Defaults
     _settings.coilFiredCount = 0;
     _settings.coilIgfCount = 0;
+    _settings.coilSparkReturnCount = 0;
     _settings.coilMissedCount = 0;
     _settings.coilHealthPercent = 100.0f;
     _settings.coilPeakCurrentA = 0.0f;

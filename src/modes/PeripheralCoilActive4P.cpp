@@ -13,6 +13,7 @@ static volatile bool coil_act4p_autoStopped = false;
 // Diagnostic Telemetry ISR Counters
 static volatile uint32_t isr_act4p_firedCount = 0;
 static volatile uint32_t isr_act4p_igfCount = 0;
+static volatile uint32_t isr_act4p_sparkCount = 0;
 static volatile uint16_t coil_act4p_peakRawAdc = 0;
 static volatile bool coil_act4p_hasNewAdc = false;
 
@@ -57,9 +58,14 @@ static void IRAM_ATTR onActive4pCoilTimer() {
     }
 }
 
-// Hardware Interrupt for IGF confirmation pulses from 4-Pin Smart Coil (GPIO 34)
+// Hardware Interrupt for Internal IGF confirmation pulses from 4-Pin Smart Coil (GPIO 34)
 static void IRAM_ATTR onActive4pIgfInterrupt() {
     isr_act4p_igfCount++;
+}
+
+// Hardware Interrupt for External Spark Gap Return Sensor (GPIO 39)
+static void IRAM_ATTR onActive4pSparkInterrupt() {
+    isr_act4p_sparkCount++;
 }
 
 PeripheralCoilActive4P::PeripheralCoilActive4P(SettingsManager& settingsMgr, SweepController& sweepController)
@@ -69,9 +75,13 @@ void PeripheralCoilActive4P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
-    // IGF Input Pin (GPIO 34) with Hardware Interrupt
+    // Internal IGF Input Pin (GPIO 34) with Hardware Interrupt
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
+    
+    // External Spark Return Input Pin (GPIO 39) with Hardware Interrupt
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive4pSparkInterrupt, FALLING);
     
     // Current Sense ADC Pin (GPIO 35)
     pinMode(PIN_COIL_ISENSE, INPUT);
@@ -97,6 +107,7 @@ void PeripheralCoilActive4P::update() {
     // Sync ISR counters to settings struct
     s.coilFiredCount = isr_act4p_firedCount;
     s.coilIgfCount = isr_act4p_igfCount;
+    s.coilSparkReturnCount = isr_act4p_sparkCount;
     
     if (s.coilFiredCount > 0) {
         if (s.coilIgfCount > s.coilFiredCount) {
@@ -128,6 +139,7 @@ void PeripheralCoilActive4P::probeCoil() {
     if (s.isRunning || s.coilAutoDiagRunning) return;
     
     uint32_t prevIgf = isr_act4p_igfCount;
+    uint32_t prevSpark = isr_act4p_sparkCount;
     
     // Stage 1: 500us Safe Micro-Ping (Short-circuit check)
     digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
@@ -164,7 +176,9 @@ void PeripheralCoilActive4P::probeCoil() {
     float peakAmps = (dV2 / 0.066f) * 3.2f;
     if (peakAmps > 25.0f) peakAmps = 25.0f;
     
+    delayMicroseconds(800);
     bool gotIgf = (isr_act4p_igfCount > prevIgf);
+    bool gotSpark = (isr_act4p_sparkCount > prevSpark);
     s.coilPeakCurrentA = peakAmps;
     
     // Dynamic Health Criteria based on Dwell Setting
@@ -172,10 +186,14 @@ void PeripheralCoilActive4P::probeCoil() {
     
     if (peakAmps >= minHealthyAmps && peakAmps <= 11.0f) {
         s.coilConnected = true;
-        if (gotIgf) {
-            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY+IGF (%.1fA @ %.1fms)", peakAmps, s.dwellMs);
+        if (gotIgf && gotSpark) {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ PERFECT (IGF+SPARK %.1fA)", peakAmps);
+        } else if (!gotIgf && gotSpark) {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ IGF FAULT (SPARK OK %.1fA)", peakAmps);
+        } else if (gotIgf && !gotSpark) {
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ NO SPARK (IGF OK - BOCOR)", peakAmps);
         } else {
-            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "✅ HEALTHY (%.1fA @ %.1fms)", peakAmps, s.dwellMs);
+            snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "❌ NO SPARK & NO IGF (%.1fA)", peakAmps);
         }
     } else if (peakAmps > 0.8f && peakAmps < minHealthyAmps) {
         s.coilConnected = true;
@@ -209,15 +227,36 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
             s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.6f) + (amps * 0.4f);
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
-            // Real-time Current Saturation Status
-            if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
-                strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
-                strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
-            } else if (s.coilPeakCurrentA > 10.5f) {
-                strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+            // Real-time Dual Confirmation Status for 4-Pin
+            if (s.coilFiredCount >= 10) {
+                float igfRatio = (s.coilFiredCount > 0) ? ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
+                float sparkRatio = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
+                
+                if (s.coilSparkReturnCount == 0 && s.coilPeakCurrentA >= 4.5f) {
+                    strncpy(s.coilCurrentStatus, "❌ NO SPARK (MISFIRE 100%)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilIgfCount == 0 && sparkRatio >= 75.0f) {
+                    strncpy(s.coilCurrentStatus, "⚠️ IGF FAULT (SPARK OK)", sizeof(s.coilCurrentStatus));
+                } else if (sparkRatio < 75.0f || igfRatio < 75.0f) {
+                    snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "⚠️ MISFIRE (%.0f%% SPARK)", sparkRatio);
+                } else if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (IGF+SPARK OK)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             } else {
-                strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                if (s.coilPeakCurrentA >= 5.0f && s.coilPeakCurrentA <= 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OPTIMAL (5-10A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 0.5f && s.coilPeakCurrentA < 5.0f) {
+                    strncpy(s.coilCurrentStatus, "WEAK (<5A)", sizeof(s.coilCurrentStatus));
+                } else if (s.coilPeakCurrentA > 10.5f) {
+                    strncpy(s.coilCurrentStatus, "OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+                } else {
+                    strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
+                }
             }
         }
     } else {
@@ -264,8 +303,10 @@ void PeripheralCoilActive4P::resetCounters() {
     AppSettings& s = _settingsMgr.getSettings();
     isr_act4p_firedCount = 0;
     isr_act4p_igfCount = 0;
+    isr_act4p_sparkCount = 0;
     s.coilFiredCount = 0;
     s.coilIgfCount = 0;
+    s.coilSparkReturnCount = 0;
     s.coilMissedCount = 0;
     s.coilHealthPercent = 100.0f;
     s.coilPeakCurrentA = 0.0f;

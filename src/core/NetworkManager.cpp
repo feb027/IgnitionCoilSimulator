@@ -89,6 +89,7 @@ void NetworkManager::update() {
                  (strcmp(current.coilCurrentStatus, _lastBroadcastedState.coilCurrentStatus) != 0) ||
                  (current.coilFiredCount != _lastBroadcastedState.coilFiredCount) ||
                  (current.coilIgfCount != _lastBroadcastedState.coilIgfCount) ||
+                 (current.coilSparkReturnCount != _lastBroadcastedState.coilSparkReturnCount) ||
                  (current.coilAutoDiagRunning != _lastBroadcastedState.coilAutoDiagRunning) ||
                  (current.coilDiagProgress != _lastBroadcastedState.coilDiagProgress)));
                  
@@ -154,6 +155,7 @@ void NetworkManager::broadcastState() {
     // Coil Diagnostic Telemetry
     doc["coilFiredCount"] = s.coilFiredCount;
     doc["coilIgfCount"] = s.coilIgfCount;
+    doc["coilSparkReturnCount"] = s.coilSparkReturnCount;
     doc["coilMissedCount"] = s.coilMissedCount;
     doc["coilHealthPercent"] = s.coilHealthPercent;
     doc["coilPeakCurrentA"] = s.coilPeakCurrentA;

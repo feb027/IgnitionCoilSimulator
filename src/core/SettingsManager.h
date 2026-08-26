@@ -103,15 +103,16 @@ struct AppSettings {
     bool hallDacConnected;     // Detected MCP4725 on I2C bus
     
     // Coil Diagnostic & IGF Telemetry
-    uint32_t coilFiredCount;    // Total IGT triggers fired
-    uint32_t coilIgfCount;      // Total IGF confirmation pulses received
-    uint32_t coilMissedCount;   // Missed spark count
-    float coilHealthPercent;    // Spark health efficiency % (0.0 - 100.0%)
-    float coilPeakCurrentA;     // Peak primary current in Amperes
-    bool coilAutoDiagRunning;   // Is auto health scan active?
-    int coilDiagPhase;          // 0: Idle, 1: Dwell Sweep, 2: Accel Burst, 3: High-RPM Stress, 4: Finished
-    int coilDiagProgress;       // 0 - 100% progress
-    char coilDiagVerdict[32];   // Verdict string: "READY", "HEALTHY", "DEGRADED", "FAIL"
+    uint32_t coilFiredCount;        // Total IGT triggers fired
+    uint32_t coilIgfCount;          // Total Internal IGF confirmation pulses received (Pin 34)
+    uint32_t coilSparkReturnCount;  // Total External Spark Gap Return pulses received (Pin 39)
+    uint32_t coilMissedCount;       // Missed spark count
+    float coilHealthPercent;        // Spark health efficiency % (0.0 - 100.0%)
+    float coilPeakCurrentA;         // Peak primary current in Amperes
+    bool coilAutoDiagRunning;       // Is auto health scan active?
+    int coilDiagPhase;              // 0: Idle, 1: Dwell Sweep, 2: Accel Burst, 3: High-RPM Stress, 4: Finished
+    int coilDiagProgress;           // 0 - 100% progress
+    char coilDiagVerdict[32];       // Verdict string: "READY", "HEALTHY", "DEGRADED", "FAIL"
     
     // Coil Body Leakage Detection Telemetry (Pin 36 Probe)
     uint32_t coilLeakCount;     // Total body leakage arcs detected

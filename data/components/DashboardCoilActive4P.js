@@ -8,16 +8,18 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const health = (state.coilHealthPercent !== undefined) ? state.coilHealthPercent : 100.0;
     const fired = state.coilFiredCount || 0;
     const igf = state.coilIgfCount || 0;
+    const sparkReturn = state.coilSparkReturnCount || 0;
     const missed = state.coilMissedCount || 0;
     const verdict = state.coilDiagVerdict || "READY";
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
+    const sparkDelivery = fired > 0 ? (sparkReturn / fired) * 100 : 100;
 
     let healthColor = "var(--neon-green)";
     let healthBadge = "HEALTHY";
-    if (fired > 20 && health < 90.0) {
+    if (fired > 20 && (health < 90.0 || sparkDelivery < 90.0)) {
         healthColor = "var(--neon-red)";
         healthBadge = "DEFECTIVE / MISFIRE";
-    } else if (fired > 20 && health < 99.0) {
+    } else if (fired > 20 && (health < 99.0 || sparkDelivery < 99.0)) {
         healthColor = "var(--neon-orange)";
         healthBadge = "DEGRADED";
     }
@@ -26,7 +28,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
         <div class="panel-main">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
                 <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
-                    ⚡ IGT (PIN 25) | IGF (PIN 34) | SENSE (PIN 35)
+                    ⚡ IGT (PIN 25) | IGF (PIN 34) | SENSE (PIN 35) | SPARK (PIN 39)
                 </div>
                 <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
                     ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
@@ -39,7 +41,6 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 min="0"
                 max="16000"
                 step=${state.rpmStep || 50}
-                subInfo=${isAutoDiag ? ("Auto Scan Phase " + state.coilDiagPhase + "/3") : null}
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
             />
@@ -47,13 +48,13 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
         
         <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
             <${Dial} 
-                label="DWELL TIME (IGT PULSE)"
+                label="DWELL TIME (IGT PULSE WIDTH)"
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.5"
                 max="5.0"
                 step="0.1"
-                subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
+                subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "% (Max 80% Clamped)"}
                 onChange=${(val) => sendAction('setDwell', val)}
                 disabled=${!state.connected || isAutoDiag}
             />
@@ -76,29 +77,36 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
             </button>
         </div>
         
-        <!-- COIL HEALTH & IGF DIAGNOSTIC ANALYZER -->
+        <!-- COIL HEALTH & DUAL COMPARATIVE DIAGNOSTIC ANALYZER -->
         <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
             <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
                 <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
-                    ⚡ 4-PIN COIL HEALTH & IGF DIAGNOSTIC ANALYZER
+                    ⚡ 4-PIN DUAL-CHANNEL COMPARATOR (INTERNAL IGF + EXTERNAL SPARK)
                 </span>
                 <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
                     ${healthBadge}
                 </span>
             </div>
 
-            <!-- Telemetry Stats Grid (Including Current Sense) -->
+            <!-- Telemetry Stats Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK HEALTH</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
-                        ${fired > 0 ? health.toFixed(1) + "%" : "--%"}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">INTERNAL IGF (PIN 34)</div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
+                        ${igf} <span style="font-size: 0.8rem; color: var(--text-muted);">(${fired > 0 ? health.toFixed(0) + "%" : "--"})</span>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK SENSOR (PIN 39)</div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: ${sparkDelivery >= 95 ? 'var(--neon-green)' : (sparkDelivery >= 75 ? 'var(--neon-orange)' : 'var(--neon-red)')}; margin-top: 4px;">
+                        ${sparkReturn} <span style="font-size: 0.8rem; color: var(--text-muted);">(${fired > 0 ? sparkDelivery.toFixed(0) + "%" : "--"})</span>
                     </div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
+                    <div style="font-size: 1.4rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
                         ${currentA} A
                     </div>
                     <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
@@ -116,24 +124,24 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">FIRED (IGT)</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
                         ${fired}
                     </div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">IGF CONFIRMED</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
-                        ${igf}
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">MISSED SPARKS</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
+                    <div style="font-size: 1.4rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
                         ${missed}
                     </div>
                 </div>
+            </div>
+
+            <div style="margin-top: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; font-size: 0.82rem; line-height: 1.5;">
+                <strong style="color: var(--neon-cyan);">💡 MATRIKS DIAGNOSA 4-PIN (INTERNAL IGF vs NYALA API FISIK):</strong><br/>
+                • <strong>IGF OK + Api OK:</strong> ✅ Koil 100% Sempurna.<br/>
+                • <strong>IGF Rusak + Api OK:</strong> ⚠️ Sirkuit IGF Koil Mati (Api ada, tetapi di mobil memicu DTC P0351 & Injektor dimatikan ECU).<br/>
+                • <strong>IGF OK + Api Rusak (Bocor):</strong> ❌ Koil Bocor Sekunder (Koil melapor ke ECU seolah normal, padahal busi mati).
             </div>
 
             <!-- AUTO SCAN SUITE CONTROLS & PROGRESS -->

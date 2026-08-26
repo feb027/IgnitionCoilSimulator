@@ -68,6 +68,8 @@ void PeripheralCoilPassive::begin() {
     pinMode(PIN_COIL_ISENSE, INPUT);
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onPassiveSparkReturnInterrupt, FALLING);
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onPassiveSparkReturnInterrupt, FALLING);
     
     if (coil_passive_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -89,6 +91,7 @@ void PeripheralCoilPassive::update() {
     
     s.coilFiredCount = isr_pass_firedCount;
     s.coilIgfCount = isr_pass_sparkReturnCount;
+    s.coilSparkReturnCount = isr_pass_sparkReturnCount;
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);

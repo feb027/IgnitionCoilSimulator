@@ -68,6 +68,8 @@ void PeripheralCoilActive3P::begin() {
     pinMode(PIN_COIL_ISENSE, INPUT);
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT);
     attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive3pSparkReturnInterrupt, FALLING);
+    pinMode(PIN_COIL_SPARK_SENSE, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_SENSE), onActive3pSparkReturnInterrupt, FALLING);
     
     if (coil_active3p_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -89,6 +91,7 @@ void PeripheralCoilActive3P::update() {
     
     s.coilFiredCount = isr_act3p_firedCount;
     s.coilIgfCount = isr_act3p_sparkReturnCount;
+    s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
     
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
