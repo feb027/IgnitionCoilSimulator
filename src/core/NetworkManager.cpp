@@ -182,6 +182,19 @@ void NetworkManager::broadcastState() {
     doc["leakArc75"] = s.leakArc75;
     doc["leakArc100"] = s.leakArc100;
     doc["leakArcMax"] = s.leakArcMax;
+    doc["calSparkPrima"] = s.calSparkPrima;
+    doc["calSparkBaik"] = s.calSparkBaik;
+    doc["calSparkCukup"] = s.calSparkCukup;
+    doc["calSparkKurang"] = s.calSparkKurang;
+    doc["calCadencePrima"] = s.calCadencePrima;
+    doc["calCadenceBaik"] = s.calCadenceBaik;
+    doc["calCadenceCukup"] = s.calCadenceCukup;
+    doc["calCadenceKurang"] = s.calCadenceKurang;
+    doc["calCurrentPrima"] = s.calCurrentPrima;
+    doc["calCurrentBaik"] = s.calCurrentBaik;
+    doc["calCurrentCukup"] = s.calCurrentCukup;
+    doc["calCurrentKurang"] = s.calCurrentKurang;
+    doc["calCurrentMax"] = s.calCurrentMax;
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
@@ -291,6 +304,19 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["leakArc75"] = s.leakArc75;
         doc["leakArc100"] = s.leakArc100;
         doc["leakArcMax"] = s.leakArcMax;
+        doc["calSparkPrima"] = s.calSparkPrima;
+        doc["calSparkBaik"] = s.calSparkBaik;
+        doc["calSparkCukup"] = s.calSparkCukup;
+        doc["calSparkKurang"] = s.calSparkKurang;
+        doc["calCadencePrima"] = s.calCadencePrima;
+        doc["calCadenceBaik"] = s.calCadenceBaik;
+        doc["calCadenceCukup"] = s.calCadenceCukup;
+        doc["calCadenceKurang"] = s.calCadenceKurang;
+        doc["calCurrentPrima"] = s.calCurrentPrima;
+        doc["calCurrentBaik"] = s.calCurrentBaik;
+        doc["calCurrentCukup"] = s.calCurrentCukup;
+        doc["calCurrentKurang"] = s.calCurrentKurang;
+        doc["calCurrentMax"] = s.calCurrentMax;
         doc["coilLeakSeverity"] = s.coilLeakSeverity;
         doc["coilCurrentStatus"] = s.coilCurrentStatus;
         doc["coilConnected"] = s.coilConnected;
@@ -633,7 +659,34 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             if (doc["arc75"].is<int>()) s.leakArc75 = doc["arc75"].as<int>();
             if (doc["arc100"].is<int>()) s.leakArc100 = doc["arc100"].as<int>();
             if (doc["arcMax"].is<int>()) s.leakArcMax = doc["arcMax"].as<int>();
-            s.coilLeakSensitivity = 5; // Custom mode
+            s.coilLeakSensitivity = 6; // Custom mode
+            _settingsMgr.save(true);
+            broadcastState();
+            return;
+        } else if (action == "setFullCalibrationMatrix") {
+            if (doc["sparkPrima"].is<float>()) s.calSparkPrima = doc["sparkPrima"].as<float>();
+            if (doc["sparkBaik"].is<float>()) s.calSparkBaik = doc["sparkBaik"].as<float>();
+            if (doc["sparkCukup"].is<float>()) s.calSparkCukup = doc["sparkCukup"].as<float>();
+            if (doc["sparkKurang"].is<float>()) s.calSparkKurang = doc["sparkKurang"].as<float>();
+            
+            if (doc["cadencePrima"].is<float>()) s.calCadencePrima = doc["cadencePrima"].as<float>();
+            if (doc["cadenceBaik"].is<float>()) s.calCadenceBaik = doc["cadenceBaik"].as<float>();
+            if (doc["cadenceCukup"].is<float>()) s.calCadenceCukup = doc["cadenceCukup"].as<float>();
+            if (doc["cadenceKurang"].is<float>()) s.calCadenceKurang = doc["cadenceKurang"].as<float>();
+            
+            if (doc["currentPrima"].is<float>()) s.calCurrentPrima = doc["currentPrima"].as<float>();
+            if (doc["currentBaik"].is<float>()) s.calCurrentBaik = doc["currentBaik"].as<float>();
+            if (doc["currentCukup"].is<float>()) s.calCurrentCukup = doc["currentCukup"].as<float>();
+            if (doc["currentKurang"].is<float>()) s.calCurrentKurang = doc["currentKurang"].as<float>();
+            if (doc["currentMax"].is<float>()) s.calCurrentMax = doc["currentMax"].as<float>();
+            
+            if (doc["cutIn"].is<int>()) s.leakArcCutIn = doc["cutIn"].as<int>();
+            if (doc["arc25"].is<int>()) s.leakArc25 = doc["arc25"].as<int>();
+            if (doc["arc50"].is<int>()) s.leakArc50 = doc["arc50"].as<int>();
+            if (doc["arc75"].is<int>()) s.leakArc75 = doc["arc75"].as<int>();
+            if (doc["arc100"].is<int>()) s.leakArc100 = doc["arc100"].as<int>();
+            if (doc["arcMax"].is<int>()) s.leakArcMax = doc["arcMax"].as<int>();
+            
             _settingsMgr.save(true);
             broadcastState();
             return;

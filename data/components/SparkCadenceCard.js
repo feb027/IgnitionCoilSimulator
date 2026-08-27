@@ -6,9 +6,26 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00", vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
     const tempCoil = state.tempCoilC !== undefined ? state.tempCoilC.toFixed(1) : "28.5", tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
+    // Dynamic Calibration Thresholds from State (with smart fallbacks)
+    const spP = state.calSparkPrima !== undefined ? state.calSparkPrima : 45.0;
+    const spB = state.calSparkBaik !== undefined ? state.calSparkBaik : 35.0;
+    const spC = state.calSparkCukup !== undefined ? state.calSparkCukup : 25.0;
+    const spK = state.calSparkKurang !== undefined ? state.calSparkKurang : 15.0;
+
+    const cdP = state.calCadencePrima !== undefined ? state.calCadencePrima : 98.0;
+    const cdB = state.calCadenceBaik !== undefined ? state.calCadenceBaik : 90.0;
+    const cdC = state.calCadenceCukup !== undefined ? state.calCadenceCukup : 80.0;
+    const cdK = state.calCadenceKurang !== undefined ? state.calCadenceKurang : 60.0;
+
+    const crP = state.calCurrentPrima !== undefined ? state.calCurrentPrima : 6.5;
+    const crB = state.calCurrentBaik !== undefined ? state.calCurrentBaik : 5.5;
+    const crC = state.calCurrentCukup !== undefined ? state.calCurrentCukup : 4.5;
+    const crK = state.calCurrentKurang !== undefined ? state.calCurrentKurang : 3.0;
+    const crM = state.calCurrentMax !== undefined ? state.calCurrentMax : 11.5;
+
     const isStandby = (fired === 0 && !state.isRunning);
     const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 0;
-    const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
+    const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / spP)) : 1.0;
 
     const isLeaking = state.coilLeakDetected, leakCount = state.coilLeakCount || 0, leakRate = state.coilLeakRate || 0;
     const leakPercent = state.coilLeakPercent !== undefined ? state.coilLeakPercent : 0;
@@ -24,21 +41,26 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     }
 
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
-    let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal';
-    const isAlarm = (fired >= 10 && (totalHealthScore < 50 || parseFloat(currentA) > 11.5 || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < 15.0 && sparkmA > 0)));
+    let healthColor = 'var(--neon-green)', healthBadge = '🟢 PRIMA (100%)', healthDesc = 'Sangat Baik & Siap Pakai';
+    const numCurr = parseFloat(currentA);
+    const isAlarm = (fired >= 10 && (totalHealthScore < 50 || numCurr > crM || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < spK && sparkmA > 0)));
 
     if (isStandby) {
         healthColor = 'var(--text-muted)'; healthBadge = 'STANDBY'; healthDesc = 'Tekan Trigger / Run';
-    } else if (parseFloat(currentA) > 11.5) {
-        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT'; healthDesc = 'Korsleting Primer (>11A)';
-    } else if (leakSeverity.includes("SEVERE") || leakRate > 25) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🚨 BOCOR PARAH'; healthDesc = 'Isolasi Bodi Jebol';
-    } else if (fired >= 10 && (totalHealthScore < 50 || (sparkmA < 15.0 && sparkmA > 0))) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🔴 <50% RUSAK'; healthDesc = 'Api Lilin / Misfire';
-    } else if (totalHealthScore < 75 || isLeaking || leakCount > 0) {
-        healthColor = '#FFE600'; healthBadge = '🟡 75% DEGRADASI'; healthDesc = 'Penurunan Daya';
+    } else if (numCurr > crM) {
+        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT'; healthDesc = `Korsleting Primer (>${crM}A)`;
+    } else if (leakPercent >= 75 || leakSeverity.includes("JEBOL") || leakRate > 25) {
+        healthColor = 'var(--neon-red)'; healthBadge = '🚨 JEBOL TOTAL'; healthDesc = 'Isolasi Bodi Rusak Total';
+    } else if (totalHealthScore < 25 || (sparkmA < spK && sparkmA > 0) || cadenceRate < cdK) {
+        healthColor = 'var(--neon-red)'; healthBadge = '🔴 RUSAK (0%)'; healthDesc = 'Api Lilin / Aritmia Misfire';
+    } else if (totalHealthScore < 50 || sparkmA < spC || cadenceRate < cdC || (numCurr < crK && numCurr > 0)) {
+        healthColor = 'var(--neon-orange)'; healthBadge = '🟧 TIDAK LAYAK (25%)'; healthDesc = 'Daya Drop / Arus Lemah';
+    } else if (totalHealthScore < 75 || sparkmA < spB || cadenceRate < cdB || isLeaking || leakCount > 0) {
+        healthColor = 'var(--neon-yellow)'; healthBadge = '🟨 BISA DIGUNAKAN (50%)'; healthDesc = 'Penurunan Daya / Mikro Leak';
+    } else if (totalHealthScore < 90 || sparkmA < spP || cadenceRate < cdP || numCurr < crP) {
+        healthColor = '#A6FF00'; healthBadge = '🟩 BAIK (75%)'; healthDesc = 'Koil Normal & Layak Pakai';
     } else {
-        healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Detak 100% Sinkron';
+        healthColor = 'var(--neon-green)'; healthBadge = '🟢 PRIMA (100%)'; healthDesc = 'Kondisi Sempurna & Efisien';
     }
 
     // Gauge 1: Kualitas Api (mA) - Murni 0% saat standby tanpa warna merah
@@ -46,18 +68,21 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     let gauge1ValColor = 'var(--text-muted)', gauge1BarColor = 'transparent', gauge1BarWidth = 0, gauge1Text = 'STANDBY';
     if (!isStandby) {
         gauge1BarWidth = Math.min(100, (sparkmA / 60) * 100);
-        if (sparkmA >= 45.0) {
+        if (sparkmA >= spP) {
             gauge1Border = '2px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
-            gauge1ValColor = 'var(--neon-green)'; gauge1BarColor = 'var(--neon-green)'; gauge1Text = 'API BIRU TEBAL';
-        } else if (sparkmA >= 30.0) {
+            gauge1ValColor = 'var(--neon-green)'; gauge1BarColor = 'var(--neon-green)'; gauge1Text = 'PRIMA (TEBAL)';
+        } else if (sparkmA >= spB) {
             gauge1Border = '2px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)';
-            gauge1ValColor = '#A6FF00'; gauge1BarColor = '#A6FF00'; gauge1Text = 'API STANDAR';
-        } else if (sparkmA >= 15.0) {
+            gauge1ValColor = '#A6FF00'; gauge1BarColor = '#A6FF00'; gauge1Text = 'BAIK (STANDAR)';
+        } else if (sparkmA >= spC) {
+            gauge1Border = '2px solid var(--neon-yellow)'; gauge1Shadow = '0 0 10px rgba(255, 230, 0, 0.25)';
+            gauge1ValColor = 'var(--neon-yellow)'; gauge1BarColor = 'var(--neon-yellow)'; gauge1Text = 'CUKUP (SEDANG)';
+        } else if (sparkmA >= spK) {
             gauge1Border = '2px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
-            gauge1ValColor = 'var(--neon-orange)'; gauge1BarColor = 'var(--neon-orange)'; gauge1Text = 'API KECIL';
+            gauge1ValColor = 'var(--neon-orange)'; gauge1BarColor = 'var(--neon-orange)'; gauge1Text = 'KURANG (LEMAH)';
         } else {
             gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
-            gauge1ValColor = 'var(--neon-red)'; gauge1BarColor = 'var(--neon-red)'; gauge1Text = 'API LILIN / MATI';
+            gauge1ValColor = 'var(--neon-red)'; gauge1BarColor = 'var(--neon-red)'; gauge1Text = 'RUSAK (LILIN/MATI)';
         }
     }
 
@@ -66,15 +91,21 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     let gauge2ValColor = 'var(--text-muted)', gauge2BarColor = 'transparent', gauge2BarWidth = 0, gauge2Text = 'STANDBY';
     if (!isStandby) {
         gauge2BarWidth = cadenceRate;
-        if (cadenceRate >= 95.0) {
+        if (cadenceRate >= cdP) {
             gauge2Border = '2px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
-            gauge2ValColor = 'var(--neon-green)'; gauge2BarColor = 'var(--neon-green)'; gauge2Text = 'IRAMA SINKRON';
-        } else if (cadenceRate >= 80.0) {
+            gauge2ValColor = 'var(--neon-green)'; gauge2BarColor = 'var(--neon-green)'; gauge2Text = 'PRIMA (SINKRON)';
+        } else if (cadenceRate >= cdB) {
+            gauge2Border = '2px solid #A6FF00'; gauge2Shadow = '0 0 10px rgba(166, 255, 0, 0.25)';
+            gauge2ValColor = '#A6FF00'; gauge2BarColor = '#A6FF00'; gauge2Text = 'BAIK (STABIL)';
+        } else if (cadenceRate >= cdC) {
+            gauge2Border = '2px solid var(--neon-yellow)'; gauge2Shadow = '0 0 10px rgba(255, 230, 0, 0.25)';
+            gauge2ValColor = 'var(--neon-yellow)'; gauge2BarColor = 'var(--neon-yellow)'; gauge2Text = 'CUKUP (LONCAT)';
+        } else if (cadenceRate >= cdK) {
             gauge2Border = '2px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
-            gauge2ValColor = 'var(--neon-orange)'; gauge2BarColor = 'var(--neon-orange)'; gauge2Text = 'DETAK LONCAT';
+            gauge2ValColor = 'var(--neon-orange)'; gauge2BarColor = 'var(--neon-orange)'; gauge2Text = 'KURANG (MISSED)';
         } else {
             gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
-            gauge2ValColor = 'var(--neon-red)'; gauge2BarColor = 'var(--neon-red)'; gauge2Text = 'ARITMIA / MISSED';
+            gauge2ValColor = 'var(--neon-red)'; gauge2BarColor = 'var(--neon-red)'; gauge2Text = 'RUSAK (ARITMIA)';
         }
     }
 
