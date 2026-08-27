@@ -170,6 +170,9 @@ void NetworkManager::broadcastState() {
     doc["coilLeakCount"] = s.coilLeakCount;
     doc["coilLeakRate"] = s.coilLeakRate;
     doc["coilLeakDetected"] = s.coilLeakDetected;
+    doc["coilLeakSensitivity"] = s.coilLeakSensitivity;
+    doc["coilLeakThreshold"] = s.coilLeakThreshold;
+    doc["coilLeakDebounceMs"] = s.coilLeakDebounceMs;
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
@@ -564,6 +567,29 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         } else if (action == "resetLeakCounter") {
             CoilLeakSensor::reset(s);
             changed = true;
+        } else if (action == "setLeakSensitivity") {
+            int sens = doc["value"].as<int>();
+            if (sens >= 1 && sens <= 5) {
+                s.coilLeakSensitivity = sens;
+                _settingsMgr.save();
+                changed = true;
+            }
+        } else if (action == "setLeakThreshold") {
+            int th = doc["value"].as<int>();
+            if (th >= 1 && th <= 15) {
+                s.coilLeakThreshold = th;
+                s.coilLeakSensitivity = 5; // Switch to Custom mode
+                _settingsMgr.save();
+                changed = true;
+            }
+        } else if (action == "setLeakDebounce") {
+            float db = doc["value"].as<float>();
+            if (db >= 0.1f && db <= 5.0f) {
+                s.coilLeakDebounceMs = db;
+                s.coilLeakSensitivity = 5; // Switch to Custom mode
+                _settingsMgr.save();
+                changed = true;
+            }
         } else if (action == "probeCoil") {
             if (_peripheralMgr.getActive() != nullptr) {
                 _peripheralMgr.getActive()->probeCoil();

@@ -11,10 +11,18 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const verdict = state.coilDiagVerdict || "READY";
 
-    // Dynamic color coding based on health
     let healthColor = "var(--neon-green)";
     let healthBadge = "HEALTHY";
-    if (fired > 20 && health < 90.0) {
+    if (state.coilLeakSeverity && state.coilLeakSeverity.includes("SEVERE")) {
+        healthColor = "var(--neon-red)";
+        healthBadge = "CRITICAL: LEAKING";
+    } else if (state.coilLeakSeverity && state.coilLeakSeverity.includes("MEDIUM")) {
+        healthColor = "var(--neon-orange)";
+        healthBadge = "LEAKAGE WARNING";
+    } else if (state.coilLeakDetected || (state.coilLeakCount && state.coilLeakCount > 0)) {
+        healthColor = "var(--neon-yellow, #ffe600)";
+        healthBadge = "MICRO-LEAK";
+    } else if (fired > 20 && health < 90.0) {
         healthColor = "var(--neon-red)";
         healthBadge = "DEFECTIVE / MISFIRE";
     } else if (fired > 20 && health < 99.0) {
@@ -23,37 +31,29 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
     }
 
     return html`
-        <div class="panel-main">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
-                    ⚡ UNIVERSAL COIL TESTER
-                </div>
-                <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
-                    ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
-                </span>
-            </div>
+        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
             <${Dial} 
-                label=${isAutoDiag ? "AUTO DIAGNOSTIC RPM" : ((isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
+                compact=${true}
+                label=${isAutoDiag ? "AUTO DIAG..." : ((isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
                 unit="RPM"
                 min="0"
                 max="16000"
                 step=${state.rpmStep || 50}
-                subInfo=${isAutoDiag ? ("Auto Scan Phase " + state.coilDiagPhase + "/3") : null}
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
             />
-        </div>
-        
-        <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
+            
             <${Dial} 
+                compact=${true}
                 label="DWELL TIME"
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.5"
                 max="5.0"
                 step="0.1"
-                subInfo=${"Calculated Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
+                subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
                 onChange=${(val) => sendAction('setDwell', val)}
                 disabled=${!state.connected || isAutoDiag}
             />
@@ -73,105 +73,84 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
         </div>
         
         <!-- COIL HEALTH & IGF DIAGNOSTIC ANALYZER -->
-        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: ${healthColor};">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px;">
-                <span style="font-weight: 700; letter-spacing: 0.1em; color: ${healthColor};">
+        <div class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: ${healthColor};">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 6px; margin-bottom: 8px;">
+                <span style="font-weight: 700; color: ${healthColor}; font-size: 0.8rem;">
                     ⚡ COIL HEALTH & IGF DIAGNOSTIC ANALYZER
                 </span>
-                <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">
+                <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor}; font-size: 0.72rem; padding: 2px 6px;">
                     ${healthBadge}
                 </span>
             </div>
 
-            <!-- Telemetry Stats 4-Column Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: var(--space-md);">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SPARK HEALTH</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: ${healthColor}; margin-top: 4px;">
+            <!-- Telemetry Stats Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">SPARK HEALTH</div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: ${healthColor}; margin-top: 2px;">
                         ${fired > 0 ? health.toFixed(1) + "%" : "--%"}
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">FIRED (IGT)</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">FIRED (IGT)</div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
                         ${fired}
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">IGF CONFIRMED</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: var(--neon-green); margin-top: 4px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">IGF CONFIRMED</div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: var(--neon-green); margin-top: 2px;">
                         ${igf}
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">MISSED SPARKS</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 4px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">MISSED SPARKS</div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 2px;">
                         ${missed}
                     </div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PEAK CURRENT (I_pk)</div>
-                    <div style="font-size: 1.6rem; font-weight: 700; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--neon-orange)')}; margin-top: 4px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">PEAK CURRENT</div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; margin-top: 2px;">
                         ${currentA} A
-                    </div>
-                    <div style="font-size: 0.7rem; font-weight: bold; margin-top: 2px; color: ${parseFloat(currentA) >= 5.5 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 10.5 ? 'var(--neon-red)' : 'var(--text-muted)')};">
-                        ${state.coilCurrentStatus || "STANDBY"}
                     </div>
                 </div>
             </div>
 
             <!-- AUTO SCAN SUITE CONTROLS & PROGRESS -->
-            <div style="margin-top: var(--space-lg); background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: var(--space-md);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div style="margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                     <div>
-                        <div style="font-weight: 700; font-size: 0.95rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">
-                            Tests Low-Dwell Margin (1.2ms), WOT Throttle Burst (6500 RPM), & High-Temp Stress (7000 RPM).
+                        <div style="font-weight: 700; font-size: 0.82rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">
+                            Tests Low-Dwell Margin, WOT Throttle Burst, & High-Temp Stress.
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 8px;">
-                        <button 
-                            class="btn"
-                            style="padding: 8px 12px; font-size: 0.8rem;"
-                            onClick=${() => sendAction('resetCoilCounters')}
-                            disabled=${!state.connected || isAutoDiag}
-                        >
-                            RESET COUNTERS
-                        </button>
-                        
-                        <button 
-                            class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}"
-                            style="padding: 8px 16px; font-size: 0.85rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};"
-                            onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')}
-                            disabled=${!state.connected}
-                        >
-                            ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO HEALTH SCAN'}
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn" style="padding: 4px 8px; font-size: 0.72rem;" onClick=${() => sendAction('resetCoilCounters')} disabled=${!state.connected || isAutoDiag}>RESET</button>
+                        <button class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}" style="padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};" onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')} disabled=${!state.connected}>
+                            ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO SCAN'}
                         </button>
                     </div>
                 </div>
 
-                <!-- Progress Bar & Active Phase Message -->
                 ${isAutoDiag ? html`
-                    <div style="margin-top: 12px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
-                            <span>
-                                ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' : 
-                                  state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' : 
-                                  'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
-                            </span>
-                            <span style="font-weight: bold;">${state.coilDiagProgress || 0}%</span>
+                    <div style="margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px;">
+                            <span>${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Sweep (1.2ms → 3.5ms)' : state.coilDiagPhase === 2 ? 'Phase 2: Burst (800 → 6500 RPM)' : 'Phase 3: Stress (7000 RPM)'}</span>
+                            <strong>${state.coilDiagProgress || 0}%</strong>
                         </div>
-                        <div style="width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-sharp);">
-                            <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green); transition: width 0.2s;"></div>
+                        <div style="width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; border: 1px solid var(--border-sharp);">
+                            <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green);"></div>
                         </div>
                     </div>
                 ` : html`
-                    <div style="margin-top: 8px; font-size: 0.85rem; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; justify-content: space-between;">
+                    <div style="margin-top: 6px; font-size: 0.75rem; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 3px; display: flex; justify-content: space-between;">
                         <span>LAST SCAN VERDICT:</span>
                         <strong style="color: ${verdict.includes('HEALTHY') ? 'var(--neon-green)' : (verdict.includes('DEGRADED') ? 'var(--neon-orange)' : (verdict.includes('FAIL') ? 'var(--neon-red)' : 'var(--text-primary)'))}">
                             ${verdict}
@@ -182,12 +161,13 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
         </div>
         
         <!-- ADVANCED SETTINGS ACCORDION -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
-            <summary class="panel-header" style="cursor: pointer; user-select: none;">
-                <span>ADVANCED SETTINGS ▾</span>
+        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1;">
+            <summary class="panel-header" style="cursor: pointer; user-select: none; font-size: 0.72rem; color: var(--text-muted);">
+                ⚙️ ADVANCED SWEEP & STEP SETTINGS ▾
             </summary>
-            <div class="responsive-grid-2" style="padding-top: var(--space-md);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 8px;">
                 <${Dial} 
+                    compact=${true}
                     label="SWEEP TIME"
                     value=${state.sweepTimeSec}
                     unit="SEC"
@@ -199,7 +179,8 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                     disabled=${!state.connected || isAutoDiag || (state.runMode === 3 && state.isRunning)}
                 />
                 <${Dial} 
-                    label="RPM STEP SIZE"
+                    compact=${true}
+                    label="RPM STEP"
                     value=${state.rpmStep}
                     unit="RPM"
                     min="10"
@@ -211,55 +192,18 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
             </div>
         </details>
 
-        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL UMUM -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-cyan, #00d4ff);" open>
-            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-cyan, #00d4ff); font-weight: bold; letter-spacing: 0.05em;">
-                📖 TATA CARA & STANDAR PENGUJIAN KOIL PENGAPIAN ▾
+        <!-- PANDUAN PENGUJIAN KOIL (COLLAPSED BY DEFAULT) -->
+        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp);">
+            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--text-primary); font-weight: bold;">
+                📖 PANDUAN & STANDAR PENGUJIAN KOIL PENGAPIAN ▾
             </summary>
-            <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
-                
-                <div style="background: rgba(0, 212, 255, 0.06); border-left: 3px solid var(--neon-cyan, #00d4ff); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;">
-                    <strong style="color: var(--neon-cyan, #00d4ff);">🎯 STANDAR KELAYAKAN KOIL MOBIL:</strong><br/>
-                    Koil yang lolos uji wajib memercik di celah 10-12 mm (setara kompresi 15 Bar), arus primer 6.5A-9.5A, dan tidak putus apinya saat mesin panas.
+            <div style="padding-top: 10px; font-size: 0.8rem; color: var(--text-primary); line-height: 1.6;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 10px; margin-bottom: 8px;">
+                    <strong style="color: var(--neon-cyan);">STANDAR KELAYAKAN KOIL:</strong><br/>
+                    • Spark Gap 10-12 mm (kompresi 15 Bar) wajib api biru tebal.<br/>
+                    • Arus Primer optimal 6.5A - 9.5A (<5A = loyo/brebet, >11A = korslet).<br/>
+                    • Uji Sweep 5-10 menit untuk deteksi kelemahan saat panas (*Thermal Breakdown*).
                 </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
-                        <strong style="color: var(--neon-green);">1. CELAH UJI (SPARK GAP 10 - 12 MM):</strong>
-                        <div style="font-size: 0.8rem; margin-top: 6px;">
-                            • Jarak celah 10-12 mm meniru hambatan kompresi 15 Bar di mobil.<br/>
-                            • Koil sehat: Api biru keunguan tebal & padat.<br/>
-                            • Koil lemah/brebet: Api kemerahan/kuning tipis & sering putus.
-                        </div>
-                    </div>
-
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
-                        <strong style="color: var(--neon-orange);">2. TARGET ARUS PRIMER (PEAK CURRENT):</strong>
-                        <div style="font-size: 0.8rem; margin-top: 6px;">
-                            • <strong>6.5A - 9.5A:</strong> Normal (Optimal).<br/>
-                            • <strong>Di bawah 5.0A:</strong> Kumparan/Igniter Loyo (Penyebab brebet).<br/>
-                            • <strong>Di atas 11.0A:</strong> Kumparan Korslet Sebagian.
-                        </div>
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
-                    <strong style="color: var(--neon-purple);">3. UJI PANAS DINAMIS (THERMAL TEST 5-10 MENIT):</strong>
-                    <div style="font-size: 0.8rem; margin-top: 6px;">
-                        Gunakan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang hanya pincang saat mesin panas akan mulai mengalami misfire / penurunan loncatan api setelah koil terasa hangat.
-                    </div>
-                </div>
-
-                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
-                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
-                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR:</strong>
-                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
-                        • <strong>Arus 0.0A & Tidak Ada Api:</strong> Periksa kabel +12V/GND dan pastikan sinyal trigger IGT terhubung ke pin yang benar di soket koil.<br/>
-                        • <strong>Koil Sangat Cepat Panas (>11A):</strong> Matikan segera! Sinyal trigger atau kabel daya mengalami korsleting.<br/>
-                        • <strong>Api Melompat Liar ke Bodi:</strong> Pastikan penjepit ground busi/spark gap terpasang kencang ke Ground Aki 12V.
-                    </div>
-                </div>
-
             </div>
         </details>
     `;

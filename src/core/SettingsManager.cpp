@@ -86,6 +86,9 @@ void SettingsManager::save() {
         preferences.putInt("s_f_cmid", _settings.speedoFuelCalMid);
         preferences.putInt("s_f_cmax", _settings.speedoFuelCalMax);
         preferences.putInt("st_spd", _settings.stepperSpeed);
+        preferences.putInt("lk_sens", _settings.coilLeakSensitivity);
+        preferences.putInt("lk_th", _settings.coilLeakThreshold);
+        preferences.putFloat("lk_db", _settings.coilLeakDebounceMs);
         
         // Sync saved state
         _savedSettings = _settings;
@@ -183,6 +186,14 @@ void SettingsManager::load() {
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
     _settings.coilLeakDetected = false;
+    _settings.coilLeakSensitivity = preferences.getInt("lk_sens", 3);
+    if (_settings.coilLeakSensitivity < 1 || _settings.coilLeakSensitivity > 5) _settings.coilLeakSensitivity = 3;
+    _settings.coilLeakThreshold = preferences.getInt("lk_th", 3);
+    if (_settings.coilLeakThreshold < 1) _settings.coilLeakThreshold = 1;
+    if (_settings.coilLeakThreshold > 15) _settings.coilLeakThreshold = 15;
+    _settings.coilLeakDebounceMs = preferences.getFloat("lk_db", 1.0f);
+    if (_settings.coilLeakDebounceMs < 0.1f) _settings.coilLeakDebounceMs = 0.1f;
+    if (_settings.coilLeakDebounceMs > 5.0f) _settings.coilLeakDebounceMs = 5.0f;
     _settings.coilConnected = false;
     strncpy(_settings.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(_settings.coilLeakSeverity));
     strncpy(_settings.coilCurrentStatus, "STANDBY", sizeof(_settings.coilCurrentStatus));
