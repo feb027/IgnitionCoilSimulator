@@ -146,8 +146,11 @@ public:
     // Get a reference to current settings
     AppSettings& getSettings();
 
-    // Save settings to NVS
-    void save();
+    // Save settings to NVS (debounced by default, immediate on demand)
+    void save(bool immediate = false);
+
+    // Background update to commit debounced saves
+    void update();
 
     // Reset to safe defaults
     void resetToDefaults();
@@ -155,7 +158,11 @@ public:
 private:
     AppSettings _settings;
     AppSettings _savedSettings;
+    bool _isDirty;
+    uint32_t _lastDirtyTime;
+
     void load();
+    void commitToNvs();
 };
 
 #endif // SETTINGS_MANAGER_H

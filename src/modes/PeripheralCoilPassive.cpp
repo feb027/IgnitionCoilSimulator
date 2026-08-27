@@ -25,10 +25,6 @@ static void IRAM_ATTR onPassiveSparkReturnInterrupt() {
 
 static void IRAM_ATTR onPassiveCoilTimer() {
     if (isPassiveCoilOn) {
-        // Sample peak primary charging current right at the end of Dwell ramp
-        coil_pass_peakRawAdc = analogRead(PIN_COIL_ISENSE);
-        coil_pass_hasNewAdc = true;
-
         // Turn IGBT Gate OFF (GPIO 33 LOW)
         GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = false;
@@ -47,6 +43,7 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         uint32_t offTicks = (coil_pass_periodTicks > coil_pass_dwellTicks) 
                             ? (coil_pass_periodTicks - coil_pass_dwellTicks) 
                             : 1000;
+        if (offTicks < 400) offTicks = 400;
         timerWrite(coil_passive_timer, 0);
         timerAlarmWrite(coil_passive_timer, offTicks, true);
         timerAlarmEnable(coil_passive_timer);
@@ -56,6 +53,7 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         isPassiveCoilOn = true;
         
         uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
+        if (onTicks < 100) onTicks = 100;
         timerWrite(coil_passive_timer, 0);
         timerAlarmWrite(coil_passive_timer, onTicks, true);
         timerAlarmEnable(coil_passive_timer);
@@ -296,25 +294,21 @@ void PeripheralCoilPassive::syncHardware() {
 void PeripheralCoilPassive::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.rpm > 12000) s.rpm = 12000;
-    if (s.rpm < 0) s.rpm = 0; 
-    
-    if (s.rpm == 0) {
-        coil_pass_periodTicks = 1000000;
-        coil_pass_dwellTicks = 0;
-        s.dwellMs = 0.0f;
-        return;
-    }
+    if (s.rpm < 200) s.rpm = 200; 
     
     coil_pass_periodTicks = 60000000 / s.rpm;
+    if (coil_pass_periodTicks < 5000) coil_pass_periodTicks = 5000;
     
     if (s.dwellMs > 5.0f) s.dwellMs = 5.0f;
-    coil_pass_dwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+    if (s.dwellMs < 0.2f) s.dwellMs = 0.2f;
     
-    // Duty cycle protection for coil: Dwell cannot exceed 80% of period
-    if (coil_pass_dwellTicks > (coil_pass_periodTicks * 0.8f)) {
-        coil_pass_dwellTicks = (uint32_t)(coil_pass_periodTicks * 0.8f);
-        s.dwellMs = (float)coil_pass_dwellTicks / 1000.0f;
+    uint32_t desiredDwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+    uint32_t maxDwellTicks = (coil_pass_periodTicks > 600) ? (coil_pass_periodTicks - 500) : 100;
+    if (desiredDwellTicks > maxDwellTicks) {
+        desiredDwellTicks = maxDwellTicks;
     }
+    coil_pass_dwellTicks = desiredDwellTicks;
+    s.dwellMs = (float)coil_pass_dwellTicks / 1000.0f;
     
     s.dutyCycle = ((float)coil_pass_dwellTicks / (float)coil_pass_periodTicks) * 100.0f;
 }

@@ -25,10 +25,6 @@ static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
 
 static void IRAM_ATTR onActive3pCoilTimer() {
     if (isActive3pCoilOn) {
-        // Sample peak primary charging current right at the end of Dwell ramp
-        coil_act3p_peakRawAdc = analogRead(PIN_COIL_ISENSE);
-        coil_act3p_hasNewAdc = true;
-
         // Turn IGT Pin 25 LOW (Spark Fired)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = false;
@@ -47,6 +43,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         uint32_t offTicks = (coil_act3p_periodTicks > coil_act3p_dwellTicks) 
                             ? (coil_act3p_periodTicks - coil_act3p_dwellTicks) 
                             : 1000;
+        if (offTicks < 400) offTicks = 400;
         timerWrite(coil_active3p_timer, 0);
         timerAlarmWrite(coil_active3p_timer, offTicks, true);
         timerAlarmEnable(coil_active3p_timer);
@@ -56,6 +53,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         isActive3pCoilOn = true;
         
         uint32_t onTicks = (coil_act3p_dwellTicks > 0) ? coil_act3p_dwellTicks : 1000;
+        if (onTicks < 100) onTicks = 100;
         timerWrite(coil_active3p_timer, 0);
         timerAlarmWrite(coil_active3p_timer, onTicks, true);
         timerAlarmEnable(coil_active3p_timer);
@@ -296,24 +294,21 @@ void PeripheralCoilActive3P::syncHardware() {
 void PeripheralCoilActive3P::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
     if (s.rpm > 16000) s.rpm = 16000;
-    if (s.rpm < 0) s.rpm = 0; 
-    
-    if (s.rpm == 0) {
-        coil_act3p_periodTicks = 1000000;
-        coil_act3p_dwellTicks = 0;
-        s.dwellMs = 0.0f;
-        return;
-    }
+    if (s.rpm < 200) s.rpm = 200; 
     
     coil_act3p_periodTicks = 60000000 / s.rpm;
+    if (coil_act3p_periodTicks < 3750) coil_act3p_periodTicks = 3750;
     
     if (s.dwellMs > 5.0f) s.dwellMs = 5.0f;
-    coil_act3p_dwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+    if (s.dwellMs < 0.2f) s.dwellMs = 0.2f;
     
-    if (coil_act3p_dwellTicks > (coil_act3p_periodTicks * 0.8f)) {
-        coil_act3p_dwellTicks = (uint32_t)(coil_act3p_periodTicks * 0.8f);
-        s.dwellMs = (float)coil_act3p_dwellTicks / 1000.0f;
+    uint32_t desiredDwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+    uint32_t maxDwellTicks = (coil_act3p_periodTicks > 600) ? (coil_act3p_periodTicks - 500) : 100;
+    if (desiredDwellTicks > maxDwellTicks) {
+        desiredDwellTicks = maxDwellTicks;
     }
+    coil_act3p_dwellTicks = desiredDwellTicks;
+    s.dwellMs = (float)coil_act3p_dwellTicks / 1000.0f;
     
     s.dutyCycle = ((float)coil_act3p_dwellTicks / (float)coil_act3p_periodTicks) * 100.0f;
 }

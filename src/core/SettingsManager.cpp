@@ -3,7 +3,8 @@
 
 Preferences preferences;
 
-SettingsManager::SettingsManager() {
+SettingsManager::SettingsManager() 
+    : _isDirty(false), _lastDirtyTime(0) {
     resetToDefaults();
 }
 
@@ -17,82 +18,54 @@ AppSettings& SettingsManager::getSettings() {
     return _settings;
 }
 
-void SettingsManager::save() {
-    // Feature C: Optimize NVS saving (only save if changed)
-    if (_settings.rpm != _savedSettings.rpm || 
-        _settings.rpmStep != _savedSettings.rpmStep ||
-        _settings.dwellMs != _savedSettings.dwellMs || 
-        _settings.dutyCycle != _savedSettings.dutyCycle ||
-        _settings.iscDuty != _savedSettings.iscDuty ||
-        _settings.iscFreq != _savedSettings.iscFreq ||
-        _settings.pulseMode != _savedSettings.pulseMode ||
-        _settings.mode != _savedSettings.mode ||
-        _settings.sweepTimeSec != _savedSettings.sweepTimeSec ||
-        _settings.pulsePerKm != _savedSettings.pulsePerKm ||
-        _settings.speedoKmh != _savedSettings.speedoKmh ||
-        _settings.speedoRpm != _savedSettings.speedoRpm ||
-        _settings.speedoTempPercent != _savedSettings.speedoTempPercent ||
-        _settings.speedoFuelPercent != _savedSettings.speedoFuelPercent ||
-        _settings.speedoRpmStep != _savedSettings.speedoRpmStep ||
-        _settings.speedoKmhStep != _savedSettings.speedoKmhStep ||
-        _settings.speedoTempStep != _savedSettings.speedoTempStep ||
-        _settings.speedoFuelStep != _savedSettings.speedoFuelStep ||
-        _settings.speedoEnableRpm != _savedSettings.speedoEnableRpm ||
-        _settings.speedoEnableKmh != _savedSettings.speedoEnableKmh ||
-        _settings.speedoEnableTemp != _savedSettings.speedoEnableTemp ||
-        _settings.speedoEnableFuel != _savedSettings.speedoEnableFuel ||
-        _settings.speedoTachoPpr != _savedSettings.speedoTachoPpr ||
-        _settings.speedoGaugeCurve != _savedSettings.speedoGaugeCurve ||
-        _settings.speedoDacRouting != _savedSettings.speedoDacRouting ||
-        _settings.speedoPwmFreqHz != _savedSettings.speedoPwmFreqHz ||
-        _settings.speedoTempCalMin != _savedSettings.speedoTempCalMin ||
-        _settings.speedoTempCalMid != _savedSettings.speedoTempCalMid ||
-        _settings.speedoTempCalMax != _savedSettings.speedoTempCalMax ||
-        _settings.speedoFuelCalMin != _savedSettings.speedoFuelCalMin ||
-        _settings.speedoFuelCalMid != _savedSettings.speedoFuelCalMid ||
-        _settings.speedoFuelCalMax != _savedSettings.speedoFuelCalMax ||
-        _settings.stepperSpeed != _savedSettings.stepperSpeed) {
-        
-        preferences.putInt("rpm", _settings.rpm);
-        preferences.putInt("rpm_s", _settings.rpmStep);
-        preferences.putFloat("dwell", _settings.dwellMs);
-        preferences.putFloat("duty", _settings.dutyCycle);
-        preferences.putFloat("isc_d", _settings.iscDuty);
-        preferences.putInt("isc_f", _settings.iscFreq);
-        preferences.putUChar("pmode", static_cast<uint8_t>(_settings.pulseMode));
-        preferences.putUChar("mode", static_cast<uint8_t>(_settings.mode));
-        preferences.putInt("s_time", _settings.sweepTimeSec);
-        preferences.putInt("s_ppk", _settings.pulsePerKm);
-        preferences.putInt("s_kmh", _settings.speedoKmh);
-        preferences.putInt("s_rpm", _settings.speedoRpm);
-        preferences.putInt("s_tmp", _settings.speedoTempPercent);
-        preferences.putInt("s_fuel", _settings.speedoFuelPercent);
-        preferences.putInt("s_rpm_s", _settings.speedoRpmStep);
-        preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
-        preferences.putInt("s_tmp_s", _settings.speedoTempStep);
-        preferences.putInt("s_ful_s", _settings.speedoFuelStep);
-        preferences.putBool("s_en_rpm", _settings.speedoEnableRpm);
-        preferences.putBool("s_en_kmh", _settings.speedoEnableKmh);
-        preferences.putBool("s_en_tmp", _settings.speedoEnableTemp);
-        preferences.putBool("s_en_ful", _settings.speedoEnableFuel);
-        preferences.putFloat("s_t_ppr", _settings.speedoTachoPpr);
-        preferences.putInt("s_g_crv", _settings.speedoGaugeCurve);
-        preferences.putInt("s_dac_rt", _settings.speedoDacRouting);
-        preferences.putInt("s_pwm_f", _settings.speedoPwmFreqHz);
-        preferences.putInt("s_t_cmin", _settings.speedoTempCalMin);
-        preferences.putInt("s_t_cmid", _settings.speedoTempCalMid);
-        preferences.putInt("s_t_cmax", _settings.speedoTempCalMax);
-        preferences.putInt("s_f_cmin", _settings.speedoFuelCalMin);
-        preferences.putInt("s_f_cmid", _settings.speedoFuelCalMid);
-        preferences.putInt("s_f_cmax", _settings.speedoFuelCalMax);
-        preferences.putInt("st_spd", _settings.stepperSpeed);
-        preferences.putInt("lk_sens", _settings.coilLeakSensitivity);
-        preferences.putInt("lk_th", _settings.coilLeakThreshold);
-        preferences.putFloat("lk_db", _settings.coilLeakDebounceMs);
-        
-        // Sync saved state
-        _savedSettings = _settings;
+void SettingsManager::save(bool immediate) {
+    _isDirty = true;
+    _lastDirtyTime = millis();
+    if (immediate) {
+        commitToNvs();
     }
+}
+
+void SettingsManager::update() {
+    if (_isDirty && (millis() - _lastDirtyTime >= 1500)) {
+        commitToNvs();
+    }
+}
+
+void SettingsManager::commitToNvs() {
+    _isDirty = false;
+    if (_settings.rpm == _savedSettings.rpm && _settings.dwellMs == _savedSettings.dwellMs &&
+        _settings.dutyCycle == _savedSettings.dutyCycle && _settings.iscDuty == _savedSettings.iscDuty &&
+        _settings.iscFreq == _savedSettings.iscFreq && _settings.pulseMode == _savedSettings.pulseMode &&
+        _settings.mode == _savedSettings.mode && _settings.speedoKmh == _savedSettings.speedoKmh &&
+        _settings.speedoRpm == _savedSettings.speedoRpm && _settings.stepperSpeed == _savedSettings.stepperSpeed &&
+        _settings.coilLeakSensitivity == _savedSettings.coilLeakSensitivity &&
+        _settings.coilLeakThreshold == _savedSettings.coilLeakThreshold &&
+        _settings.coilLeakDebounceMs == _savedSettings.coilLeakDebounceMs) {
+        return; // No critical change
+    }
+    preferences.putInt("rpm", _settings.rpm); preferences.putInt("rpm_s", _settings.rpmStep);
+    preferences.putFloat("dwell", _settings.dwellMs); preferences.putFloat("duty", _settings.dutyCycle);
+    preferences.putFloat("isc_d", _settings.iscDuty); preferences.putInt("isc_f", _settings.iscFreq);
+    preferences.putUChar("pmode", static_cast<uint8_t>(_settings.pulseMode));
+    preferences.putUChar("mode", static_cast<uint8_t>(_settings.mode));
+    preferences.putInt("s_time", _settings.sweepTimeSec); preferences.putInt("s_ppk", _settings.pulsePerKm);
+    preferences.putInt("s_kmh", _settings.speedoKmh); preferences.putInt("s_rpm", _settings.speedoRpm);
+    preferences.putInt("s_tmp", _settings.speedoTempPercent); preferences.putInt("s_fuel", _settings.speedoFuelPercent);
+    preferences.putInt("s_rpm_s", _settings.speedoRpmStep); preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
+    preferences.putInt("s_tmp_s", _settings.speedoTempStep); preferences.putInt("s_ful_s", _settings.speedoFuelStep);
+    preferences.putBool("s_en_rpm", _settings.speedoEnableRpm); preferences.putBool("s_en_kmh", _settings.speedoEnableKmh);
+    preferences.putBool("s_en_tmp", _settings.speedoEnableTemp); preferences.putBool("s_en_ful", _settings.speedoEnableFuel);
+    preferences.putFloat("s_t_ppr", _settings.speedoTachoPpr); preferences.putInt("s_g_crv", _settings.speedoGaugeCurve);
+    preferences.putInt("s_dac_rt", _settings.speedoDacRouting); preferences.putInt("s_pwm_f", _settings.speedoPwmFreqHz);
+    preferences.putInt("s_t_cmin", _settings.speedoTempCalMin); preferences.putInt("s_t_cmid", _settings.speedoTempCalMid);
+    preferences.putInt("s_t_cmax", _settings.speedoTempCalMax); preferences.putInt("s_f_cmin", _settings.speedoFuelCalMin);
+    preferences.putInt("s_f_cmid", _settings.speedoFuelCalMid); preferences.putInt("s_f_cmax", _settings.speedoFuelCalMax);
+    preferences.putInt("st_spd", _settings.stepperSpeed);
+    preferences.putInt("lk_sens", _settings.coilLeakSensitivity);
+    preferences.putInt("lk_th", _settings.coilLeakThreshold);
+    preferences.putFloat("lk_db", _settings.coilLeakDebounceMs);
+    _savedSettings = _settings;
 }
 
 void SettingsManager::load() {
