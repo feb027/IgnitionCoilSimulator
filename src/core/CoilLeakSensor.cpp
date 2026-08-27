@@ -90,26 +90,47 @@ void CoilLeakSensor::update(AppSettings& s) {
         prev_leak_snapshot = verified_arcs_total;
         last_rate_check_time = now;
         
-        // 4-Tier Severity Classification
-        if (s.coilLeakRate == 0 && verified_arcs_total == 0) {
-            strncpy(s.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(s.coilLeakSeverity));
-        } else if (s.coilLeakRate <= 5) {
-            strncpy(s.coilLeakSeverity, "MICRO-LEAKAGE", sizeof(s.coilLeakSeverity));
-        } else if (s.coilLeakRate <= 20) {
-            strncpy(s.coilLeakSeverity, "MEDIUM ARCING", sizeof(s.coilLeakSeverity));
+        // Custom Percentage & Severity Classification
+        uint8_t cutIn = s.leakArcCutIn > 0 ? s.leakArcCutIn : 2;
+        uint8_t a25 = s.leakArc25 > cutIn ? s.leakArc25 : 5;
+        uint8_t a50 = s.leakArc50 > a25 ? s.leakArc50 : 10;
+        uint8_t a75 = s.leakArc75 > a50 ? s.leakArc75 : 18;
+        uint8_t a100 = s.leakArc100 > a75 ? s.leakArc100 : 25;
+        
+        uint32_t activeArcs = s.coilLeakRate;
+        if (activeArcs < cutIn && verified_arcs_total == 0) {
+            s.coilLeakPercent = 0;
+            strncpy(s.coilLeakSeverity, "ISOLASI UTUH (0 LEAK)", sizeof(s.coilLeakSeverity));
+        } else if (activeArcs <= a25) {
+            float ratio = (float)(activeArcs) / (float)(a25);
+            s.coilLeakPercent = (uint8_t)(ratio * 25.0f);
+            if (s.coilLeakPercent == 0 && activeArcs >= cutIn) s.coilLeakPercent = 10;
+            snprintf(s.coilLeakSeverity, sizeof(s.coilLeakSeverity), "MIKRO LEAK (%u%%)", s.coilLeakPercent);
+        } else if (activeArcs <= a50) {
+            float ratio = (float)(activeArcs - a25) / (float)(a50 - a25);
+            s.coilLeakPercent = (uint8_t)(25.0f + ratio * 25.0f);
+            snprintf(s.coilLeakSeverity, sizeof(s.coilLeakSeverity), "SEDANG (%u%%)", s.coilLeakPercent);
+        } else if (activeArcs <= a75) {
+            float ratio = (float)(activeArcs - a50) / (float)(a75 - a50);
+            s.coilLeakPercent = (uint8_t)(50.0f + ratio * 25.0f);
+            snprintf(s.coilLeakSeverity, sizeof(s.coilLeakSeverity), "BOCOR PARAH (%u%%)", s.coilLeakPercent);
         } else {
-            strncpy(s.coilLeakSeverity, "SEVERE BREAKDOWN", sizeof(s.coilLeakSeverity));
+            float ratio = (float)(activeArcs - a75) / (float)(a100 - a75);
+            uint8_t p = (uint8_t)(75.0f + ratio * 25.0f);
+            if (p > 100) p = 100;
+            s.coilLeakPercent = p;
+            snprintf(s.coilLeakSeverity, sizeof(s.coilLeakSeverity), "JEBOL TOTAL (%u%%)", s.coilLeakPercent);
         }
     }
     
     // Integrate Body Leakage Penalty into Coil Health Analyzer
     if (s.coilFiredCount > 0) {
         float baseHealth = s.coilHealthPercent;
-        if (s.coilLeakRate > 20 || strstr(s.coilLeakSeverity, "SEVERE") != nullptr) {
+        if (s.coilLeakPercent >= 75) {
             s.coilHealthPercent = (baseHealth > 20.0f) ? 20.0f : baseHealth;
-        } else if (s.coilLeakRate > 5 || strstr(s.coilLeakSeverity, "MEDIUM") != nullptr) {
+        } else if (s.coilLeakPercent >= 50) {
             s.coilHealthPercent = (baseHealth > 50.0f) ? 50.0f : baseHealth;
-        } else if (isLeakingNow || s.coilLeakCount > 0) {
+        } else if (s.coilLeakPercent >= 25) {
             s.coilHealthPercent = (baseHealth > 75.0f) ? 75.0f : baseHealth;
         }
     }

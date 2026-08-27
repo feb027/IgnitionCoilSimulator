@@ -65,6 +65,12 @@ void SettingsManager::commitToNvs() {
     preferences.putInt("lk_sens", _settings.coilLeakSensitivity);
     preferences.putInt("lk_th", _settings.coilLeakThreshold);
     preferences.putFloat("lk_db", _settings.coilLeakDebounceMs);
+    preferences.putUChar("lk_cut", _settings.leakArcCutIn);
+    preferences.putUChar("lk_25", _settings.leakArc25);
+    preferences.putUChar("lk_50", _settings.leakArc50);
+    preferences.putUChar("lk_75", _settings.leakArc75);
+    preferences.putUChar("lk_100", _settings.leakArc100);
+    preferences.putUChar("lk_max", _settings.leakArcMax);
     _savedSettings = _settings;
 }
 
@@ -159,14 +165,20 @@ void SettingsManager::load() {
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
     _settings.coilLeakDetected = false;
-    _settings.coilLeakSensitivity = preferences.getInt("lk_sens", 3);
-    if (_settings.coilLeakSensitivity < 1 || _settings.coilLeakSensitivity > 5) _settings.coilLeakSensitivity = 3;
-    _settings.coilLeakThreshold = preferences.getInt("lk_th", 3);
+    _settings.coilLeakThreshold = preferences.getInt("lk_th", 4);
     if (_settings.coilLeakThreshold < 1) _settings.coilLeakThreshold = 1;
-    if (_settings.coilLeakThreshold > 15) _settings.coilLeakThreshold = 15;
-    _settings.coilLeakDebounceMs = preferences.getFloat("lk_db", 1.0f);
+    if (_settings.coilLeakThreshold > 30) _settings.coilLeakThreshold = 30;
+    _settings.coilLeakDebounceMs = preferences.getFloat("lk_db", 3.0f);
     if (_settings.coilLeakDebounceMs < 0.1f) _settings.coilLeakDebounceMs = 0.1f;
-    if (_settings.coilLeakDebounceMs > 5.0f) _settings.coilLeakDebounceMs = 5.0f;
+    if (_settings.coilLeakDebounceMs > 8.0f) _settings.coilLeakDebounceMs = 8.0f;
+    
+    _settings.leakArcCutIn = preferences.getUChar("lk_cut", 2);
+    _settings.leakArc25 = preferences.getUChar("lk_25", 5);
+    _settings.leakArc50 = preferences.getUChar("lk_50", 10);
+    _settings.leakArc75 = preferences.getUChar("lk_75", 18);
+    _settings.leakArc100 = preferences.getUChar("lk_100", 25);
+    _settings.leakArcMax = preferences.getUChar("lk_max", 30);
+    _settings.coilLeakPercent = 0;
     
     _settings.supplyVoltage = 12.6f;
     _settings.realCurrentA = 0.0f;
@@ -259,6 +271,16 @@ void SettingsManager::resetToDefaults() {
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
     _settings.coilLeakDetected = false;
+    _settings.coilLeakSensitivity = 3;
+    _settings.coilLeakThreshold = 4;
+    _settings.coilLeakDebounceMs = 3.0f;
+    _settings.leakArcCutIn = 2;
+    _settings.leakArc25 = 5;
+    _settings.leakArc50 = 10;
+    _settings.leakArc75 = 18;
+    _settings.leakArc100 = 25;
+    _settings.leakArcMax = 30;
+    _settings.coilLeakPercent = 0;
     
     _savedSettings = _settings;
 }

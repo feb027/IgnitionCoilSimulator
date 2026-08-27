@@ -1,4 +1,4 @@
-﻿import { html } from '../preact.js';
+import { html } from '../preact.js';
 
 export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULATION ANALYZER", is4Pin = false, isLocked = true, onToggleLock }) {
     const fired = state.coilFiredCount || 0, confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
@@ -11,15 +11,16 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
 
     const isLeaking = state.coilLeakDetected, leakCount = state.coilLeakCount || 0, leakRate = state.coilLeakRate || 0;
-    const leakSeverity = state.coilLeakSeverity || (leakCount === 0 ? "PERFECT (0 LEAK)" : "MICRO-LEAKAGE");
+    const leakPercent = state.coilLeakPercent !== undefined ? state.coilLeakPercent : 0;
+    const leakSeverity = state.coilLeakSeverity || (leakPercent === 0 ? "ISOLASI UTUH (0%)" : "MIKRO LEAK");
 
-    let insulationFactor = 1.0, leakBadgeColor = "var(--neon-green)", leakStatusText = "ISOLASI UTUH (0 LEAK)";
-    if (leakSeverity.includes("SEVERE") || leakRate > 25) {
-        insulationFactor = 0.20; leakBadgeColor = "var(--neon-red)"; leakStatusText = "🚨 BOCOR PARAH";
-    } else if (leakSeverity.includes("MEDIUM") || leakRate > 5) {
-        insulationFactor = 0.50; leakBadgeColor = "var(--neon-orange)"; leakStatusText = "⚠️ ISOLASI BOCOR";
-    } else if (isLeaking || leakCount > 0) {
-        insulationFactor = 0.75; leakBadgeColor = "var(--neon-yellow, #ffe600)"; leakStatusText = "⚡ MIKRO LEAK";
+    let insulationFactor = 1.0, leakBadgeColor = "var(--neon-green)", leakStatusText = state.coilLeakSeverity || "ISOLASI UTUH (0%)";
+    if (leakPercent >= 75 || leakSeverity.includes("JEBOL") || leakSeverity.includes("SEVERE") || leakRate > 25) {
+        insulationFactor = 0.20; leakBadgeColor = "var(--neon-red)"; leakStatusText = state.coilLeakSeverity || `🚨 JEBOL TOTAL (${leakPercent}%)`;
+    } else if (leakPercent >= 50 || leakSeverity.includes("BOCOR") || leakSeverity.includes("MEDIUM") || leakRate > 5) {
+        insulationFactor = 0.50; leakBadgeColor = "var(--neon-orange)"; leakStatusText = state.coilLeakSeverity || `⚠️ BOCOR PARAH (${leakPercent}%)`;
+    } else if (leakPercent >= 25 || isLeaking || leakCount > 0) {
+        insulationFactor = 0.75; leakBadgeColor = "var(--neon-yellow, #ffe600)"; leakStatusText = state.coilLeakSeverity || `⚡ MIKRO LEAK (${leakPercent}%)`;
     }
 
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;

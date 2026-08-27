@@ -1,4 +1,4 @@
-﻿import { html, useState, useEffect, useRef } from '../preact.js';
+import { html, useState, useEffect, useRef } from '../preact.js';
 import { Dial } from './Dial.js';
 import { CalibrationMatrixPanel } from './CalibrationMatrixPanel.js';
 
@@ -152,7 +152,7 @@ export function AdvancedTuningPanel({
                 </div>
 
                 <!-- SECTION 4: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
-                <${CalibrationMatrixPanel} />
+                <${CalibrationMatrixPanel} state=${state} sendAction=${sendAction} />
 
                 <!-- SECTION 5: SWEEP TIME & RPM STEP SIZE DIALS -->
                 <div class="responsive-grid-2" style="margin-top: 2px;">

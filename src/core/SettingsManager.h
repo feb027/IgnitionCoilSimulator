@@ -123,6 +123,13 @@ struct AppSettings {
     int coilLeakSensitivity;    // 1: Ultra, 2: High, 3: Medium (Standard), 4: Low (Direct Arc Only), 5: Custom
     int coilLeakThreshold;      // Custom Hit Threshold (1 - 10 arcs per window)
     float coilLeakDebounceMs;   // Custom Lockout Debounce Filter (0.1 - 3.0 ms)
+    uint8_t leakArcCutIn;       // Cut-in ARC threshold (default: 2)
+    uint8_t leakArc25;          // 25% Leak ARC threshold (default: 5)
+    uint8_t leakArc50;          // 50% Leak ARC threshold (default: 10)
+    uint8_t leakArc75;          // 75% Leak ARC threshold (default: 18)
+    uint8_t leakArc100;         // 100% Leak ARC threshold (default: 25)
+    uint8_t leakArcMax;         // Maximum Scale ARC threshold (default: 30)
+    uint8_t coilLeakPercent;    // Live dynamic leak percentage (0 - 100%)
     bool coilConnected;         // True if coil load is detected via Auto-Ping / Current Sense
     char coilLeakSeverity[32];  // "PERFECT (0 LEAK)", "MICRO-LEAKAGE", "MEDIUM ARCING", "SEVERE BREAKDOWN"
     char coilCurrentStatus[32]; // "OPTIMAL (6-10A)", "WEAK (<5A)", "OVERCURRENT (>11A)", "STANDBY"

@@ -175,6 +175,13 @@ void NetworkManager::broadcastState() {
     doc["coilLeakSensitivity"] = s.coilLeakSensitivity;
     doc["coilLeakThreshold"] = s.coilLeakThreshold;
     doc["coilLeakDebounceMs"] = s.coilLeakDebounceMs;
+    doc["coilLeakPercent"] = s.coilLeakPercent;
+    doc["leakArcCutIn"] = s.leakArcCutIn;
+    doc["leakArc25"] = s.leakArc25;
+    doc["leakArc50"] = s.leakArc50;
+    doc["leakArc75"] = s.leakArc75;
+    doc["leakArc100"] = s.leakArc100;
+    doc["leakArcMax"] = s.leakArcMax;
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
@@ -277,6 +284,13 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["coilLeakCount"] = s.coilLeakCount;
         doc["coilLeakRate"] = s.coilLeakRate;
         doc["coilLeakDetected"] = s.coilLeakDetected;
+        doc["coilLeakPercent"] = s.coilLeakPercent;
+        doc["leakArcCutIn"] = s.leakArcCutIn;
+        doc["leakArc25"] = s.leakArc25;
+        doc["leakArc50"] = s.leakArc50;
+        doc["leakArc75"] = s.leakArc75;
+        doc["leakArc100"] = s.leakArc100;
+        doc["leakArcMax"] = s.leakArcMax;
         doc["coilLeakSeverity"] = s.coilLeakSeverity;
         doc["coilCurrentStatus"] = s.coilCurrentStatus;
         doc["coilConnected"] = s.coilConnected;
@@ -611,6 +625,17 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
                 _settingsMgr.save();
                 broadcastState();
             }
+            return;
+        } else if (action == "setCustomLeakMatrix") {
+            if (doc["cutIn"].is<int>()) s.leakArcCutIn = doc["cutIn"].as<int>();
+            if (doc["arc25"].is<int>()) s.leakArc25 = doc["arc25"].as<int>();
+            if (doc["arc50"].is<int>()) s.leakArc50 = doc["arc50"].as<int>();
+            if (doc["arc75"].is<int>()) s.leakArc75 = doc["arc75"].as<int>();
+            if (doc["arc100"].is<int>()) s.leakArc100 = doc["arc100"].as<int>();
+            if (doc["arcMax"].is<int>()) s.leakArcMax = doc["arcMax"].as<int>();
+            s.coilLeakSensitivity = 5; // Custom mode
+            _settingsMgr.save(true);
+            broadcastState();
             return;
         } else if (action == "probeCoil" || action == "runCheckCoil") {
             if (_peripheralMgr.getActive() != nullptr) {
