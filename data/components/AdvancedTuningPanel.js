@@ -1,4 +1,4 @@
-import { html, useState } from '../preact.js';
+﻿import { html, useState, useEffect, useRef } from '../preact.js';
 import { Dial } from './Dial.js';
 import { CalibrationMatrixPanel } from './CalibrationMatrixPanel.js';
 
@@ -10,7 +10,6 @@ export function AdvancedTuningPanel({
     maxDwellLimit = 5.0, 
     onMaxDwellChange 
 }) {
-    const isSweep = state.runMode === 3;
     const isAutoDiag = state.coilAutoDiagRunning;
     const currentRpm = state.rpm || 800;
     const currentDwell = state.dwellMs !== undefined ? Number(state.dwellMs) : 3.0;
@@ -28,11 +27,23 @@ export function AdvancedTuningPanel({
         sendAction('setDwell', nextDwell);
     };
 
+    // Pre-Flight & Probe Sensitivity Controls
+    const checkPulses = state.checkCoilPulseCount || 3, checkVerdict = state.checkCoilVerdict || "READY";
+    const currentSens = state.coilLeakSensitivity || 3;
+    const sensLabels = [{ id: 1, name: "1: ULTRA" }, { id: 2, name: "2: TINGGI" }, { id: 3, name: "3: STANDAR" }, { id: 4, name: "4: KEBAL" }, { id: 5, name: "5: CUSTOM" }];
+
+    const isDragTh = useRef(false), isDragDb = useRef(false);
+    const [localTh, setLocalTh] = useState(state.coilLeakThreshold || 6);
+    const [localDb, setLocalDb] = useState(state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.5");
+
+    useEffect(() => { if (!isDragTh.current && state.coilLeakThreshold !== undefined) setLocalTh(state.coilLeakThreshold); }, [state.coilLeakThreshold]);
+    useEffect(() => { if (!isDragDb.current && state.coilLeakDebounceMs !== undefined) setLocalDb(Number(state.coilLeakDebounceMs).toFixed(1)); }, [state.coilLeakDebounceMs]);
+
     return html`
-        <!-- ADVANCED TUNING, RANGE LIMITS, CALIBRATION MATRIX & FINE SLIDERS -->
-        <details class="panel" style="margin-top: 6px; grid-column: 1 / -1; border-color: var(--border-sharp); background: rgba(0,0,0,0.25);">
+        <!-- ADVANCED TUNING, RANGE LIMITS, PRE-FLIGHT & CALIBRATION MATRIX (AT BOTTOM) -->
+        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp); background: rgba(0,0,0,0.25);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
-                <span>⚙️ BATAS RENTANG, KALIBRASI & FINE TUNING ▾</span>
+                <span>⚙️ PENGATURAN KALIBRASI, PRE-FLIGHT & DIAGNOSIS ADVANCED ▾</span>
                 <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: normal;">
                     Batas: <strong>${maxRpmLimit} RPM / ${maxDwellLimit.toFixed(1)}ms</strong>
                 </span>
@@ -40,7 +51,7 @@ export function AdvancedTuningPanel({
 
             <div style="padding-top: 8px; display: flex; flex-direction: column; gap: 10px;">
                 
-                <!-- SECTION 1: BATAS ATAS RPM (MAX SPEED LIMIT SELECTION & FINE SLIDER) -->
+                <!-- SECTION 1: BATAS ATAS RPM -->
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
                         <span style="font-weight: bold; color: var(--neon-cyan);">🎯 BATAS SKALA ENGINE SPEED (0 - 100%):</span>
@@ -56,31 +67,23 @@ export function AdvancedTuningPanel({
                             `)}
                         </div>
                     </div>
-                    
-                    <!-- Fine RPM Adjustment Slider -->
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(-100)} disabled=${!state.connected || isAutoDiag}>-100</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(-10)} disabled=${!state.connected || isAutoDiag}>-10</button>
-                        
                         <div style="flex: 1; padding: 0 4px;">
                             <input 
-                                type="range" 
-                                min="0" 
-                                max=${maxRpmLimit} 
-                                step="10" 
-                                value=${currentRpm} 
+                                type="range" min="0" max=${maxRpmLimit} step="10" value=${currentRpm} 
                                 style="width: 100%; accent-color: var(--neon-cyan);" 
                                 onInput=${(e) => sendAction('setRpm', parseInt(e.target.value))} 
                                 disabled=${!state.connected || isAutoDiag} 
                             />
                         </div>
-
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(+10)} disabled=${!state.connected || isAutoDiag}>+10</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(+100)} disabled=${!state.connected || isAutoDiag}>+100</button>
                     </div>
                 </div>
 
-                <!-- SECTION 2: BATAS ATAS DWELL TIME (MAX DWELL LIMIT SELECTION & FINE SLIDER) -->
+                <!-- SECTION 2: BATAS ATAS DWELL TIME -->
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
                         <span style="font-weight: bold; color: var(--neon-purple);">⏱️ BATAS SKALA DWELL TIME (0.0 - ${maxDwellLimit.toFixed(1)} MS):</span>
@@ -96,34 +99,84 @@ export function AdvancedTuningPanel({
                             `)}
                         </div>
                     </div>
-
-                    <!-- Fine Dwell Adjustment Slider -->
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(-0.5)} disabled=${!state.connected || isAutoDiag}>-0.5</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(-0.1)} disabled=${!state.connected || isAutoDiag}>-0.1</button>
-                        
                         <div style="flex: 1; padding: 0 4px;">
                             <input 
-                                type="range" 
-                                min="0.0" 
-                                max=${maxDwellLimit} 
-                                step="0.05" 
-                                value=${currentDwell} 
+                                type="range" min="0.0" max=${maxDwellLimit} step="0.05" value=${currentDwell} 
                                 style="width: 100%; accent-color: var(--neon-purple);" 
                                 onInput=${(e) => sendAction('setDwell', parseFloat(e.target.value))} 
                                 disabled=${!state.connected || isAutoDiag} 
                             />
                         </div>
-
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(+0.1)} disabled=${!state.connected || isAutoDiag}>+0.1</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(+0.5)} disabled=${!state.connected || isAutoDiag}>+0.5</button>
                     </div>
                 </div>
 
-                <!-- SECTION 3: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
+                <!-- SECTION 3: PRE-FLIGHT CHECK COIL -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
+                        <span style="font-weight: bold; color: var(--neon-yellow);">⚡ PRE-FLIGHT CHECK COIL (UJI AMAN SEBELUM RUN):</span>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <span style="font-size: 0.68rem; color: var(--text-muted);">Jumlah Pulsa:</span>
+                            ${[1, 2, 3, 5, 10].map(p => html`
+                                <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 2px 6px; font-size: 0.68rem; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.2)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
+                            `)}
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                        <button class="btn" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 800; background: #FFE600; color: #000;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>
+                            ⚡ JALANKAN CHECK COIL (${checkPulses}x)
+                        </button>
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 4px 8px; font-size: 0.74rem;">
+                            VONIS PRE-FLIGHT: <strong style="color: ${checkVerdict.includes('PASS') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">${checkVerdict}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: PENGATURAN SENSITIFITAS PROBE LEAK -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
+                        <span style="font-weight: bold; color: var(--neon-cyan);">🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36):</span>
+                        <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong>${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                        ${sensLabels.map(s => html`
+                            <button class="btn ${currentSens === s.id ? 'btn-active' : ''}" style="padding: 4px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.15)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" onClick=${() => sendAction('setLeakSensitivity', s.id)} disabled=${!state.connected}>${s.name}</button>
+                        `)}
+                    </div>
+                    ${currentSens === 5 ? html`
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-sharp); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
+                                    <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${localTh} Arcs</strong>
+                                </div>
+                                <input type="range" min="1" max="25" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
+                                    onPointerDown=${() => { isDragTh.current = true; }}
+                                    onInput=${(e) => { setLocalTh(parseInt(e.target.value)); }}
+                                    onChange=${(e) => { isDragTh.current = false; const v = parseInt(e.target.value); setLocalTh(v); sendAction('setLeakThreshold', v); }}
+                                    disabled=${!state.connected} />
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
+                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${localDb} ms</strong>
+                                </div>
+                                <input type="range" min="0.1" max="5.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
+                                    onPointerDown=${() => { isDragDb.current = true; }}
+                                    onInput=${(e) => { setLocalDb(parseFloat(e.target.value).toFixed(1)); }}
+                                    onChange=${(e) => { isDragDb.current = false; const v = parseFloat(e.target.value); setLocalDb(v.toFixed(1)); sendAction('setLeakDebounce', v); }}
+                                    disabled=${!state.connected} />
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- SECTION 5: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
                 <${CalibrationMatrixPanel} />
 
-                <!-- SECTION 4: SWEEP TIME & RPM STEP SIZE DIALS -->
+                <!-- SECTION 6: SWEEP TIME & RPM STEP SIZE DIALS -->
                 <div class="responsive-grid-2" style="margin-top: 2px;">
                     <${Dial} 
                         compact=${true}

@@ -1,20 +1,12 @@
-﻿import { html, useState, useEffect, useRef } from '../preact.js';
+﻿import { html } from '../preact.js';
 
 export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULATION ANALYZER", is4Pin = false }) {
-    const historyRef = useRef([]), [history, setHistory] = useState([]);
-    const isDragTh = useRef(false), isDragDb = useRef(false);
-    const [localTh, setLocalTh] = useState(state.coilLeakThreshold || 6);
-    const [localDb, setLocalDb] = useState(state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.5");
-
-    useEffect(() => { if (!isDragTh.current && state.coilLeakThreshold !== undefined) setLocalTh(state.coilLeakThreshold); }, [state.coilLeakThreshold]);
-    useEffect(() => { if (!isDragDb.current && state.coilLeakDebounceMs !== undefined) setLocalDb(Number(state.coilLeakDebounceMs).toFixed(1)); }, [state.coilLeakDebounceMs]);
-
     const fired = state.coilFiredCount || 0, confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
     const missed = state.coilMissedCount || Math.max(0, fired - confirmed), sparkmA = state.coilSparkCurrentmA || 0.0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00", vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
     const tempCoil = state.tempCoilC !== undefined ? state.tempCoilC.toFixed(1) : "28.5", tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
-    const rpm = state.currentRpm || state.rpm || 800, isStandby = (fired === 0 && !state.isRunning);
+    const isStandby = (fired === 0 && !state.isRunning);
     const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 0;
     const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
 
@@ -48,44 +40,46 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Detak 100% Sinkron';
     }
 
-    let gauge1Border = '2px solid rgba(0, 212, 255, 0.4)', gauge1Shadow = '0 0 10px rgba(0, 212, 255, 0.15)';
+    // Gauge 1: Kualitas Api (mA) - Murni 0% saat standby tanpa warna merah
+    let gauge1Border = '2px solid rgba(0, 212, 255, 0.25)', gauge1Shadow = 'none';
+    let gauge1ValColor = 'var(--text-muted)', gauge1BarColor = 'transparent', gauge1BarWidth = 0;
+    let gauge1Text = 'STANDBY';
     if (!isStandby) {
-        if (sparkmA >= 45.0) { gauge1Border = '2px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)'; }
-        else if (sparkmA >= 30.0) { gauge1Border = '2px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)'; }
-        else if (sparkmA >= 15.0) { gauge1Border = '2px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)'; }
-        else { gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)'; }
+        gauge1BarWidth = Math.min(100, (sparkmA / 60) * 100);
+        if (sparkmA >= 45.0) {
+            gauge1Border = '2px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
+            gauge1ValColor = 'var(--neon-green)'; gauge1BarColor = 'var(--neon-green)'; gauge1Text = 'API BIRU TEBAL';
+        } else if (sparkmA >= 30.0) {
+            gauge1Border = '2px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)';
+            gauge1ValColor = '#A6FF00'; gauge1BarColor = '#A6FF00'; gauge1Text = 'API STANDAR';
+        } else if (sparkmA >= 15.0) {
+            gauge1Border = '2px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
+            gauge1ValColor = 'var(--neon-orange)'; gauge1BarColor = 'var(--neon-orange)'; gauge1Text = 'API KECIL';
+        } else {
+            gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
+            gauge1ValColor = 'var(--neon-red)'; gauge1BarColor = 'var(--neon-red)'; gauge1Text = 'API LILIN / MATI';
+        }
     }
 
-    let gauge2Border = '2px solid rgba(189, 0, 255, 0.4)', gauge2Shadow = '0 0 10px rgba(189, 0, 255, 0.15)';
+    // Gauge 2: Keteraturan Detak (%) - Murni 0% saat standby tanpa warna merah
+    let gauge2Border = '2px solid rgba(189, 0, 255, 0.25)', gauge2Shadow = 'none';
+    let gauge2ValColor = 'var(--text-muted)', gauge2BarColor = 'transparent', gauge2BarWidth = 0;
+    let gauge2Text = 'STANDBY';
     if (!isStandby) {
-        if (cadenceRate >= 95.0) { gauge2Border = '2px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)'; }
-        else if (cadenceRate >= 80.0) { gauge2Border = '2px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)'; }
-        else { gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)'; }
+        gauge2BarWidth = cadenceRate;
+        if (cadenceRate >= 95.0) {
+            gauge2Border = '2px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
+            gauge2ValColor = 'var(--neon-green)'; gauge2BarColor = 'var(--neon-green)'; gauge2Text = 'IRAMA SINKRON';
+        } else if (cadenceRate >= 80.0) {
+            gauge2Border = '2px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
+            gauge2ValColor = 'var(--neon-orange)'; gauge2BarColor = 'var(--neon-orange)'; gauge2Text = 'DETAK LONCAT';
+        } else {
+            gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
+            gauge2ValColor = 'var(--neon-red)'; gauge2BarColor = 'var(--neon-red)'; gauge2Text = 'ARITMIA / MISSED';
+        }
     }
 
-    const currentSens = state.coilLeakSensitivity || 3;
-    const checkPulses = state.checkCoilPulseCount || 3, checkVerdict = state.checkCoilVerdict || "READY";
-    const sensLabels = [{ id: 1, name: "1: ULTRA" }, { id: 2, name: "2: TINGGI" }, { id: 3, name: "3: STANDAR" }, { id: 4, name: "4: KEBAL" }, { id: 5, name: "5: CUSTOM" }];
-
-    const handleFullReset = () => { historyRef.current = []; setHistory([]); sendAction('resetCounters'); sendAction('resetLeakCounter'); };
-
-    useEffect(() => {
-        if (!state.isRunning && fired === 0) return;
-        const buf = historyRef.current;
-        buf.push({ t: Date.now(), rpm, mA: sparkmA, cadence: cadenceRate, health: totalHealthScore });
-        if (buf.length > 50) buf.shift();
-        setHistory([...buf]);
-    }, [fired, sparkmA, rpm, state.isRunning]);
-
-    const chartW = 400, chartH = 95, ptsCount = history.length;
-    let sparkPts = "", cadencePts = "";
-    if (ptsCount > 1) {
-        history.forEach((pt, i) => {
-            const x = (i / (ptsCount - 1)) * chartW;
-            sparkPts += `${x.toFixed(1)},${(chartH - Math.min(chartH, Math.max(0, (pt.mA / 80.0) * chartH))).toFixed(1)} `;
-            cadencePts += `${x.toFixed(1)},${(chartH - Math.min(chartH, Math.max(0, (pt.cadence / 100.0) * chartH))).toFixed(1)} `;
-        });
-    }
+    const handleFullReset = () => { sendAction('resetCounters'); sendAction('resetLeakCounter'); };
 
     return html`
         <div class="panel ${isAlarm ? 'pulse-alarm-red' : ''}" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor}; box-sizing: border-box;">
@@ -122,15 +116,15 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: >45 mA</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px;">
-                        <div style="font-size: 1.85rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${isStandby ? 'var(--text-muted)' : (sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)')))}">
+                        <div style="font-size: 1.85rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${gauge1ValColor}">
                             ${isStandby ? '--' : sparkmA.toFixed(1)} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">mA</span>
                         </div>
-                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${isStandby ? 'var(--text-muted)' : (sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
-                            ${isStandby ? 'STANDBY' : (sparkmA >= 45 ? 'API BIRU TEBAL' : (sparkmA >= 30 ? 'API STANDAR' : (sparkmA >= 15 ? 'API KECIL' : 'API LILIN / MATI')))}
+                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${gauge1ValColor}">
+                            ${gauge1Text}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 4px;">
-                        <div style="width: ${isStandby ? '0%' : Math.min(100, (sparkmA / 60) * 100)}%; height: 100%; background: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}; transition: width 0.15s ease;"></div>
+                        <div style="width: ${gauge1BarWidth}%; height: 100%; background: ${gauge1BarColor}; transition: width 0.2s ease;"></div>
                     </div>
                 </div>
 
@@ -141,44 +135,44 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Sinkron: 100%</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px;">
-                        <div style="font-size: 1.85rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
+                        <div style="font-size: 1.85rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${gauge2ValColor}">
                             ${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">%</span>
                         </div>
-                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
-                            ${isStandby ? 'STANDBY' : (cadenceRate >= 95 ? 'IRAMA SINKRON' : (cadenceRate >= 80 ? 'DETAK LONCAT' : 'ARITMIA / MISSED'))}
+                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${gauge2ValColor}">
+                            ${gauge2Text}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 4px;">
-                        <div style="width: ${isStandby ? '0%' : cadenceRate}%; height: 100%; background: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')}; transition: width 0.15s ease;"></div>
+                        <div style="width: ${gauge2BarWidth}%; height: 100%; background: ${gauge2BarColor}; transition: width 0.2s ease;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 4 CENTERED METRIC CARDS WITH BOLD IDENTITY BORDERS -->
+            <!-- 4 BOLD GLOWING CENTERED METRIC CARDS -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px;">
                 <!-- Card 1: TOTAL DETAK -->
-                <div style="background: rgba(0, 212, 255, 0.03); border: 2px solid rgba(0, 212, 255, 0.4); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.1);">
+                <div style="background: rgba(0, 212, 255, 0.05); border: 2px solid rgba(0, 212, 255, 0.5); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);">
                     <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK (IGT)</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1;">${fired}</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${fired}</div>
                     <div style="font-size: 0.65rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Detak Terpicu</div>
                 </div>
 
                 <!-- Card 2: RESPON DETAK -->
-                <div style="background: rgba(0, 255, 102, 0.04); border: 2px solid var(--neon-green); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 255, 102, 0.15);">
+                <div style="background: rgba(0, 255, 102, 0.05); border: 2px solid var(--neon-green); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 12px rgba(0, 255, 102, 0.2);">
                     <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON (CONFIRMED)</div>
                     <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-green);">${confirmed}</div>
                     <div style="font-size: 0.65rem; color: var(--neon-green); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Terkonfirmasi</div>
                 </div>
 
                 <!-- Card 3: DETAK HILANG -->
-                <div style="background: ${missed > 0 ? 'rgba(255, 45, 85, 0.08)' : 'rgba(0,0,0,0.25)'}; border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'rgba(255,255,255,0.15)'}; border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: ${missed > 0 ? '0 0 12px rgba(255, 45, 85, 0.25)' : 'none'};">
+                <div style="background: ${missed > 0 ? 'rgba(255, 45, 85, 0.12)' : 'rgba(255, 45, 85, 0.03)'}; border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'rgba(255, 45, 85, 0.4)'}; border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: ${missed > 0 ? '0 0 14px rgba(255, 45, 85, 0.35)' : 'none'};">
                     <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG (MISSED)</div>
                     <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div>
                     <div style="font-size: 0.65rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Hilang Api</div>
                 </div>
 
                 <!-- Card 4: ARUS PRIMER PEAK -->
-                <div style="background: rgba(0, 212, 255, 0.04); border: 2px solid var(--neon-cyan); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);">
+                <div style="background: rgba(0, 212, 255, 0.06); border: 2px solid var(--neon-cyan, #00d4ff); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);">
                     <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PRIMER PEAK</div>
                     <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${isStandby ? '--' : currentA} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">A</span></div>
                     <div style="font-size: 0.65rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACS712 Peak-Hold</div>
@@ -212,83 +206,6 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                     <span>Frekuensi: <strong style="color: ${leakRate > 5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-size: 0.95rem;">${leakRate} /dtk</strong></span>
                 </div>
             </div>
-
-            <!-- PRE-FLIGHT CHECK COIL -->
-            <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
-                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-yellow); display: flex; justify-content: space-between; align-items: center;">
-                    <span>⚡ PRE-FLIGHT CHECK COIL (UJI AMAN SEBELUM RUN) ▾</span>
-                    <span style="font-size: 0.68rem; color: var(--text-muted);">${checkVerdict}</span>
-                </summary>
-                <div style="padding-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <span style="font-size: 0.68rem; color: var(--text-muted);">Jumlah Pulsa:</span>
-                            ${[1, 2, 3, 5, 10].map(p => html`<button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 2px 6px; font-size: 0.68rem; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.2)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>`)}
-                        </div>
-                        <button class="btn" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 800; background: #FFE600; color: #000;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>⚡ JALANKAN CHECK COIL (${checkPulses}x)</button>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; font-size: 0.74rem; display: flex; justify-content: space-between; align-items: center;">
-                        <span>HASIL DIAGNOSIS PRE-FLIGHT:</span>
-                        <strong style="color: ${checkVerdict.includes('PASS') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">${checkVerdict}</strong>
-                    </div>
-                </div>
-            </details>
-
-            <!-- PROBE SENSITIVITY FILTER -->
-            <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
-                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
-                    <span>🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36) ▾</span>
-                    <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong>${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
-                </summary>
-                <div style="padding-top: 8px;">
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
-                        ${sensLabels.map(s => html`<button class="btn ${currentSens === s.id ? 'btn-active' : ''}" style="padding: 4px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.15)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" onClick=${() => sendAction('setLeakSensitivity', s.id)} disabled=${!state.connected}>${s.name}</button>`)}
-                    </div>
-                    ${currentSens === 5 ? html`
-                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-sharp); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${localTh} Arcs</strong>
-                                </div>
-                                <input type="range" min="1" max="25" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
-                                    onPointerDown=${() => { isDragTh.current = true; }}
-                                    onInput=${(e) => { setLocalTh(parseInt(e.target.value)); }}
-                                    onChange=${(e) => { isDragTh.current = false; const v = parseInt(e.target.value); setLocalTh(v); sendAction('setLeakThreshold', v); }}
-                                    disabled=${!state.connected} />
-                            </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${localDb} ms</strong>
-                                </div>
-                                <input type="range" min="0.1" max="5.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
-                                    onPointerDown=${() => { isDragDb.current = true; }}
-                                    onInput=${(e) => { setLocalDb(parseFloat(e.target.value).toFixed(1)); }}
-                                    onChange=${(e) => { isDragDb.current = false; const v = parseFloat(e.target.value); setLocalDb(v.toFixed(1)); sendAction('setLeakDebounce', v); }}
-                                    disabled=${!state.connected} />
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            </details>
-
-            <!-- TREND GRAPH (SVG) -->
-            <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
-                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                    <span>📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP) ▾</span>
-                    <div style="display: flex; gap: 8px; font-size: 0.65rem;">
-                        <span style="color: var(--neon-cyan);">■ Arus Api (mA)</span>
-                        <span style="color: var(--neon-purple);">■ Irama Detak (%)</span>
-                    </div>
-                </summary>
-                <div style="margin-top: 8px;">
-                    <div style="width: 100%; height: 80px; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden;">
-                        <svg viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
-                            ${sparkPts ? html`<polyline fill="none" stroke="var(--neon-cyan)" stroke-width="2" points="${sparkPts}" stroke-linecap="round" stroke-linejoin="round" />` : ''}
-                            ${cadencePts ? html`<polyline fill="none" stroke="var(--neon-purple)" stroke-width="2" points="${cadencePts}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,2" />` : ''}
-                        </svg>
-                    </div>
-                </div>
-            </details>
         </div>
     `;
 }
