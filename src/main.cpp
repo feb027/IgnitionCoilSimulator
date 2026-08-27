@@ -69,6 +69,7 @@ void setup() {
 
     // Initialize in order of dependencies
     settingsMgr.begin();
+    Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
     CoilLeakSensor::begin();
     Ads1115Service::getInstance().begin();
     TempSensorService::getInstance().begin();

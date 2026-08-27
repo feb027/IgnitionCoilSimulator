@@ -147,7 +147,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         <div style="font-size: 1.85rem; font-weight: 900; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
                             ${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">%</span>
                         </div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: ${isStandby ? 'var(--text-muted)' : (missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)'))}">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: ${isStandby ? 'var(--text-muted)' : (missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)')}">
                             ${isStandby ? 'SIAP DIUJI' : (missed === 0 ? 'IRAMA NORMAL' : (missed + ' MISSED (' + arrhythmiaRate.toFixed(1) + '%)'))}
                         </div>
                     </div>
