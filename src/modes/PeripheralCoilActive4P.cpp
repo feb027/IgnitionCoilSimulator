@@ -299,8 +299,14 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
                     strncpy(s.coilCurrentStatus, "NO CURRENT (0A)", sizeof(s.coilCurrentStatus));
                 }
             }
+            // Compute real-time Average DC Current Consumption (Arus DC)
+            float peak = (s.coilPeakCurrentA > 0.5f) ? s.coilPeakCurrentA : amps;
+            if (peak < 0.2f) peak = 0.0f;
+            float dcAmps = (peak * s.dwellMs * (float)s.rpm) / 120000.0f;
+            s.realCurrentA = (s.realCurrentA * 0.7f) + (dcAmps * 0.3f);
         }
     } else {
+        s.realCurrentA = 0.0f;
         // When OFF: Auto-zero calibrate ACS712 quiescent offset without erasing last test results
         if (s.coilFiredCount == 0) {
             s.coilPeakCurrentA = 0.0f;
@@ -426,22 +432,23 @@ void PeripheralCoilActive4P::syncHardware() {
 
 void PeripheralCoilActive4P::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
-    if (s.rpm > 16000) s.rpm = 16000;
-    if (s.rpm < 200) s.rpm = 200; 
+    int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.rpm;
+    if (activeRpm > 16000) activeRpm = 16000;
+    if (activeRpm < 200) activeRpm = 200; 
     
-    coil_act4p_periodTicks = 60000000 / s.rpm;
+    coil_act4p_periodTicks = 60000000 / activeRpm;
     if (coil_act4p_periodTicks < 3750) coil_act4p_periodTicks = 3750;
     
-    if (s.dwellMs > 5.0f) s.dwellMs = 5.0f;
-    if (s.dwellMs < 0.2f) s.dwellMs = 0.2f;
+    float dwell = s.dwellMs;
+    if (dwell > 5.0f) dwell = 5.0f;
+    if (dwell < 0.2f) dwell = 0.2f;
     
-    uint32_t desiredDwellTicks = (uint32_t)(s.dwellMs * 1000.0f);
+    uint32_t desiredDwellTicks = (uint32_t)(dwell * 1000.0f);
     uint32_t maxDwellTicks = (coil_act4p_periodTicks > 600) ? (coil_act4p_periodTicks - 500) : 100;
     if (desiredDwellTicks > maxDwellTicks) {
         desiredDwellTicks = maxDwellTicks;
     }
     coil_act4p_dwellTicks = desiredDwellTicks;
-    s.dwellMs = (float)coil_act4p_dwellTicks / 1000.0f;
     
     s.dutyCycle = ((float)coil_act4p_dwellTicks / (float)coil_act4p_periodTicks) * 100.0f;
 }
@@ -496,6 +503,7 @@ void PeripheralCoilActive4P::stop() {
     
     AppSettings& s = _settingsMgr.getSettings();
     s.isRunning = false;
+    s.realCurrentA = 0.0f;
     
     // Latch the true test session mathematical average on STOP
     if (_sampleCountAmps > 0) {

@@ -264,9 +264,12 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         
         doc["coilFiredCount"] = s.coilFiredCount;
         doc["coilIgfCount"] = s.coilIgfCount;
+        doc["coilSparkReturnCount"] = s.coilSparkReturnCount;
         doc["coilMissedCount"] = s.coilMissedCount;
         doc["coilHealthPercent"] = s.coilHealthPercent;
         doc["coilPeakCurrentA"] = s.coilPeakCurrentA;
+        doc["coilSparkCurrentmA"] = s.coilSparkCurrentmA;
+        doc["coilSparkHealthScore"] = s.coilSparkHealthScore;
         doc["coilAutoDiagRunning"] = s.coilAutoDiagRunning;
         doc["coilDiagPhase"] = s.coilDiagPhase;
         doc["coilDiagProgress"] = s.coilDiagProgress;
@@ -277,6 +280,12 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["coilLeakSeverity"] = s.coilLeakSeverity;
         doc["coilCurrentStatus"] = s.coilCurrentStatus;
         doc["coilConnected"] = s.coilConnected;
+        doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage();
+        doc["realCurrentA"] = s.realCurrentA;
+        doc["tempCoilC"] = TempSensorService::getInstance().getCoilTempC();
+        doc["tempDriverC"] = TempSensorService::getInstance().getDriverTempC();
+        doc["checkCoilPulseCount"] = s.checkCoilPulseCount;
+        doc["checkCoilVerdict"] = s.checkCoilVerdict;
         
         doc["injectorMs"] = s.injectorMs;
         doc["injectorRpm"] = s.injectorRpm;

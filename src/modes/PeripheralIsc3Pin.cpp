@@ -29,6 +29,11 @@ void PeripheralIsc3Pin::update() {
     if (s.isRunning != _lastRunning || s.iscDuty != _lastDuty || s.iscFreq != _lastFreq) {
         updatePwmHardware();
     }
+    if (s.isRunning) {
+        s.realCurrentA = 1.2f * ((float)s.iscDuty / 100.0f);
+    } else {
+        s.realCurrentA = 0.0f;
+    }
 }
 
 void PeripheralIsc3Pin::syncHardware() {

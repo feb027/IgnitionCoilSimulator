@@ -12,7 +12,7 @@ void SweepController::beginSweep() {
     _targetRpm = s.speedoRpm;
     _targetTemp = s.speedoTempPercent;
     _targetFuel = s.speedoFuelPercent;
-    _targetRpmNormal = s.rpm;
+    _targetRpmNormal = (s.rpm >= 600) ? s.rpm : 6000;
     
     _currentSweepVal = 0.0f;
     _sweepUp = true;
@@ -39,8 +39,12 @@ bool SweepController::update() {
     uint32_t dt = now - _sweepLastUpdate;
     bool needsHardwareUpdate = false;
     
-    if (dt > 10) { // Update every 10ms for smooth sweep
-        float valPerMs = 1.0f / (s.sweepTimeSec * 1000.0f);
+    uint32_t sweepSec = s.sweepTimeSec;
+    if (sweepSec < 1) sweepSec = 1;
+    if (sweepSec > 60) sweepSec = 60;
+    
+    if (dt >= 15) { // 15ms resolution for ultra-smooth frequency modulation
+        float valPerMs = 1.0f / (sweepSec * 1000.0f);
         
         if (_sweepUp) {
             _currentSweepVal += (valPerMs * dt);
@@ -61,18 +65,18 @@ bool SweepController::update() {
             s.currentSpeedoRpm = s.speedoEnableRpm ? (int)(_currentSweepVal * _targetRpm) : 0;
             s.currentSpeedoTempPercent = s.speedoEnableTemp ? (int)(_currentSweepVal * _targetTemp) : 0;
             s.currentSpeedoFuelPercent = s.speedoEnableFuel ? (int)(_currentSweepVal * _targetFuel) : 0;
-        } else {
-            s.currentRpm = (int)(_currentSweepVal * _targetRpmNormal);
-        }
-        
-        // Rate limit hardware updates for LEDC to prevent phase resets (Speedometer PWM glitching)
-        if (s.pulseMode == PULSE_SPEEDO) {
-            if (now - _lastHardwareUpdate > 150) { // 150ms allows frequencies down to 6.6 Hz to complete a cycle
+            
+            if (now - _lastHardwareUpdate > 150) {
                 needsHardwareUpdate = true;
                 _lastHardwareUpdate = now;
             }
         } else {
-            needsHardwareUpdate = true; // Safe for Coil mode
+            // Sweep range: from 500 RPM (idle) up to set Target RPM (e.g. 6000 RPM)
+            int minRpm = 500;
+            int maxRpm = _targetRpmNormal;
+            if (maxRpm <= minRpm) maxRpm = minRpm + 1000;
+            s.currentRpm = minRpm + (int)(_currentSweepVal * (maxRpm - minRpm));
+            needsHardwareUpdate = true;
         }
         _sweepLastUpdate = now;
     }

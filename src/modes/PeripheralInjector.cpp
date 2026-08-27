@@ -78,9 +78,11 @@ void PeripheralInjector::samplePrimaryCurrent() {
             } else {
                 s.injectorResistanceOhm = 0.0f;
             }
+            s.realCurrentA = s.injectorPeakCurrentA * ((float)s.dutyCycle / 100.0f);
         } else {
             s.injectorPeakCurrentA = 0.0f;
             s.injectorResistanceOhm = 0.0f;
+            s.realCurrentA = 0.0f;
         }
         _lastCurrentSampleTime = now;
     }
@@ -181,19 +183,20 @@ void PeripheralInjector::syncHardware() {
 
 void PeripheralInjector::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
-    if (s.injectorRpm > 8000) s.injectorRpm = 8000;
-    if (s.injectorRpm < 500) s.injectorRpm = 500; 
+    int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.injectorRpm;
+    if (activeRpm > 8000) activeRpm = 8000;
+    if (activeRpm < 500) activeRpm = 500; 
     
-    inj_periodTicks = 60000000 / s.injectorRpm;
+    inj_periodTicks = 60000000 / activeRpm;
     
-    if (s.injectorMs > 25.0f) s.injectorMs = 25.0f;
-    if (s.injectorMs < 0.5f) s.injectorMs = 0.5f;
-    inj_pulseTicks = (uint32_t)(s.injectorMs * 1000.0f);
+    float ms = s.injectorMs;
+    if (ms > 25.0f) ms = 25.0f;
+    if (ms < 0.5f) ms = 0.5f;
+    inj_pulseTicks = (uint32_t)(ms * 1000.0f);
     
     // Duty cycle safety limit: pulse width cannot exceed 85% of period
     if (inj_pulseTicks > (inj_periodTicks * 0.85f)) {
         inj_pulseTicks = (uint32_t)(inj_periodTicks * 0.85f);
-        s.injectorMs = (float)inj_pulseTicks / 1000.0f;
     }
     
     s.dutyCycle = ((float)inj_pulseTicks / (float)inj_periodTicks) * 100.0f;

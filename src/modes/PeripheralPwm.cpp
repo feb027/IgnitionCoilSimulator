@@ -19,6 +19,11 @@ void PeripheralPwm::update() {
             updateTimerConfig();
         }
     }
+    if (s.isRunning) {
+        s.realCurrentA = 2.0f * ((float)s.dutyCycle / 100.0f);
+    } else {
+        s.realCurrentA = 0.0f;
+    }
 }
 
 void PeripheralPwm::syncHardware() {
