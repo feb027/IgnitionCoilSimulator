@@ -41,20 +41,22 @@ void CoilLeakSensor::update(AppSettings& s) {
     }
     
     // Multi-Tier Sensitivity Calibration:
-    // Level 1: Ultra (Debounce 0.8ms, Thresh 1 - Direct micro crack probe contact)
-    // Level 2: High (Debounce 1.5ms, Thresh 2 - Fine resin cracks)
-    // Level 3: Standard (Debounce 3.0ms, Thresh 4 - Robust against air EMI, triggers on body leak)
-    // Level 4: Super Immune (Debounce 5.0ms, Thresh 8 - Heavy sustained flashover breakdown only)
-    // Level 5: Custom (User slider defined: Thresh 1-25, Debounce 0.1-5.0ms)
+    // Mode 1: 0% (Cut-In - up to 10 ARC)
+    // Mode 2: 25% (Mikro Leak - up to 20 ARC)
+    // Mode 3: 50% (Sedang - up to 30 ARC)
+    // Mode 4: 75% (Bocor Parah - up to 40 ARC)
+    // Mode 5: 100% (Jebol Total - up to 50 ARC)
+    // Mode 6: CUSTOM (User slider defined: Thresh 1-50, Debounce 0.1-8.0ms)
     uint32_t threshold = 4;
     float debounceMs = 3.0f;
     
     switch (s.coilLeakSensitivity) {
-        case 1: debounceMs = 0.8f; threshold = 1; break;
-        case 2: debounceMs = 1.5f; threshold = 2; break;
-        case 3: debounceMs = 3.0f; threshold = 4; break;
-        case 4: debounceMs = 5.0f; threshold = 8; break;
-        case 5: 
+        case 1: debounceMs = 3.0f; threshold = 2; break;  // 0% Cut-In
+        case 2: debounceMs = 2.5f; threshold = 4; break;  // 25% Mikro
+        case 3: debounceMs = 3.0f; threshold = 6; break;  // 50% Sedang
+        case 4: debounceMs = 3.5f; threshold = 8; break;  // 75% Bocor Parah
+        case 5: debounceMs = 4.0f; threshold = 12; break; // 100% Jebol Total
+        case 6: 
             debounceMs = (s.coilLeakDebounceMs >= 0.1f) ? s.coilLeakDebounceMs : 3.0f;
             threshold = (s.coilLeakThreshold >= 1) ? s.coilLeakThreshold : 4;
             break;
@@ -90,12 +92,12 @@ void CoilLeakSensor::update(AppSettings& s) {
         prev_leak_snapshot = verified_arcs_total;
         last_rate_check_time = now;
         
-        // Custom Percentage & Severity Classification
-        uint8_t cutIn = s.leakArcCutIn > 0 ? s.leakArcCutIn : 2;
-        uint8_t a25 = s.leakArc25 > cutIn ? s.leakArc25 : 5;
-        uint8_t a50 = s.leakArc50 > a25 ? s.leakArc50 : 10;
-        uint8_t a75 = s.leakArc75 > a50 ? s.leakArc75 : 18;
-        uint8_t a100 = s.leakArc100 > a75 ? s.leakArc100 : 25;
+        // Custom Percentage & Severity Classification (0 - 50 ARC Scale)
+        uint8_t cutIn = s.leakArcCutIn > 0 ? s.leakArcCutIn : 10;
+        uint8_t a25 = s.leakArc25 > cutIn ? s.leakArc25 : 20;
+        uint8_t a50 = s.leakArc50 > a25 ? s.leakArc50 : 30;
+        uint8_t a75 = s.leakArc75 > a50 ? s.leakArc75 : 40;
+        uint8_t a100 = s.leakArc100 > a75 ? s.leakArc100 : 50;
         
         uint32_t activeArcs = s.coilLeakRate;
         if (activeArcs < cutIn && verified_arcs_total == 0) {

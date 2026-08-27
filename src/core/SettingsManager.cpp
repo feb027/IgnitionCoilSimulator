@@ -164,20 +164,21 @@ void SettingsManager::load() {
     
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
-    _settings.coilLeakDetected = false;
+    _settings.coilLeakSensitivity = preferences.getInt("lk_sens", 1);
+    if (_settings.coilLeakSensitivity < 1 || _settings.coilLeakSensitivity > 6) _settings.coilLeakSensitivity = 1;
     _settings.coilLeakThreshold = preferences.getInt("lk_th", 4);
     if (_settings.coilLeakThreshold < 1) _settings.coilLeakThreshold = 1;
-    if (_settings.coilLeakThreshold > 30) _settings.coilLeakThreshold = 30;
+    if (_settings.coilLeakThreshold > 50) _settings.coilLeakThreshold = 50;
     _settings.coilLeakDebounceMs = preferences.getFloat("lk_db", 3.0f);
     if (_settings.coilLeakDebounceMs < 0.1f) _settings.coilLeakDebounceMs = 0.1f;
     if (_settings.coilLeakDebounceMs > 8.0f) _settings.coilLeakDebounceMs = 8.0f;
     
-    _settings.leakArcCutIn = preferences.getUChar("lk_cut", 2);
-    _settings.leakArc25 = preferences.getUChar("lk_25", 5);
-    _settings.leakArc50 = preferences.getUChar("lk_50", 10);
-    _settings.leakArc75 = preferences.getUChar("lk_75", 18);
-    _settings.leakArc100 = preferences.getUChar("lk_100", 25);
-    _settings.leakArcMax = preferences.getUChar("lk_max", 30);
+    _settings.leakArcCutIn = preferences.getUChar("lk_cut", 10);
+    _settings.leakArc25 = preferences.getUChar("lk_25", 20);
+    _settings.leakArc50 = preferences.getUChar("lk_50", 30);
+    _settings.leakArc75 = preferences.getUChar("lk_75", 40);
+    _settings.leakArc100 = preferences.getUChar("lk_100", 50);
+    _settings.leakArcMax = preferences.getUChar("lk_max", 50);
     _settings.coilLeakPercent = 0;
     
     _settings.supplyVoltage = 12.6f;
@@ -271,15 +272,15 @@ void SettingsManager::resetToDefaults() {
     _settings.coilLeakCount = 0;
     _settings.coilLeakRate = 0;
     _settings.coilLeakDetected = false;
-    _settings.coilLeakSensitivity = 3;
+    _settings.coilLeakSensitivity = 1;
     _settings.coilLeakThreshold = 4;
     _settings.coilLeakDebounceMs = 3.0f;
-    _settings.leakArcCutIn = 2;
-    _settings.leakArc25 = 5;
-    _settings.leakArc50 = 10;
-    _settings.leakArc75 = 18;
-    _settings.leakArc100 = 25;
-    _settings.leakArcMax = 30;
+    _settings.leakArcCutIn = 10;
+    _settings.leakArc25 = 20;
+    _settings.leakArc50 = 30;
+    _settings.leakArc75 = 40;
+    _settings.leakArc100 = 50;
+    _settings.leakArcMax = 50;
     _settings.coilLeakPercent = 0;
     
     _savedSettings = _settings;

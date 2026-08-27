@@ -27,13 +27,20 @@ export function AdvancedTuningPanel({
         sendAction('setDwell', nextDwell);
     };
 
-    // Probe Sensitivity Controls
-    const currentSens = state.coilLeakSensitivity || 3;
-    const sensLabels = [{ id: 1, name: "1: ULTRA" }, { id: 2, name: "2: TINGGI" }, { id: 3, name: "3: STANDAR" }, { id: 4, name: "4: KEBAL" }, { id: 5, name: "5: CUSTOM" }];
+    // Probe Sensitivity Controls (5 Percentages + 1 Custom)
+    const currentSens = state.coilLeakSensitivity || 1;
+    const sensLabels = [
+        { id: 1, name: "0% (10A)", tip: "Cut-In s/d 10 ARC" },
+        { id: 2, name: "25% (20A)", tip: "Mikro s/d 20 ARC" },
+        { id: 3, name: "50% (30A)", tip: "Sedang s/d 30 ARC" },
+        { id: 4, name: "75% (40A)", tip: "Bocor s/d 40 ARC" },
+        { id: 5, name: "100% (50A)", tip: "Jebol s/d 50 ARC" },
+        { id: 6, name: "⚙️ CUSTOM", tip: "Atur Bebas" }
+    ];
 
     const isDragTh = useRef(false), isDragDb = useRef(false);
-    const [localTh, setLocalTh] = useState(state.coilLeakThreshold || 6);
-    const [localDb, setLocalDb] = useState(state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.5");
+    const [localTh, setLocalTh] = useState(state.coilLeakThreshold || 4);
+    const [localDb, setLocalDb] = useState(state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "3.0");
 
     useEffect(() => { if (!isDragTh.current && state.coilLeakThreshold !== undefined) setLocalTh(state.coilLeakThreshold); }, [state.coilLeakThreshold]);
     useEffect(() => { if (!isDragDb.current && state.coilLeakDebounceMs !== undefined) setLocalDb(Number(state.coilLeakDebounceMs).toFixed(1)); }, [state.coilLeakDebounceMs]);
@@ -114,24 +121,32 @@ export function AdvancedTuningPanel({
                     </div>
                 </div>
 
-                <!-- SECTION 3: PENGATURAN SENSITIFITAS PROBE LEAK -->
+                <!-- SECTION 3: PENGATURAN SENSITIFITAS PROBE LEAK (5 PERSENTASE + 1 CUSTOM) -->
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
-                        <span style="font-weight: bold; color: var(--neon-cyan);">🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36):</span>
-                        <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong>${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
+                        <span style="font-weight: bold; color: var(--neon-cyan);">🎯 PILIHAN SENSITIFITAS KEBOCORAN BODI:</span>
+                        <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong style="color: var(--neon-yellow);">${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(75px, 1fr)); gap: 4px;">
                         ${sensLabels.map(s => html`
-                            <button class="btn ${currentSens === s.id ? 'btn-active' : ''}" style="padding: 4px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.15)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" onClick=${() => sendAction('setLeakSensitivity', s.id)} disabled=${!state.connected}>${s.name}</button>
+                            <button 
+                                class="btn ${currentSens === s.id ? 'btn-active' : ''}" 
+                                style="padding: 5px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.2)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" 
+                                onClick=${() => sendAction('setLeakSensitivity', s.id)} 
+                                disabled=${!state.connected}
+                                title=${s.tip}
+                            >
+                                ${s.name}
+                            </button>
                         `)}
                     </div>
-                    ${currentSens === 5 ? html`
+                    ${currentSens === 6 ? html`
                         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-sharp); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
                                     <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${localTh} Arcs</strong>
                                 </div>
-                                <input type="range" min="1" max="25" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
+                                <input type="range" min="1" max="50" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
                                     onPointerDown=${() => { isDragTh.current = true; }}
                                     onInput=${(e) => { setLocalTh(parseInt(e.target.value)); }}
                                     onChange=${(e) => { isDragTh.current = false; const v = parseInt(e.target.value); setLocalTh(v); sendAction('setLeakThreshold', v); }}
@@ -141,7 +156,7 @@ export function AdvancedTuningPanel({
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
                                     <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${localDb} ms</strong>
                                 </div>
-                                <input type="range" min="0.1" max="5.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
+                                <input type="range" min="0.1" max="8.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
                                     onPointerDown=${() => { isDragDb.current = true; }}
                                     onInput=${(e) => { setLocalDb(parseFloat(e.target.value).toFixed(1)); }}
                                     onChange=${(e) => { isDragDb.current = false; const v = parseFloat(e.target.value); setLocalDb(v.toFixed(1)); sendAction('setLeakDebounce', v); }}

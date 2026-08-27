@@ -602,7 +602,7 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             changed = true;
         } else if (action == "setLeakSensitivity") {
             int sens = doc["value"].as<int>();
-            if (sens >= 1 && sens <= 5) {
+            if (sens >= 1 && sens <= 6) {
                 s.coilLeakSensitivity = sens;
                 _settingsMgr.save();
                 broadcastState();
@@ -610,18 +610,18 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             return;
         } else if (action == "setLeakThreshold") {
             int th = doc["value"].as<int>();
-            if (th >= 1 && th <= 25) {
+            if (th >= 1 && th <= 50) {
                 s.coilLeakThreshold = th;
-                s.coilLeakSensitivity = 5; // Switch to Custom mode
+                s.coilLeakSensitivity = 6; // Switch to Custom mode
                 _settingsMgr.save();
                 broadcastState();
             }
             return;
         } else if (action == "setLeakDebounce") {
             float db = doc["value"].as<float>();
-            if (db >= 0.1f && db <= 5.0f) {
+            if (db >= 0.1f && db <= 8.0f) {
                 s.coilLeakDebounceMs = db;
-                s.coilLeakSensitivity = 5; // Switch to Custom mode
+                s.coilLeakSensitivity = 6; // Switch to Custom mode
                 _settingsMgr.save();
                 broadcastState();
             }

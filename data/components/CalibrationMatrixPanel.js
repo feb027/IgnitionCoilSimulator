@@ -20,12 +20,12 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
         }
     });
 
-    // Custom ARC Percentage Thresholds (0%, 25%, 50%, 75%, 100% on 0-30 scale)
-    const [cutIn, setCutIn] = useState(state.leakArcCutIn || 2);
-    const [arc25, setArc25] = useState(state.leakArc25 || 5);
-    const [arc50, setArc50] = useState(state.leakArc50 || 10);
-    const [arc75, setArc75] = useState(state.leakArc75 || 18);
-    const [arc100, setArc100] = useState(state.leakArc100 || 25);
+    // Custom ARC Percentage Thresholds (0%, 25%, 50%, 75%, 100% on 0-50 scale)
+    const [cutIn, setCutIn] = useState(state.leakArcCutIn || 10);
+    const [arc25, setArc25] = useState(state.leakArc25 || 20);
+    const [arc50, setArc50] = useState(state.leakArc50 || 30);
+    const [arc75, setArc75] = useState(state.leakArc75 || 40);
+    const [arc100, setArc100] = useState(state.leakArc100 || 50);
     const [msg, setMsg] = useState('');
 
     useEffect(() => {
@@ -38,45 +38,45 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
 
     const liveArcs = state.coilLeakRate !== undefined ? state.coilLeakRate : (state.coilLeakCount || 0);
     const livePercent = state.coilLeakPercent !== undefined ? state.coilLeakPercent : 0;
-    const clampedArcPos = Math.min(30, Math.max(0, liveArcs));
-    const needlePercent = (clampedArcPos / 30) * 100;
+    const clampedArcPos = Math.min(50, Math.max(0, liveArcs));
+    const needlePercent = (clampedArcPos / 50) * 100;
 
     const saveCustomLeakMatrix = () => {
         if (sendAction) {
             sendAction('setCustomLeakMatrix', {
-                cutIn: parseInt(cutIn) || 2,
-                arc25: parseInt(arc25) || 5,
-                arc50: parseInt(arc50) || 10,
-                arc75: parseInt(arc75) || 18,
-                arc100: parseInt(arc100) || 25,
-                arcMax: 30
+                cutIn: parseInt(cutIn) || 10,
+                arc25: parseInt(arc25) || 20,
+                arc50: parseInt(arc50) || 30,
+                arc75: parseInt(arc75) || 40,
+                arc100: parseInt(arc100) || 50,
+                arcMax: 50
             });
         }
         try {
             localStorage.setItem('coil_cal_matrix', JSON.stringify(matrix));
         } catch (e) {}
-        setMsg('✅ Kalibrasi ARC & Matriks Berhasil Disimpan ke ESP32!');
+        setMsg('✅ Kalibrasi ARC (Skala 50) & Matriks Berhasil Disimpan ke ESP32!');
         setTimeout(() => setMsg(''), 3500);
     };
 
     const resetCustomLeakMatrix = () => {
-        setCutIn(2); setArc25(5); setArc50(10); setArc75(18); setArc100(25);
+        setCutIn(10); setArc25(20); setArc50(30); setArc75(40); setArc100(50);
         if (sendAction) {
-            sendAction('setCustomLeakMatrix', { cutIn: 2, arc25: 5, arc50: 10, arc75: 18, arc100: 25, arcMax: 30 });
+            sendAction('setCustomLeakMatrix', { cutIn: 10, arc25: 20, arc50: 30, arc75: 40, arc100: 50, arcMax: 50 });
         }
         setMatrix(defaultMatrix);
         localStorage.removeItem('coil_cal_matrix');
-        setMsg('🔄 Reset ke Standar Pabrikan (2, 5, 10, 18, 25 ARC)');
+        setMsg('🔄 Reset ke Standar Pabrikan (10, 20, 30, 40, 50 ARC)');
         setTimeout(() => setMsg(''), 3500);
     };
 
     return html`
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
             
-            <!-- 1. LIVE ARC VISUALIZER BAR (0 - 30 ARC) -->
+            <!-- 1. LIVE ARC VISUALIZER BAR (0 - 50 ARC) -->
             <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem;">
-                    <span style="font-weight: bold; color: var(--neon-yellow);">📊 LIVE ARC VISUALIZER BAR (0 - 30 ARC):</span>
+                    <span style="font-weight: bold; color: var(--neon-yellow);">📊 LIVE ARC VISUALIZER BAR (0 - 50 ARC):</span>
                     <div style="display: flex; gap: 6px; align-items: center;">
                         <span style="font-size: 0.7rem; color: var(--text-muted);">LIVE RATE:</span>
                         <strong style="color: ${liveArcs > 0 ? 'var(--neon-red)' : 'var(--neon-green)'}; font-size: 0.8rem;">
@@ -88,13 +88,13 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
                     </div>
                 </div>
 
-                <!-- GAUGE BAR TRACK WITH 0-30 GRADIENT & TICKS -->
+                <!-- GAUGE BAR TRACK WITH 0-50 GRADIENT & TICKS -->
                 <div style="position: relative; height: 22px; background: #111; border: 1px solid #333; border-radius: 4px; overflow: hidden; margin-bottom: 4px;">
                     <!-- Colored Zones -->
-                    <div style="position: absolute; left: 0; width: ${(arc25/30)*100}%; height: 100%; background: linear-gradient(90deg, #00ff66, #a6ff00); opacity: 0.45;"></div>
-                    <div style="position: absolute; left: ${(arc25/30)*100}%; width: ${((arc50-arc25)/30)*100}%; height: 100%; background: linear-gradient(90deg, #a6ff00, #ffe600); opacity: 0.45;"></div>
-                    <div style="position: absolute; left: ${(arc50/30)*100}%; width: ${((arc75-arc50)/30)*100}%; height: 100%; background: linear-gradient(90deg, #ffe600, #ff9500); opacity: 0.5;"></div>
-                    <div style="position: absolute; left: ${(arc75/30)*100}%; width: ${((30-arc75)/30)*100}%; height: 100%; background: linear-gradient(90deg, #ff9500, #ff2d55); opacity: 0.6;"></div>
+                    <div style="position: absolute; left: 0; width: ${(arc25/50)*100}%; height: 100%; background: linear-gradient(90deg, #00ff66, #a6ff00); opacity: 0.45;"></div>
+                    <div style="position: absolute; left: ${(arc25/50)*100}%; width: ${((arc50-arc25)/50)*100}%; height: 100%; background: linear-gradient(90deg, #a6ff00, #ffe600); opacity: 0.45;"></div>
+                    <div style="position: absolute; left: ${(arc50/50)*100}%; width: ${((arc75-arc50)/50)*100}%; height: 100%; background: linear-gradient(90deg, #ffe600, #ff9500); opacity: 0.5;"></div>
+                    <div style="position: absolute; left: ${(arc75/50)*100}%; width: ${((50-arc75)/50)*100}%; height: 100%; background: linear-gradient(90deg, #ff9500, #ff2d55); opacity: 0.6;"></div>
                     
                     <!-- Live Progress Fill -->
                     <div style="position: absolute; left: 0; width: ${needlePercent}%; height: 100%; background: rgba(255,255,255,0.25); transition: width 0.1s ease-out;"></div>
@@ -103,7 +103,7 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
                     <div style="position: absolute; left: calc(${needlePercent}% - 2px); top: 0; width: 4px; height: 100%; background: #fff; box-shadow: 0 0 6px #fff; z-index: 5;"></div>
                 </div>
 
-                <!-- SCALE LABELS 0 TO 30 -->
+                <!-- SCALE LABELS 0 TO 50 -->
                 <div style="display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--text-muted); font-family: monospace;">
                     <span>0 ARC (0%)</span>
                     <span>${cutIn}A (Cut-In)</span>
@@ -111,7 +111,7 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
                     <span>${arc50}A (50%)</span>
                     <span>${arc75}A (75%)</span>
                     <span>${arc100}A (100%)</span>
-                    <span>30 ARC</span>
+                    <span>50 ARC</span>
                 </div>
             </div>
 
@@ -119,53 +119,53 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
             <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <span style="font-size: 0.72rem; font-weight: bold; color: var(--neon-cyan);">🎛️ KALIBRASI AMBANG KEBOCORAN (0%, 25%, 50%, 75%, 100%):</span>
-                    <span style="font-size: 0.65rem; color: var(--text-muted);">Tentukan jumlah ARC di setiap batas persentase</span>
+                    <span style="font-size: 0.65rem; color: var(--text-muted);">Tentukan jumlah ARC di setiap batas persentase (Skala 50)</span>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 6px;">
-                    <!-- 0% CUT-IN -->
+                    <!-- 0% CUT-IN (s/d 10 ARC) -->
                     <div style="background: rgba(0,255,102,0.05); border: 1px solid var(--neon-green); border-radius: 4px; padding: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 2px;">
                             <strong style="color: var(--neon-green);">0% (CUT-IN):</strong>
                             <strong style="color: #fff;">${cutIn} ARC</strong>
                         </div>
-                        <input type="range" min="1" max="10" value=${cutIn} style="width: 100%; accent-color: var(--neon-green);" onInput=${(e) => setCutIn(parseInt(e.target.value))} />
+                        <input type="range" min="1" max="15" value=${cutIn} style="width: 100%; accent-color: var(--neon-green);" onInput=${(e) => setCutIn(parseInt(e.target.value))} />
                     </div>
 
-                    <!-- 25% MIKRO LEAK -->
+                    <!-- 25% MIKRO LEAK (s/d 20 ARC) -->
                     <div style="background: rgba(166,255,0,0.05); border: 1px solid #a6ff00; border-radius: 4px; padding: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 2px;">
                             <strong style="color: #a6ff00;">25% (MIKRO):</strong>
                             <strong style="color: #fff;">${arc25} ARC</strong>
                         </div>
-                        <input type="range" min="2" max="15" value=${arc25} style="width: 100%; accent-color: #a6ff00;" onInput=${(e) => setArc25(parseInt(e.target.value))} />
+                        <input type="range" min="5" max="25" value=${arc25} style="width: 100%; accent-color: #a6ff00;" onInput=${(e) => setArc25(parseInt(e.target.value))} />
                     </div>
 
-                    <!-- 50% SEDANG -->
+                    <!-- 50% SEDANG (s/d 30 ARC) -->
                     <div style="background: rgba(255,230,0,0.05); border: 1px solid var(--neon-yellow); border-radius: 4px; padding: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 2px;">
                             <strong style="color: var(--neon-yellow);">50% (SEDANG):</strong>
                             <strong style="color: #fff;">${arc50} ARC</strong>
                         </div>
-                        <input type="range" min="5" max="20" value=${arc50} style="width: 100%; accent-color: var(--neon-yellow);" onInput=${(e) => setArc50(parseInt(e.target.value))} />
+                        <input type="range" min="15" max="35" value=${arc50} style="width: 100%; accent-color: var(--neon-yellow);" onInput=${(e) => setArc50(parseInt(e.target.value))} />
                     </div>
 
-                    <!-- 75% BOCOR PARAH -->
+                    <!-- 75% BOCOR PARAH (s/d 40 ARC) -->
                     <div style="background: rgba(255,149,0,0.05); border: 1px solid var(--neon-orange); border-radius: 4px; padding: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 2px;">
                             <strong style="color: var(--neon-orange);">75% (BOCOR):</strong>
                             <strong style="color: #fff;">${arc75} ARC</strong>
                         </div>
-                        <input type="range" min="10" max="28" value=${arc75} style="width: 100%; accent-color: var(--neon-orange);" onInput=${(e) => setArc75(parseInt(e.target.value))} />
+                        <input type="range" min="25" max="45" value=${arc75} style="width: 100%; accent-color: var(--neon-orange);" onInput=${(e) => setArc75(parseInt(e.target.value))} />
                     </div>
 
-                    <!-- 100% JEBOL TOTAL -->
+                    <!-- 100% JEBOL TOTAL (s/d 50 ARC) -->
                     <div style="background: rgba(255,45,85,0.05); border: 1px solid var(--neon-red); border-radius: 4px; padding: 6px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 2px;">
                             <strong style="color: var(--neon-red);">100% (JEBOL):</strong>
                             <strong style="color: #fff;">${arc100} ARC</strong>
                         </div>
-                        <input type="range" min="15" max="30" value=${arc100} style="width: 100%; accent-color: var(--neon-red);" onInput=${(e) => setArc100(parseInt(e.target.value))} />
+                        <input type="range" min="35" max="50" value=${arc100} style="width: 100%; accent-color: var(--neon-red);" onInput=${(e) => setArc100(parseInt(e.target.value))} />
                     </div>
                 </div>
 
@@ -176,7 +176,7 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
                             💾 SIMPAN KALIBRASI KE ESP32
                         </button>
                         <button class="btn" style="padding: 5px 10px; font-size: 0.72rem;" onClick=${resetCustomLeakMatrix}>
-                            🔄 RESET DEFAULT
+                            🔄 RESET DEFAULT (10-50 ARC)
                         </button>
                     </div>
                     ${msg ? html`<span style="font-size: 0.72rem; color: var(--neon-green); font-weight: bold;">${msg}</span>` : ''}
