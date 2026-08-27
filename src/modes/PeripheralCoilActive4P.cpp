@@ -72,7 +72,8 @@ static void IRAM_ATTR onActive4pSparkInterrupt() {
 }
 
 PeripheralCoilActive4P::PeripheralCoilActive4P(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController), _diagStartTime(0), _lastCurrentSampleTime(0), _zeroCurrentVoltage(1.85f) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController), _diagStartTime(0), _lastCurrentSampleTime(0), _zeroCurrentVoltage(1.85f),
+      _sumPeakAmps(0.0f), _sampleCountAmps(0), _sumSparkmA(0.0f), _sampleCountSpark(0) {}
 
 void PeripheralCoilActive4P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
@@ -236,6 +237,12 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
+            // Accumulate running test session peak current average
+            if (amps >= 0.5f) {
+                _sumPeakAmps += amps;
+                _sampleCountAmps++;
+            }
+            
             // Real-time Dual Confirmation Status for 4-Pin
             if (s.coilFiredCount >= 10) {
                 float igfRatio = (s.coilFiredCount > 0) ? ((float)s.coilIgfCount / (float)s.coilFiredCount) * 100.0f : 0.0f;
@@ -322,6 +329,10 @@ void PeripheralCoilActive4P::resetCounters() {
     s.coilHealthPercent = 100.0f;
     s.coilPeakCurrentA = 0.0f;
     strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+    _sumPeakAmps = 0.0f;
+    _sampleCountAmps = 0;
+    _sumSparkmA = 0.0f;
+    _sampleCountSpark = 0;
     CoilLeakSensor::reset(s);
 }
 
@@ -414,6 +425,19 @@ void PeripheralCoilActive4P::start() {
     AppSettings& s = _settingsMgr.getSettings();
     updateTimerConfig();
     
+    isr_act4p_firedCount = 0;
+    isr_act4p_igfCount = 0;
+    isr_act4p_sparkCount = 0;
+    s.coilFiredCount = 0;
+    s.coilIgfCount = 0;
+    s.coilSparkReturnCount = 0;
+    s.coilMissedCount = 0;
+    
+    _sumPeakAmps = 0.0f;
+    _sampleCountAmps = 0;
+    _sumSparkmA = 0.0f;
+    _sampleCountSpark = 0;
+    
     if (s.mode == MODE_SINGLE) {
         coil_act4p_pulsesRemaining = 1;
     } else if (s.mode == MODE_BURST) {
@@ -447,6 +471,11 @@ void PeripheralCoilActive4P::stop() {
     
     AppSettings& s = _settingsMgr.getSettings();
     s.isRunning = false;
+    
+    // Latch the true test session mathematical average on STOP
+    if (_sampleCountAmps > 0) {
+        s.coilPeakCurrentA = _sumPeakAmps / (float)_sampleCountAmps;
+    }
     
     if (s.mode == MODE_SWEEP) {
         _sweepController.reset();

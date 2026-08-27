@@ -1,13 +1,17 @@
-import { html, useState, useEffect, useRef } from '../preact.js';
+﻿import { html, useState, useEffect, useRef } from '../preact.js';
 
 export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULATION ANALYZER", is4Pin = false }) {
     const historyRef = useRef([]);
     const [history, setHistory] = useState([]);
+    const isDragTh = useRef(false), isDragDb = useRef(false);
+    const [localTh, setLocalTh] = useState(state.coilLeakThreshold || 6);
+    const [localDb, setLocalDb] = useState(state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.5");
 
-    const fired = state.coilFiredCount || 0;
-    const confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
-    const missed = state.coilMissedCount || Math.max(0, fired - confirmed);
-    const sparkmA = state.coilSparkCurrentmA || 0.0;
+    useEffect(() => { if (!isDragTh.current && state.coilLeakThreshold !== undefined) setLocalTh(state.coilLeakThreshold); }, [state.coilLeakThreshold]);
+    useEffect(() => { if (!isDragDb.current && state.coilLeakDebounceMs !== undefined) setLocalDb(Number(state.coilLeakDebounceMs).toFixed(1)); }, [state.coilLeakDebounceMs]);
+
+    const fired = state.coilFiredCount || 0, confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
+    const missed = state.coilMissedCount || Math.max(0, fired - confirmed), sparkmA = state.coilSparkCurrentmA || 0.0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00";
     const vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
@@ -20,9 +24,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0;
     const energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
 
-    const isLeaking = state.coilLeakDetected;
-    const leakCount = state.coilLeakCount || 0;
-    const leakRate = state.coilLeakRate || 0;
+    const isLeaking = state.coilLeakDetected, leakCount = state.coilLeakCount || 0, leakRate = state.coilLeakRate || 0;
     const leakSeverity = state.coilLeakSeverity || (leakCount === 0 ? "PERFECT (0 LEAK)" : "MICRO-LEAKAGE");
 
     let insulationFactor = 1.0, leakBadgeColor = "var(--neon-green)", leakStatusText = "ISOLASI UTUH (0 LEAK)";
@@ -36,8 +38,6 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
     let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal';
-
-    // Persistent Alarm Flag: Stays active after stop until explicitly reset (Requires >= 10 fired pulses)
     const isAlarm = (fired >= 10 && (totalHealthScore < 50 || parseFloat(currentA) > 11.5 || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < 15.0 && sparkmA > 0)));
 
     if (isStandby) {
@@ -54,51 +54,31 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Detak 100% Sinkron';
     }
 
-    // Gauge 1 Dynamic Border Color (Constant 2px width to prevent jitter)
     let gauge1Border = '2px solid rgba(0, 212, 255, 0.4)', gauge1Shadow = '0 0 10px rgba(0, 212, 255, 0.15)';
     if (!isStandby) {
-        if (sparkmA >= 45.0) {
-            gauge1Border = '2px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
-        } else if (sparkmA >= 30.0) {
-            gauge1Border = '2px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)';
-        } else if (sparkmA >= 15.0) {
-            gauge1Border = '2px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
-        } else {
-            gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
-        }
+        if (sparkmA >= 45.0) { gauge1Border = '2px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)'; }
+        else if (sparkmA >= 30.0) { gauge1Border = '2px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)'; }
+        else if (sparkmA >= 15.0) { gauge1Border = '2px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)'; }
+        else { gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)'; }
     }
 
-    // Gauge 2 Dynamic Border Color (Constant 2px width to prevent jitter)
     let gauge2Border = '2px solid rgba(189, 0, 255, 0.4)', gauge2Shadow = '0 0 10px rgba(189, 0, 255, 0.15)';
     if (!isStandby) {
-        if (cadenceRate >= 95.0) {
-            gauge2Border = '2px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
-        } else if (cadenceRate >= 80.0) {
-            gauge2Border = '2px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
-        } else {
-            gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
-        }
+        if (cadenceRate >= 95.0) { gauge2Border = '2px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)'; }
+        else if (cadenceRate >= 80.0) { gauge2Border = '2px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)'; }
+        else { gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)'; }
     }
 
     const currentSens = state.coilLeakSensitivity || 3;
-    const customThreshold = state.coilLeakThreshold || 3;
-    const customDebounce = state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.0";
-    const checkPulses = state.checkCoilPulseCount || 3;
-    const checkVerdict = state.checkCoilVerdict || "READY";
-
+    const checkPulses = state.checkCoilPulseCount || 3, checkVerdict = state.checkCoilVerdict || "READY";
     const sensLabels = [
-        { id: 1, name: "1: ULTRA" },
-        { id: 2, name: "2: TINGGI" },
-        { id: 3, name: "3: STANDAR" },
-        { id: 4, name: "4: KEBAL" },
-        { id: 5, name: "5: CUSTOM" }
+        { id: 1, name: "1: ULTRA" }, { id: 2, name: "2: TINGGI" },
+        { id: 3, name: "3: STANDAR" }, { id: 4, name: "4: KEBAL" }, { id: 5, name: "5: CUSTOM" }
     ];
 
     const handleFullReset = () => {
-        historyRef.current = [];
-        setHistory([]);
-        sendAction('resetCounters');
-        sendAction('resetLeakCounter');
+        historyRef.current = []; setHistory([]);
+        sendAction('resetCounters'); sendAction('resetLeakCounter');
     };
 
     useEffect(() => {
@@ -121,7 +101,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     return html`
         <div class="panel ${isAlarm ? 'pulse-alarm-red' : ''}" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor}; box-sizing: border-box;">
-            <!-- SCANNER-STYLE LIVE VOLTMETER & DUAL TEMPERATURE STATUS STRIP -->
+            <!-- SCANNER-STYLE LIVE VOLTMETER & TEMPERATURE STRIP -->
             <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.72rem; margin-bottom: 8px;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <span>🔋 SUPPLY: <strong style="color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : (parseFloat(vBat) > 0 ? 'var(--neon-orange)' : 'var(--neon-red)')}; font-variant-numeric: tabular-nums;">${vBat} V</strong></span>
@@ -145,7 +125,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </div>
 
-            <!-- DUAL INDEPENDENT GAUGES WITH FIXED HEIGHT AND 2px BORDER -->
+            <!-- DUAL GAUGES -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px;">
                 <!-- GAUGE 1: KUALITAS API (mA) -->
                 <div style="background: rgba(0,0,0,0.35); border: ${gauge1Border}; border-radius: 6px; padding: 10px 14px; box-shadow: ${gauge1Shadow}; min-height: 98px; height: 98px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
@@ -162,71 +142,83 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 4px;">
-                        <div style="width: ${isStandby ? 0 : Math.min(100, (sparkmA / 80.0) * 100)}%; height: 100%; background: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}; transition: width 0.2s;"></div>
+                        <div style="width: ${isStandby ? '0%' : Math.min(100, (sparkmA / 60) * 100)}%; height: 100%; background: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}; transition: width 0.15s ease;"></div>
                     </div>
                 </div>
 
-                <!-- GAUGE 2: IRAMA DETAK (%) -->
+                <!-- GAUGE 2: KETERATURAN DETAK IGT/IGF -->
                 <div style="background: rgba(0,0,0,0.35); border: ${gauge2Border}; border-radius: 6px; padding: 10px 14px; box-shadow: ${gauge2Shadow}; min-height: 98px; height: 98px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
                     <div style="display: flex; justify-content: space-between; align-items: center; height: 16px;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">⏱️ GAUGE 2: KETERATURAN DETAK</span>
-                        <span style="font-size: 0.7rem; color: var(--text-muted);">Target: 100%</span>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">🎯 GAUGE 2: KETERATURAN DETAK</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">Sinkron: 100%</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px;">
                         <div style="font-size: 1.85rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
                             ${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">%</span>
                         </div>
-                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${isStandby ? 'var(--text-muted)' : (missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)')}">
-                            ${isStandby ? 'SIAP DIUJI' : (missed === 0 ? 'IRAMA NORMAL' : (missed + ' MISSED (' + arrhythmiaRate.toFixed(0) + '%)'))}
+                        <div style="font-size: 0.74rem; font-weight: 800; white-space: nowrap; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
+                            ${isStandby ? 'STANDBY' : (cadenceRate >= 95 ? 'IRAMA SINKRON' : (cadenceRate >= 80 ? 'DETAK LONCAT' : 'ARITMIA / MISSED'))}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 4px;">
-                        <div style="width: ${isStandby ? 0 : cadenceRate}%; height: 100%; background: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')}; transition: width 0.2s;"></div>
+                        <div style="width: ${isStandby ? '0%' : cadenceRate}%; height: 100%; background: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')}; transition: width 0.15s ease;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- UNIFIED METRICS ROW: 4 EQUAL-HEIGHT STABLE CARDS (HEIGHT 104px, CONSTANT 2px BORDERS) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;">
-                <!-- 1. SKOR KELAYAKAN -->
-                <div class="${isAlarm ? 'pulse-alarm-red' : ''}" style="background: rgba(0,0,0,0.4); border: 2px solid ${healthColor}; box-shadow: 0 0 10px ${healthColor}33; border-radius: 6px; padding: 8px 6px; text-align: center; min-height: 104px; height: 104px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <div style="font-size: 0.68rem; font-weight: bold; color: ${healthColor}; text-transform: uppercase; height: 16px;">SKOR KELAYAKAN</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${healthColor};">${isStandby ? '--%' : totalHealthScore.toFixed(0) + '%'}</div>
-                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; height: 24px; display: flex; align-items: center; justify-content: center; line-height: 1.1;">${healthDesc}</div>
+            <!-- 4 METRIC CARDS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px;">
+                <!-- Card 1: TOTAL DETAK -->
+                <div style="background: rgba(0,0,0,0.25); border: 2px solid var(--border-sharp); border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK (IGT)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1;">${fired}</div>
+                    <div style="font-size: 0.65rem; color: var(--neon-cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Detak Terpicu</div>
                 </div>
 
-                <!-- 2. ARUS PRIMER PEAK -->
-                <div style="background: rgba(0,0,0,0.4); border: 2px solid ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) > 0 ? 'var(--neon-orange)' : 'rgba(0, 255, 102, 0.35)'))}; border-radius: 6px; padding: 8px 6px; text-align: center; min-height: 104px; height: 104px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; box-shadow: 0 0 10px rgba(0, 255, 102, 0.15);">
-                    <div style="font-size: 0.68rem; font-weight: bold; color: var(--neon-cyan); text-transform: uppercase; height: 16px;">ARUS PRIMER PEAK</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) > 0 ? 'var(--neon-orange)' : 'var(--text-primary)'))};">${currentA} A</div>
-                    <div style="font-size: 0.65rem; color: var(--text-muted); height: 24px; display: flex; align-items: center; justify-content: center; line-height: 1.1;">DC: <strong style="color: var(--neon-green); margin-left: 3px;">${realA} A</strong></div>
+                <!-- Card 2: RESPON DETAK -->
+                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${confirmed === fired && fired > 0 ? 'var(--neon-green)' : (confirmed > 0 ? 'var(--border-sharp)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON (CONFIRMED)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${confirmed > 0 ? 'var(--neon-green)' : 'inherit'};">${confirmed}</div>
+                    <div style="font-size: 0.65rem; color: var(--neon-green); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Terkonfirmasi</div>
                 </div>
 
-                <!-- 3. LEAK BODI (PIN 36) - FIXED CONTAINER PREVENTS EXPANSION -->
-                <div style="background: rgba(0,0,0,0.4); border: 2px solid ${leakBadgeColor}; box-shadow: 0 0 10px ${leakBadgeColor}33; border-radius: 6px; padding: 8px 6px; text-align: center; min-height: 104px; height: 104px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <div style="font-size: 0.68rem; font-weight: bold; color: ${leakBadgeColor}; text-transform: uppercase; height: 16px;">LEAK BODI (PIN 36)</div>
-                    <div style="font-size: 1.45rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: ${leakBadgeColor};">${leakCount} <span style="font-size: 0.8rem; font-weight: 700;">Arcs</span></div>
-                    <div style="font-size: 0.65rem; color: ${leakBadgeColor}; font-weight: 800; height: 24px; display: flex; align-items: center; justify-content: center; line-height: 1.1; text-align: center;">${leakStatusText} (${leakRate}/s)</div>
+                <!-- Card 3: DETAK HILANG -->
+                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'var(--border-sharp)'}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG (MISSED)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${missed > 0 ? 'var(--neon-red)' : 'inherit'};">${missed}</div>
+                    <div style="font-size: 0.65rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Hilang Api</div>
                 </div>
 
-                <!-- 4. DETAK IGT / RESPON - FIXED CONTAINER PREVENTS EXPANSION -->
-                <div style="background: rgba(0,0,0,0.4); border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'var(--neon-green)'}; box-shadow: 0 0 10px ${missed > 0 ? 'rgba(255,45,85,0.3)' : 'rgba(0,255,102,0.2)'}; border-radius: 6px; padding: 8px 6px; text-align: center; min-height: 104px; height: 104px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <div style="font-size: 0.68rem; font-weight: bold; color: var(--neon-green); text-transform: uppercase; height: 16px;">DETAK IGT / RESPON</div>
-                    <div style="font-size: 1.45rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: #ffffff;">${fired} <span style="font-size: 1.1rem; color: var(--neon-green); font-weight: 900;">/ ${confirmed}</span></div>
-                    <div style="font-size: 0.65rem; font-weight: 800; height: 24px; display: flex; align-items: center; justify-content: center; line-height: 1.1; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--neon-green)'};">${missed > 0 ? missed + ' MISSED' : '100% SINKRON'}</div>
+                <!-- Card 4: ARUS PRIMER PEAK -->
+                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) >= 3.5 ? 'var(--neon-green)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PRIMER PEAK</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) >= 3.5 ? 'var(--neon-green)' : 'inherit')};">${isStandby ? '--' : currentA} A</div>
+                    <div style="font-size: 0.65rem; color: ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACS712 Peak-Hold</div>
                 </div>
             </div>
 
-            <!-- COLLAPSIBLE PRE-FLIGHT CHECK COIL MULTI-DIAGNOSIS DRAWER -->
+            <!-- LEAKAGE STRIP -->
+            <div style="background: rgba(0,0,0,0.3); border: 2px solid ${leakBadgeColor}; border-radius: 6px; padding: 8px 12px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; box-sizing: border-box;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="font-size: 0.8rem; font-weight: 800; color: ${leakBadgeColor};">🛡️ KEBOCORAN BODI (PIN 36):</span>
+                    <span class="status-badge" style="border-color: ${leakBadgeColor}; color: ${leakBadgeColor}; font-weight: 800; font-size: 0.72rem;">${leakStatusText}</span>
+                </div>
+                <div style="display: flex; gap: 14px; font-size: 0.75rem; font-variant-numeric: tabular-nums;">
+                    <span>Total Loncatan: <strong style="color: ${leakCount > 0 ? 'var(--neon-orange)' : 'var(--neon-green)'}; font-size: 0.95rem;">${leakCount} Arcs</strong></span>
+                    <span>Frekuensi: <strong style="color: ${leakRate > 5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-size: 0.95rem;">${leakRate} /dtk</strong></span>
+                </div>
+            </div>
+
+            <!-- PRE-FLIGHT CHECK COIL -->
             <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
-                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-yellow, #ffe600); display: flex; justify-content: space-between; align-items: center;">
-                    <span>🔍 PRE-FLIGHT CHECK COIL & DIAGNOSIS KONEKSI ▾</span>
-                    <span style="font-size: 0.68rem; color: var(--text-muted);">Siklus: <strong>${checkPulses}x Pulses</strong></span>
+                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-yellow); display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚡ PRE-FLIGHT CHECK COIL (UJI AMAN SEBELUM RUN) ▾</span>
+                    <span style="font-size: 0.68rem; color: var(--text-muted);">${checkVerdict}</span>
                 </summary>
-                <div style="padding-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="padding-top: 8px; display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                        <span style="font-size: 0.72rem; color: var(--text-muted);">PILIH JUMLAH PULSA UJI KILAT:</span>
-                        <div style="display: flex; gap: 4px;">
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <span style="font-size: 0.68rem; color: var(--text-muted);">Jumlah Pulsa:</span>
                             ${[1, 2, 3, 5, 10].map(p => html`
                                 <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 2px 6px; font-size: 0.68rem; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.2)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
                             `)}
@@ -235,8 +227,6 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                             ⚡ JALANKAN CHECK COIL (${checkPulses}x)
                         </button>
                     </div>
-
-                    <!-- Diagnosis Verdict Banner -->
                     <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; font-size: 0.74rem; display: flex; justify-content: space-between; align-items: center;">
                         <span>HASIL DIAGNOSIS PRE-FLIGHT:</span>
                         <strong style="color: ${checkVerdict.includes('PASS') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">${checkVerdict}</strong>
@@ -244,7 +234,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </details>
 
-            <!-- COLLAPSIBLE PROBE SENSITIVITY FILTER -->
+            <!-- PROBE SENSITIVITY FILTER -->
             <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
                 <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
                     <span>🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36) ▾</span>
@@ -260,22 +250,30 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-sharp); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${customThreshold} Arcs</strong>
+                                    <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${localTh} Arcs</strong>
                                 </div>
-                                <input type="range" min="1" max="25" step="1" value=${customThreshold} style="width: 100%; accent-color: var(--neon-yellow);" onChange=${(e) => sendAction('setLeakThreshold', parseInt(e.target.value))} disabled=${!state.connected} />
+                                <input type="range" min="1" max="25" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
+                                    onPointerDown=${() => { isDragTh.current = true; }}
+                                    onInput=${(e) => { setLocalTh(parseInt(e.target.value)); }}
+                                    onChange=${(e) => { isDragTh.current = false; const v = parseInt(e.target.value); setLocalTh(v); sendAction('setLeakThreshold', v); }}
+                                    disabled=${!state.connected} />
                             </div>
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${customDebounce} ms</strong>
+                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${localDb} ms</strong>
                                 </div>
-                                <input type="range" min="0.1" max="5.0" step="0.1" value=${customDebounce} style="width: 100%; accent-color: var(--neon-cyan);" onChange=${(e) => sendAction('setLeakDebounce', parseFloat(e.target.value))} disabled=${!state.connected} />
+                                <input type="range" min="0.1" max="5.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
+                                    onPointerDown=${() => { isDragDb.current = true; }}
+                                    onInput=${(e) => { setLocalDb(parseFloat(e.target.value).toFixed(1)); }}
+                                    onChange=${(e) => { isDragDb.current = false; const v = parseFloat(e.target.value); setLocalDb(v.toFixed(1)); sendAction('setLeakDebounce', v); }}
+                                    disabled=${!state.connected} />
                             </div>
                         </div>
                     ` : ''}
                 </div>
             </details>
 
-            <!-- COLLAPSIBLE REAL-TIME PERFORMANCE TREND GRAPH (SVG) -->
+            <!-- TREND GRAPH (SVG) -->
             <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
                 <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                     <span>📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP) ▾</span>

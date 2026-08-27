@@ -61,7 +61,8 @@ static void IRAM_ATTR onPassiveCoilTimer() {
 }
 
 PeripheralCoilPassive::PeripheralCoilPassive(SettingsManager& settingsMgr, SweepController& sweepController)
-    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _zeroCurrentVoltage(1.85f) {}
+    : _settingsMgr(settingsMgr), _sweepController(sweepController), _lastCurrentSampleTime(0), _zeroCurrentVoltage(1.85f),
+      _sumPeakAmps(0.0f), _sampleCountAmps(0), _sumSparkmA(0.0f), _sampleCountSpark(0) {}
 
 void PeripheralCoilPassive::begin() {
     pinMode(PIN_COIL_PASSIVE_IGBT, OUTPUT);
@@ -212,6 +213,10 @@ void PeripheralCoilPassive::resetCounters() {
     s.coilSparkCurrentmA = 0.0f;
     s.coilSparkHealthScore = 100.0f;
     strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+    _sumPeakAmps = 0.0f;
+    _sampleCountAmps = 0;
+    _sumSparkmA = 0.0f;
+    _sampleCountSpark = 0;
     CoilLeakSensor::reset(s);
 }
 
@@ -245,12 +250,24 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             
+            // Accumulate running test session peak current average
+            if (amps >= 0.5f) {
+                _sumPeakAmps += amps;
+                _sampleCountAmps++;
+            }
+            
             // Sample Secondary Spark Intensity via LM358 ADC Pin 39
             int rawSparkAdc = analogRead(PIN_COIL_SPARK_SENSE);
             float sparkV = ((float)rawSparkAdc / 4095.0f) * 3.3f;
             float sparkmA = sparkV * 25.0f;
             if (sparkmA > 100.0f) sparkmA = 100.0f;
             s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.7f) + (sparkmA * 0.3f);
+            
+            // Accumulate running spark mA average
+            if (sparkmA >= 1.0f) {
+                _sumSparkmA += sparkmA;
+                _sampleCountSpark++;
+            }
             
             // Smart Spark Confirmation: If analog voltage confirms spark (>= 3mA), sync return count
             if (s.coilSparkCurrentmA >= 3.0f && isr_pass_sparkReturnCount < isr_pass_firedCount) {
@@ -333,6 +350,13 @@ void PeripheralCoilPassive::start() {
     isr_pass_sparkReturnCount = 0;
     s.coilFiredCount = 0;
     s.coilIgfCount = 0;
+    s.coilSparkReturnCount = 0;
+    s.coilMissedCount = 0;
+    
+    _sumPeakAmps = 0.0f;
+    _sampleCountAmps = 0;
+    _sumSparkmA = 0.0f;
+    _sampleCountSpark = 0;
     
     if (s.mode == MODE_SINGLE) {
         coil_pass_pulsesRemaining = 1;
@@ -367,6 +391,34 @@ void PeripheralCoilPassive::stop() {
     
     AppSettings& s = _settingsMgr.getSettings();
     s.isRunning = false;
+    
+    // Latch the true test session mathematical average on STOP
+    if (_sampleCountAmps > 0) {
+        s.coilPeakCurrentA = _sumPeakAmps / (float)_sampleCountAmps;
+    }
+    if (_sampleCountSpark > 0) {
+        s.coilSparkCurrentmA = _sumSparkmA / (float)_sampleCountSpark;
+    }
+    float deliveryPct = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
+    if (s.coilPeakCurrentA > 11.5f) {
+        s.coilSparkHealthScore = 0.0f;
+        strncpy(s.coilCurrentStatus, "❌ OVERCURRENT (>11A)", sizeof(s.coilCurrentStatus));
+    } else if ((s.coilSparkCurrentmA >= 45.0f || deliveryPct >= 95.0f) && s.coilPeakCurrentA >= 3.5f) {
+        s.coilSparkHealthScore = 100.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟢 100%% PRIMA (RATA2 %.1fA)", s.coilPeakCurrentA);
+    } else if ((s.coilSparkCurrentmA >= 30.0f || deliveryPct >= 80.0f) && s.coilPeakCurrentA >= 3.0f) {
+        s.coilSparkHealthScore = 75.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟡 75%% BAIK (%.0f%% SINKRON)", deliveryPct);
+    } else if (s.coilSparkCurrentmA >= 15.0f || deliveryPct >= 50.0f) {
+        s.coilSparkHealthScore = 50.0f;
+        snprintf(s.coilCurrentStatus, sizeof(s.coilCurrentStatus), "🟠 50%% DROP BEBAN (ARITMIA)", deliveryPct);
+    } else if (s.coilSparkCurrentmA >= 3.0f || s.coilSparkReturnCount > 0 || s.coilPeakCurrentA > 2.0f) {
+        s.coilSparkHealthScore = 25.0f;
+        strncpy(s.coilCurrentStatus, "🔴 25% SEKARAT (MISFIRE)", sizeof(s.coilCurrentStatus));
+    } else {
+        s.coilSparkHealthScore = 0.0f;
+        strncpy(s.coilCurrentStatus, "❌ 0% MATI / NO SPARK", sizeof(s.coilCurrentStatus));
+    }
     
     if (s.mode == MODE_SWEEP) {
         _sweepController.reset();

@@ -35,6 +35,10 @@ private:
     SweepController& _sweepController;
     uint32_t _lastCurrentSampleTime;
     float _zeroCurrentVoltage;
+    float _sumPeakAmps;
+    uint32_t _sampleCountAmps;
+    float _sumSparkmA;
+    uint32_t _sampleCountSpark;
     
     void updateTimerConfig();
     void samplePrimaryCurrent();
