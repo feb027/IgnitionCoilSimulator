@@ -1,41 +1,33 @@
-import { html, useRef, useEffect } from '../preact.js';
+import { html, useRef, useState, useEffect } from '../preact.js';
 
 export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue, accentColor, panelClass, compact = false }) {
     const trackRef = useRef(null);
-    const thumbRef = useRef(null);
-
-    const handlePointerDown = (e) => {
-        if (disabled) return;
-        updateValueFromEvent(e);
-        if (thumbRef.current) {
-            thumbRef.current.setPointerCapture(e.pointerId);
-        }
-    };
-
-    const handlePointerMove = (e) => {
-        if (disabled) return;
-        if (thumbRef.current && thumbRef.current.hasPointerCapture(e.pointerId)) {
-            updateValueFromEvent(e);
-        }
-    };
-
-    const handlePointerUp = (e) => {
-        if (disabled) return;
-        if (thumbRef.current && thumbRef.current.hasPointerCapture(e.pointerId)) {
-            thumbRef.current.releasePointerCapture(e.pointerId);
-        }
-    };
+    const isDraggingRef = useRef(false);
+    const lastSentValRef = useRef(null);
+    const throttleTimerRef = useRef(null);
 
     const numMin = Number(min) || 0;
     const numMax = Number(max) || 100;
     const numStep = Number(step) || 1;
-    const numVal = Number(value) || 0;
-    const dispVal = (displayValue !== undefined) ? displayValue : numVal;
+    const incomingVal = Number(value) || 0;
 
-    const updateValueFromEvent = (e) => {
-        if (!trackRef.current) return;
+    const [dragVal, setDragVal] = useState(incomingVal);
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Keep dragVal in sync with incoming prop ONLY when NOT dragging
+    useEffect(() => {
+        if (!isDraggingRef.current) {
+            setDragVal(incomingVal);
+        }
+    }, [incomingVal]);
+
+    const activeVal = isDragging ? dragVal : incomingVal;
+    const dispVal = (displayValue !== undefined) ? displayValue : activeVal;
+
+    const calculateValueFromPointer = (e) => {
+        if (!trackRef.current) return activeVal;
         const rect = trackRef.current.getBoundingClientRect();
-        if (rect.width <= 0) return;
+        if (rect.width <= 0) return activeVal;
         
         let percentage = (e.clientX - rect.left) / rect.width;
         percentage = Math.max(0, Math.min(1, percentage));
@@ -43,15 +35,63 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         const rawValue = (percentage * (numMax - numMin)) + numMin;
         const steppedValue = Math.round(rawValue / numStep) * numStep;
         const decimals = (numStep.toString().split('.')[1] || '').length;
-        const finalValue = Number(steppedValue.toFixed(decimals));
+        return Math.max(numMin, Math.min(numMax, Number(steppedValue.toFixed(decimals))));
+    };
+
+    const emitChange = (val, immediate = false) => {
+        if (!onChange || val === lastSentValRef.current) return;
         
-        if (finalValue !== numVal && onChange) {
-            onChange(finalValue);
+        if (immediate) {
+            if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current);
+            lastSentValRef.current = val;
+            onChange(val);
+            return;
+        }
+
+        if (!throttleTimerRef.current) {
+            throttleTimerRef.current = setTimeout(() => {
+                throttleTimerRef.current = null;
+                lastSentValRef.current = val;
+                onChange(val);
+            }, 45);
         }
     };
 
+    const handlePointerDown = (e) => {
+        if (disabled) return;
+        e.preventDefault();
+        isDraggingRef.current = true;
+        setIsDragging(true);
+        if (trackRef.current) {
+            trackRef.current.setPointerCapture(e.pointerId);
+        }
+        const newVal = calculateValueFromPointer(e);
+        setDragVal(newVal);
+        emitChange(newVal);
+    };
+
+    const handlePointerMove = (e) => {
+        if (disabled || !isDraggingRef.current) return;
+        e.preventDefault();
+        const newVal = calculateValueFromPointer(e);
+        setDragVal(newVal);
+        emitChange(newVal);
+    };
+
+    const handlePointerUp = (e) => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        if (trackRef.current && trackRef.current.hasPointerCapture(e.pointerId)) {
+            trackRef.current.releasePointerCapture(e.pointerId);
+        }
+        const finalVal = calculateValueFromPointer(e);
+        setDragVal(finalVal);
+        emitChange(finalVal, true);
+    };
+
     const range = numMax - numMin;
-    const percentage = range > 0 ? Math.max(0, Math.min(100, ((numVal - numMin) / range) * 100)) : 0;
+    const percentage = range > 0 ? Math.max(0, Math.min(100, ((activeVal - numMin) / range) * 100)) : 0;
 
     return html`
         <div class="${panelClass || 'panel'}" style="${compact ? 'padding: 8px 12px;' : ''}">
@@ -67,17 +107,16 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
                 <div 
                     class="fader-track" 
                     ref=${trackRef}
-                    style="pointer-events: none; ${compact ? 'height: 12px; border-radius: 6px;' : ''}"
+                    style="touch-action: none; cursor: pointer; ${compact ? 'height: 14px; border-radius: 7px;' : ''}"
+                    onPointerDown=${handlePointerDown}
+                    onPointerMove=${handlePointerMove}
+                    onPointerUp=${handlePointerUp}
+                    onPointerCancel=${handlePointerUp}
                 >
-                    <div class="fader-fill" style="width: ${percentage}%; background: ${accentColor || 'var(--text-primary)'}; box-shadow: ${accentColor ? '0 0 8px ' + accentColor : 'none'}; ${compact ? 'border-radius: 6px;' : ''}"></div>
+                    <div class="fader-fill" style="width: ${percentage}%; background: ${accentColor || 'var(--text-primary)'}; box-shadow: ${accentColor ? '0 0 8px ' + accentColor : 'none'}; ${compact ? 'border-radius: 7px;' : ''}; pointer-events: none;"></div>
                     <div 
                         class="fader-thumb" 
-                        ref=${thumbRef}
-                        style="left: ${percentage}%; cursor: grab; pointer-events: auto; touch-action: none; border-color: ${accentColor || 'var(--surface-matte)'}; ${compact ? 'width: 20px; height: 20px; margin-left: -10px; margin-top: -10px;' : ''}"
-                        onPointerDown=${handlePointerDown}
-                        onPointerMove=${handlePointerMove}
-                        onPointerUp=${handlePointerUp}
-                        onPointerCancel=${handlePointerUp}
+                        style="left: ${percentage}%; pointer-events: none; border-color: ${accentColor || 'var(--surface-matte)'}; ${compact ? 'width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;' : ''}"
                     ></div>
                 </div>
             </div>

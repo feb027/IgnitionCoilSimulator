@@ -1,93 +1,129 @@
 import { html, useState, useEffect } from '../preact.js';
 
 export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4Pin = false }) {
-    const [isLocked, setIsLocked] = useState(true);
     const isRunning = state.isRunning;
     const isAutoDiag = state.coilAutoDiagRunning;
 
-    // GLOBAL DOUBLE-TAP / DOUBLE-CLICK LISTENER ANYWHERE ON SCREEN
-    useEffect(() => {
-        let lastTap = 0;
-        const handleGlobalDoubleTap = (e) => {
-            // Ignore if user is clicking sliders/inputs or specific buttons
-            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-            const now = Date.now();
-            if (now - lastTap < 380) {
-                setIsLocked(prev => !prev);
-            }
-            lastTap = now;
-        };
+    // isVisible: whether the full button bar is expanded or hidden in a sleek bottom strip
+    const [isVisible, setIsVisible] = useState(false);
+    // isLocked: safety lock state (cannot trigger until unlocked)
+    const [isLocked, setIsLocked] = useState(true);
 
-        window.addEventListener('click', handleGlobalDoubleTap);
-        window.addEventListener('touchend', handleGlobalDoubleTap);
-        return () => {
-            window.removeEventListener('click', handleGlobalDoubleTap);
-            window.removeEventListener('touchend', handleGlobalDoubleTap);
-        };
-    }, []);
+    // Auto expand bar when running so emergency STOP is always visible immediately!
+    useEffect(() => {
+        if (isRunning) {
+            setIsVisible(true);
+            setIsLocked(false);
+        }
+    }, [isRunning]);
+
+    // Handle double-tap on the bottom bar zone to toggle visibility / unlock
+    let lastTap = 0;
+    const handleBottomBarTap = (e) => {
+        const now = Date.now();
+        if (now - lastTap < 380) {
+            // Double tap detected!
+            if (!isVisible) {
+                setIsVisible(true);
+            } else {
+                setIsVisible(false);
+            }
+        }
+        lastTap = now;
+    };
 
     const handleTriggerClick = (e) => {
         e.stopPropagation();
         if (!state.connected || isAutoDiag) return;
         
         if (isRunning) {
-            // Instant emergency stop is ALWAYS allowed
+            // EMERGENCY STOP is ALWAYS executed on 1-click
             sendAction('toggleRun');
         } else {
-            // If locked, do NOT fire trigger! User must unlock first
+            // If locked, do NOT start trigger! User must explicitly unlock
             if (isLocked) {
-                // Flash unlock message or unlock directly if desired
-                setIsLocked(false);
+                return;
             } else {
                 sendAction('toggleRun');
             }
         }
     };
 
-    const toggleLockManual = (e) => {
+    const handleToggleLock = (e) => {
         e.stopPropagation();
         setIsLocked(!isLocked);
     };
 
     return html`
-        <div class="safety-dock-bottom" style="position: sticky; bottom: 0; left: 0; right: 0; z-index: 1000; background: rgba(10, 12, 16, 0.95); backdrop-filter: blur(12px); border-top: 1px solid ${isRunning ? 'var(--neon-red)' : (isLocked ? 'var(--border-sharp)' : 'var(--neon-green)')}; padding: 8px 12px; margin-top: 12px; box-shadow: 0 -4px 24px rgba(0,0,0,0.85);">
-            <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: stretch; gap: 8px;">
-                
-                <!-- TOMBOL INDIKATOR KUNCI PENGAMAN (BISA DIKLIK ATAU KETUK LAYAR 2X) -->
-                ${!isRunning ? html`
-                    <button
-                        class="btn"
-                        style="padding: 10px 12px; font-size: 0.8rem; font-weight: bold; border-color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; background: ${isLocked ? 'rgba(255, 149, 0, 0.15)' : 'rgba(0, 255, 102, 0.15)'}; color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px;"
-                        onClick=${toggleLockManual}
-                        title="Ketuk 2x di layar atau klik tombol ini untuk Mengunci / Membuka Kunci"
-                    >
-                        ${isLocked ? '🔒 TERKUNCI' : '🔓 TERBUKA'}
-                    </button>
-                ` : html`
-                    <span class="status-badge" style="border-color: var(--neon-red); color: var(--neon-red); font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; padding: 0 10px;">
-                        ⚡ HIGH VOLTAGE
+        <!-- FIXED BOTTOM SAFETY TRIGGER BAR (NEVER MOVES WHEN SCROLLING) -->
+        <div 
+            class="safety-dock-fixed" 
+            style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000; background: rgba(8, 10, 14, 0.96); backdrop-filter: blur(14px); border-top: 1px solid ${isRunning ? 'var(--neon-red)' : (isVisible ? 'var(--border-sharp)' : 'rgba(255,255,255,0.08)')}; box-shadow: 0 -4px 28px rgba(0,0,0,0.9); user-select: none; transition: all 0.25s ease;"
+            onClick=${handleBottomBarTap}
+        >
+            ${!isVisible && !isRunning ? html`
+                <!-- SLEEK MINIMAL STRIP (TIDAK MENGHALANGI MENU TAMPILAN UTAMA) -->
+                <div style="padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: var(--neon-cyan); display: flex; align-items: center; gap: 6px;">
+                        <span>⚡ DOCK TRIGGER TERSEMBUNYI</span>
+                        <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: normal;">(Ketuk 2x di sini untuk memunculkan)</span>
+                    </div>
+                    <span class="status-badge" style="font-size: 0.65rem; border-color: var(--neon-orange); color: var(--neon-orange); padding: 1px 6px;">
+                        🔒 KUNCI AKTIF
                     </span>
-                `}
+                </div>
+            ` : html`
+                <!-- FULL EXPANDED SAFETY TRIGGER CONTROLS -->
+                <div style="max-width: 1200px; margin: 0 auto; padding: 8px 12px; display: flex; align-items: stretch; gap: 8px;">
+                    
+                    <!-- TOMBOL KUNCI / BUKA PENGAMAN -->
+                    ${!isRunning ? html`
+                        <button
+                            class="btn"
+                            style="padding: 10px 14px; font-size: 0.8rem; font-weight: bold; border-color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; background: ${isLocked ? 'rgba(255, 149, 0, 0.15)' : 'rgba(0, 255, 102, 0.15)'}; color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px;"
+                            onClick=${handleToggleLock}
+                            title="Klik untuk Mengunci / Membuka Kunci Trigger"
+                        >
+                            ${isLocked ? '🔒 TERKUNCI' : '🔓 BUKA KUNCI'}
+                        </button>
+                    ` : html`
+                        <span class="status-badge" style="border-color: var(--neon-red); color: var(--neon-red); font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; padding: 0 10px;">
+                            ⚡ HIGH VOLTAGE
+                        </span>
+                    `}
 
-                <!-- MASTER TRIGGER ON / OFF BUTTON (TAMPILAN ASLI JELAS & TEGAS) -->
-                <button 
-                    class="btn ${isRunning ? 'is-running' : ''}"
-                    style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.05em; border-color: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'var(--neon-orange)' : 'var(--neon-green)')}; background: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'rgba(255, 149, 0, 0.08)' : 'rgba(0, 255, 102, 0.15)')}; color: ${isRunning ? '#ffffff' : (isLocked ? 'var(--neon-orange)' : 'var(--neon-green)')}; cursor: pointer; box-shadow: ${isRunning ? '0 0 16px rgba(255, 45, 85, 0.7)' : 'none'};"
-                    onClick=${handleTriggerClick}
-                    disabled=${!state.connected || isAutoDiag}
-                >
-                    ${isRunning 
-                        ? '🔥 IGT TRIGGER: ON (RUNNING ⚡ - KLIK UNTUK MATIKAN)' 
-                        : (isLocked 
-                            ? '🛡️ TRIGGER TERKUNCI (KETUK LAYAR 2X / KLIK UNTUK BUKA)' 
-                            : (state.runMode === 2 
-                                ? '⚡ FIRE SINGLE PULSE' 
-                                : (state.runMode === 1 
-                                    ? '⚡ FIRE BURST (10x PULSES)' 
-                                    : `⚡ ${label}: OFF (STANDBY - KLIK UNTUK HIDUPKAN)`)))}
-                </button>
+                    <!-- MASTER TRIGGER ON / OFF BUTTON -->
+                    <button 
+                        class="btn ${isRunning ? 'is-running' : ''}"
+                        style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.05em; border-color: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'var(--border-sharp)' : 'var(--neon-green)')}; background: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'rgba(255,255,255,0.03)' : 'rgba(0, 255, 102, 0.15)')}; color: ${isRunning ? '#ffffff' : (isLocked ? 'var(--text-muted)' : 'var(--neon-green)')}; cursor: ${isLocked && !isRunning ? 'not-allowed' : 'pointer'}; box-shadow: ${isRunning ? '0 0 18px rgba(255, 45, 85, 0.7)' : 'none'}; opacity: ${isLocked && !isRunning ? '0.7' : '1'};"
+                        onClick=${handleTriggerClick}
+                        disabled=${!state.connected || isAutoDiag}
+                    >
+                        ${isRunning 
+                            ? '🚨 EMERGENCY STOP (OFF) - KLIK UNTUK MATIKAN' 
+                            : (isLocked 
+                                ? '🛡️ TRIGGER TERKUNCI (BUKA KUNCI DULU SEBELUM MENEKAN)' 
+                                : (state.runMode === 2 
+                                    ? '⚡ FIRE SINGLE PULSE' 
+                                    : (state.runMode === 1 
+                                        ? '⚡ FIRE BURST (10x PULSES)' 
+                                        : `⚡ ${label}: OFF (STANDBY - KLIK UNTUK HIDUPKAN)`)))}
+                    </button>
 
-            </div>
+                    <!-- TOMBOL TUTUP / SEMBUNYIKAN KEMBALI -->
+                    ${!isRunning ? html`
+                        <button
+                            class="btn"
+                            style="padding: 10px 10px; font-size: 0.75rem; font-weight: bold; background: rgba(255,255,255,0.05); color: var(--text-muted); cursor: pointer;"
+                            onClick=${(e) => { e.stopPropagation(); setIsVisible(false); }}
+                            title="Sembunyikan Menu Trigger"
+                        >
+                            ✕
+                        </button>
+                    ` : ''}
+
+                </div>
+            `}
         </div>
     `;
 }
