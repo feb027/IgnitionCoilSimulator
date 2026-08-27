@@ -1,6 +1,5 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
-import { LeakageCard } from './LeakageCard.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
 
 export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
@@ -9,8 +8,67 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const verdict = state.coilDiagVerdict || "READY";
 
     return html`
-        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
+        <!-- 4-PIN DUAL-CHANNEL COMPARATOR & BODY LEAK MONITOR (UNIFIED TOP TELEMETRY) -->
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK)" is4Pin=${true} />
+
+        <!-- 20-SECOND AUTO HEALTH & STRESS SCAN PANEL -->
+        <div class="panel" style="margin-top: 6px; grid-column: 1 / -1; background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.85rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">
+                        Tests Low-Dwell Margin (1.2ms), WOT Throttle Burst (6500 RPM), & High-Temp Stress (7000 RPM).
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                    <button 
+                        class="btn"
+                        style="padding: 6px 10px; font-size: 0.75rem;"
+                        onClick=${() => sendAction('resetCoilCounters')}
+                        disabled=${!state.connected || isAutoDiag}
+                    >
+                        RESET
+                    </button>
+                    
+                    <button 
+                        class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}"
+                        style="padding: 6px 14px; font-size: 0.8rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};"
+                        onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')}
+                        disabled=${!state.connected}
+                    >
+                        ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO HEALTH SCAN'}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar & Active Phase Message -->
+            ${isAutoDiag ? html`
+                <div style="margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 3px;">
+                        <span>
+                            ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' :
+                            state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' :
+                            'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
+                        </span>
+                        <span style="font-weight: bold;">${state.coilDiagProgress || 0}%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-sharp);">
+                        <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green); transition: width 0.2s;"></div>
+                    </div>
+                </div>
+            ` : html`
+                <div style="margin-top: 6px; font-size: 0.78rem; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; justify-content: space-between;">
+                    <span>LAST SCAN VERDICT:</span>
+                    <strong style="color: ${verdict.includes('HEALTHY') ? 'var(--neon-green)' : (verdict.includes('DEGRADED') ? 'var(--neon-orange)' : (verdict.includes('FAIL') ? 'var(--neon-red)' : 'var(--text-primary)'))}">
+                        ${verdict}
+                    </strong>
+                </div>
+            `}
+        </div>
+
+        <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
             <${Dial} 
                 compact=${true}
                 label=${isAutoDiag ? "AUTO DIAG..." : ((isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
@@ -39,82 +97,21 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
         ${modeSelector}
         
-        <!-- MASTER RUN BUTTON -->
-        <div class="sticky-run-bar">
+        <!-- COMPACT & HIGH-SAFETY MASTER TRIGGER BUTTON (BOTTOM) -->
+        <div style="grid-column: 1 / -1; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px;">
             <button 
-                class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
+                class="btn ${state.isRunning ? 'is-running' : ''}"
+                style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.05em; border-color: ${state.isRunning ? 'var(--neon-red)' : 'var(--neon-green)'}; background: ${state.isRunning ? 'var(--neon-red)' : 'rgba(0, 255, 102, 0.12)'}; color: ${state.isRunning ? '#ffffff' : 'var(--neon-green)'}; cursor: pointer;"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected || isAutoDiag}
             >
                 ${state.runMode === 2 
-                    ? (state.isRunning ? '⚡ FIRING SINGLE...' : '⚡ FIRE SINGLE PULSE')
+                    ? (state.isRunning ? '⚡ FIRING SINGLE PULSE...' : '⚡ FIRE SINGLE PULSE')
                     : (state.runMode === 1
-                        ? (state.isRunning ? '⚡ FIRING BURST...' : '⚡ FIRE BURST (10x)')
-                        : (state.isRunning ? 'IGT TRIGGER: ON' : 'IGT TRIGGER: OFF'))}
+                        ? (state.isRunning ? '⚡ FIRING BURST 10x...' : '⚡ FIRE BURST (10x)')
+                        : (state.isRunning ? '🔥 IGT TRIGGER: ON (RUNNING ⚡)' : '⚡ IGT TRIGGER: OFF (STANDBY 🛡️)'))}
             </button>
         </div>
-        
-        <!-- 4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK CURRENT + LIVE GRAPH) -->
-        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK)" is4Pin=${true} />
-
-        <!-- 20-SECOND AUTO HEALTH & STRESS SCAN PANEL -->
-        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: var(--space-md);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">
-                        Tests Low-Dwell Margin (1.2ms), WOT Throttle Burst (6500 RPM), & High-Temp Stress (7000 RPM).
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 8px;">
-                    <button 
-                        class="btn"
-                        style="padding: 8px 12px; font-size: 0.8rem;"
-                        onClick=${() => sendAction('resetCoilCounters')}
-                        disabled=${!state.connected || isAutoDiag}
-                    >
-                        RESET COUNTERS
-                    </button>
-                    
-                    <button 
-                        class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}"
-                        style="padding: 8px 16px; font-size: 0.85rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};"
-                        onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')}
-                        disabled=${!state.connected}
-                    >
-                        ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO HEALTH SCAN'}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Progress Bar & Active Phase Message -->
-            ${isAutoDiag ? html`
-                <div style="margin-top: 12px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
-                        <span>
-                            ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' :
-                            state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' :
-                            'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
-                        </span>
-                        <span style="font-weight: bold;">${state.coilDiagProgress || 0}%</span>
-                    </div>
-                    <div style="width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-sharp);">
-                        <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green); transition: width 0.2s;"></div>
-                    </div>
-                </div>
-            ` : html`
-                <div style="margin-top: 8px; font-size: 0.85rem; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; justify-content: space-between;">
-                    <span>LAST SCAN VERDICT:</span>
-                    <strong style="color: ${verdict.includes('HEALTHY') ? 'var(--neon-green)' : (verdict.includes('DEGRADED') ? 'var(--neon-orange)' : (verdict.includes('FAIL') ? 'var(--neon-red)' : 'var(--text-primary)'))}">
-                        ${verdict}
-                    </strong>
-                </div>
-            `}
-        </div>
-        
-        <!-- BODY LEAKAGE DETECTION CARD (PIN 36 SENSITIVITY & ARC COUNTERS) -->
-        <${LeakageCard} state=${state} sendAction=${sendAction} />
 
         <!-- PIN INFO CARD -->
         <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">

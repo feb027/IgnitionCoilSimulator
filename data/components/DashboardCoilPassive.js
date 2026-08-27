@@ -1,14 +1,16 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
-import { LeakageCard } from './LeakageCard.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
 
 export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     
     return html`
-        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
+        <!-- 2-PIN TRI-DIMENSION IGNITION ANALYZER & BODY LEAK MONITOR (UNIFIED TOP TELEMETRY) -->
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="2-PIN IGNITION & INSULATION ANALYZER" />
+
+        <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
             <${Dial} 
                 compact=${true}
                 label=${(isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED")}
@@ -37,26 +39,21 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
 
         ${modeSelector}
         
-        <!-- MASTER RUN BUTTON -->
-        <div class="sticky-run-bar">
+        <!-- COMPACT & HIGH-SAFETY MASTER TRIGGER BUTTON (BOTTOM) -->
+        <div style="grid-column: 1 / -1; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px;">
             <button 
-                class="btn btn-run ${state.isRunning ? 'is-running' : ''}"
+                class="btn ${state.isRunning ? 'is-running' : ''}"
+                style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.05em; border-color: ${state.isRunning ? 'var(--neon-red)' : 'var(--neon-green)'}; background: ${state.isRunning ? 'var(--neon-red)' : 'rgba(0, 255, 102, 0.12)'}; color: ${state.isRunning ? '#ffffff' : 'var(--neon-green)'}; cursor: pointer;"
                 onClick=${() => sendAction('toggleRun')}
                 disabled=${!state.connected}
             >
                 ${state.runMode === 2 
-                    ? (state.isRunning ? '⚡ FIRING SINGLE...' : '⚡ FIRE SINGLE PULSE')
+                    ? (state.isRunning ? '⚡ FIRING SINGLE PULSE...' : '⚡ FIRE SINGLE PULSE')
                     : (state.runMode === 1
-                        ? (state.isRunning ? '⚡ FIRING BURST...' : '⚡ FIRE BURST (10x)')
-                        : (state.isRunning ? 'IGBT DRIVE: ON' : 'IGBT DRIVE: OFF'))}
+                        ? (state.isRunning ? '⚡ FIRING BURST 10x...' : '⚡ FIRE BURST (10x)')
+                        : (state.isRunning ? '🔥 IGBT DRIVE: ON (RUNNING ⚡)' : '⚡ IGBT DRIVE: OFF (STANDBY 🛡️)'))}
             </button>
         </div>
-        
-        <!-- 2-PIN TRI-DIMENSION IGNITION ANALYZER (DUAL GAUGES + PEAK CURRENT + COLLAPSIBLE GRAPH) -->
-        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="2-PIN DUAL-DIMENSION IGNITION ANALYZER" />
-        
-        <!-- BODY LEAKAGE DETECTION CARD (PIN 36 SENSITIVITY PRESETS & SLIDERS) -->
-        <${LeakageCard} state=${state} sendAction=${sendAction} />
 
         <!-- PANDUAN PENGUJIAN & PINOUT (COLLAPSIBLE BY DEFAULT) -->
         <details class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: var(--border-sharp);">
