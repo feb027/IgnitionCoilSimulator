@@ -1,4 +1,4 @@
-import { html } from '../preact.js';
+import { html, useState } from '../preact.js';
 import { Dial } from './Dial.js';
 import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
 import { SafetyTriggerBar } from './SafetyTriggerBar.js';
@@ -12,6 +12,19 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
     const missed = state.coilMissedCount || 0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
     const verdict = state.coilDiagVerdict || "READY";
+
+    const [maxRpmLimit, setMaxRpmLimit] = useState(16000);
+    const [maxDwellLimit, setMaxDwellLimit] = useState(5.0);
+
+    const handleMaxRpmChange = (newMax) => {
+        setMaxRpmLimit(newMax);
+        if (state.rpm > newMax) sendAction('setRpm', newMax);
+    };
+
+    const handleMaxDwellChange = (newMax) => {
+        setMaxDwellLimit(newMax);
+        if (state.dwellMs > newMax) sendAction('setDwell', newMax);
+    };
 
     let healthColor = "var(--neon-green)";
     let healthBadge = "HEALTHY";
@@ -139,7 +152,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
             </div>
         </div>
 
-        <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (DYNAMIC 0-100% SCALING ACCORDING TO LIMITS) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
             <${Dial} 
                 compact=${true}
@@ -147,7 +160,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
                 unit="RPM"
                 min="0"
-                max="16000"
+                max=${maxRpmLimit}
                 step=${state.rpmStep || 50}
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
@@ -159,7 +172,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.0"
-                max="5.0"
+                max=${maxDwellLimit}
                 step="0.1"
                 subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
                 onChange=${(val) => sendAction('setDwell', val)}
@@ -167,8 +180,15 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
             />
         </div>
 
-        <!-- ADVANCED SETTINGS DIRECTLY BELOW ENGINE SPEED & DWELL -->
-        <${AdvancedTuningPanel} state=${state} sendAction=${sendAction} maxRpmLimit=${16000} />
+        <!-- ADVANCED RANGE LIMITS & FINE TUNING DIRECTLY BELOW ENGINE SPEED & DWELL -->
+        <${AdvancedTuningPanel} 
+            state=${state} 
+            sendAction=${sendAction} 
+            maxRpmLimit=${maxRpmLimit} 
+            onMaxRpmChange=${handleMaxRpmChange}
+            maxDwellLimit=${maxDwellLimit}
+            onMaxDwellChange=${handleMaxDwellChange}
+        />
 
         ${modeSelector}
 
@@ -224,7 +244,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
             </div>
         </details>
 
-        <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR -->
+        <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR (LOCKED TO BOTTOM) -->
         <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="COIL TRIGGER" />
     `;
 }
