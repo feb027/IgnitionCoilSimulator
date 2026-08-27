@@ -3,6 +3,10 @@ import { html, useRef, useState, useEffect } from '../preact.js';
 export function Dial({ label, value, unit, min, max, step, onChange, disabled, subInfo, displayValue, accentColor, panelClass, compact = false }) {
     const trackRef = useRef(null);
     const isDraggingRef = useRef(false);
+    const startPointerXRef = useRef(0);
+    const startValRef = useRef(0);
+    const hasMovedBeyondDeadbandRef = useRef(false);
+
     const lastSentValRef = useRef(null);
     const pendingValRef = useRef(null);
     const throttleTimerRef = useRef(null);
@@ -89,6 +93,10 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         e.stopPropagation();
         isDraggingRef.current = true;
         setIsDragging(true);
+        startPointerXRef.current = e.clientX;
+        startValRef.current = activeVal;
+        hasMovedBeyondDeadbandRef.current = false;
+
         if (trackRef.current) {
             trackRef.current.setPointerCapture(e.pointerId);
         }
@@ -101,6 +109,14 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         if (disabled || !isDraggingRef.current) return;
         e.preventDefault();
         e.stopPropagation();
+
+        // Check Touch Deadband (at least 4 pixels movement to eliminate micro-jitter)
+        const dx = Math.abs(e.clientX - startPointerXRef.current);
+        if (!hasMovedBeyondDeadbandRef.current && dx < 4) {
+            return; // Hold value rigidly still
+        }
+        hasMovedBeyondDeadbandRef.current = true;
+
         const newVal = calculateValueFromPointer(e);
         setDragVal(newVal);
         emitChange(newVal);

@@ -9,10 +9,13 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const missed = state.coilMissedCount || Math.max(0, fired - confirmed);
     const sparkmA = state.coilSparkCurrentmA || 0.0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
+    const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00";
+    const vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
+    const tempCoil = state.tempCoilC !== undefined ? state.tempCoilC.toFixed(1) : "28.5";
+    const tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
     const rpm = state.currentRpm || state.rpm || 800;
 
     const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 100;
-    const arrhythmiaRate = 100 - cadenceRate;
     const energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
 
     const isLeaking = state.coilLeakDetected;
@@ -37,32 +40,27 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     } else if (parseFloat(currentA) > 11.5) {
         healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT (>11A)'; healthDesc = 'Korsleting Primer / IGBT Rusak';
     } else if (leakSeverity.includes("SEVERE") || leakRate > 25) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Bodi Ekstrem!';
-    } else if (leakSeverity.includes("MEDIUM") || leakRate > 5) {
-        healthColor = 'var(--neon-orange)'; healthBadge = '⚠️ 50% ISOLASI BOCOR'; healthDesc = 'Terjadi Arcing / Rambatan Tegangan Tinggi';
+        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Ekstrem!';
     } else if (isLeaking || leakCount > 0) {
-        healthColor = '#FFE600'; healthBadge = '⚡ 75% MIKRO LEAKAGE'; healthDesc = 'Retak Rambut / Kebocoran Bodi Terdeteksi';
-    } else if (confirmed > 0 && cadenceRate >= 95 && (sparkmA >= 30 || sparkmA === 0)) {
-        healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Api Normal & Detak 100% Sinkron';
-    } else if (confirmed > 0 && cadenceRate >= 80) {
-        healthColor = '#A6FF00'; healthBadge = '🟡 75% BAIK'; healthDesc = 'Layak Pakai, Irama Teratur';
-    } else if (confirmed > 0 && cadenceRate >= 50) {
-        healthColor = 'var(--neon-orange)'; healthBadge = '🟠 50% DROP BEBAN'; healthDesc = '⚠️ Aritmia / Detak Hilang Sebagian!';
-    } else if (confirmed > 0) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🔴 25% SEKARAT'; healthDesc = 'Banyak Detak Hilang (>50% Misfire)';
+        healthColor = '#FFE600'; healthBadge = '⚡ 75% MIKRO LEAKAGE'; healthDesc = 'Kebocoran Bodi Terdeteksi';
+    } else if (confirmed > 0 && cadenceRate >= 95) {
+        healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Api Normal & Detak Sinkron';
     } else {
-        healthColor = 'var(--neon-red)'; healthBadge = '❌ 0% MATI / MISFIRE'; healthDesc = 'Misfire Total (0 Detak Terkonfirmasi)';
+        healthColor = 'var(--neon-orange)'; healthBadge = '⚠️ DEGRADED'; healthDesc = 'Ada Detak Hilang / Misfire';
     }
 
     const currentSens = state.coilLeakSensitivity || 3;
     const customThreshold = state.coilLeakThreshold || 3;
     const customDebounce = state.coilLeakDebounceMs !== undefined ? Number(state.coilLeakDebounceMs).toFixed(1) : "1.0";
+    const checkPulses = state.checkCoilPulseCount || 3;
+    const checkVerdict = state.checkCoilVerdict || "READY";
+
     const sensLabels = [
-        { id: 1, name: "1: ULTRA", desc: "Bawah: Peka Mikro Leak (0.2ms/1 Arc)" },
-        { id: 2, name: "2: TINGGI", desc: "Tinggi: Retak Leher Resin (0.5ms/2 Arcs)" },
-        { id: 3, name: "3: STANDAR", desc: "Standar: Redam Radiasi Udara (1.0ms/3 Arcs)" },
-        { id: 4, name: "4: KEBAL", desc: "Atas: Celah Busi Langsung (1.5ms/5 Arcs)" },
-        { id: 5, name: "5: CUSTOM", desc: "Setel Bebas (0.1-3.0ms / 1-10 Arcs)" }
+        { id: 1, name: "1: ULTRA" },
+        { id: 2, name: "2: TINGGI" },
+        { id: 3, name: "3: STANDAR" },
+        { id: 4, name: "4: KEBAL" },
+        { id: 5, name: "5: CUSTOM" }
     ];
 
     useEffect(() => {
@@ -85,6 +83,21 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     return html`
         <div class="panel" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor};">
+            <!-- SCANNER-STYLE LIVE VOLTMETER & DUAL TEMPERATURE STATUS STRIP -->
+            <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.72rem; margin-bottom: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span>🔋 SUPPLY: <strong style="color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : (parseFloat(vBat) > 0 ? 'var(--neon-orange)' : 'var(--neon-red)')};">${vBat} V</strong></span>
+                    <span class="status-badge" style="padding: 1px 6px; font-size: 0.65rem; border-color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : 'var(--neon-orange)'};">
+                        ${parseFloat(vBat) >= 11.5 ? 'VOLTAGE OK' : (parseFloat(vBat) > 0 ? 'LOW VOLT' : 'NO POWER')}
+                    </span>
+                </div>
+                <div style="display: flex; gap: 10px; color: var(--text-muted);">
+                    <span>🌡️ Koil: <strong style="color: var(--neon-cyan);">${tempCoil} °C</strong></span>
+                    <span>🌡️ IGBT: <strong style="color: var(--neon-purple);">${tempDriver} °C</strong></span>
+                    <span>⚡ Arus DC: <strong style="color: var(--neon-green);">${realA} A</strong></span>
+                </div>
+            </div>
+
             <!-- HEADER -->
             <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <span style="font-weight: 700; letter-spacing: 0.05em; color: ${healthColor};">⚡ ${title}</span>
@@ -95,7 +108,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
             </div>
 
             <!-- DUAL INDEPENDENT GAUGES -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px;">
                 <!-- GAUGE 1: KUALITAS API (mA) -->
                 <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -107,7 +120,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                             ${sparkmA.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">mA</span>
                         </div>
                         <div style="font-size: 0.75rem; font-weight: 700; color: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
-                            ${sparkmA >= 45 ? 'API BIRU TEBAL' : (sparkmA >= 30 ? 'API STANDAR' : (sparkmA >= 15 ? 'API KECIL / DROP' : 'API LILIN / MATI'))}
+                            ${sparkmA >= 45 ? 'API BIRU TEBAL' : (sparkmA >= 30 ? 'API STANDAR' : (sparkmA >= 15 ? 'API KECIL' : 'API LILIN / MATI'))}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 6px;">
@@ -118,7 +131,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 <!-- GAUGE 2: IRAMA DETAK (%) -->
                 <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">⏱️ GAUGE 2: KETERATURAN DETAK (IRAMA)</span>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">⏱️ GAUGE 2: KETERATURAN DETAK</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: 100%</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px;">
@@ -126,7 +139,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                             ${cadenceRate.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">%</span>
                         </div>
                         <div style="font-size: 0.75rem; font-weight: 700; color: ${missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)'};">
-                            ${missed === 0 ? 'IRAMA NORMAL' : (missed + ' HILANG (' + arrhythmiaRate.toFixed(1) + '%)')}
+                            ${missed === 0 ? 'IRAMA NORMAL' : (missed + ' HILANG')}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 6px;">
@@ -146,7 +159,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
                     <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">ARUS PRIMER PEAK</div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; margin-top: 2px;">${currentA} A</div>
-                    <button class="btn" style="margin-top: 2px; width: 100%; padding: 2px 4px; font-size: 0.65rem; font-weight: 800; background: #FFE600; color: #000;" onClick=${() => sendAction('probeCoil')} disabled=${!state.connected || state.isRunning}>🔍 CHECK COIL</button>
+                    <div style="font-size: 0.62rem; color: var(--text-muted);">DC: ${realA} A</div>
                 </div>
 
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid ${leakBadgeColor}; border-radius: 4px; padding: 8px; text-align: center;">
@@ -162,17 +175,43 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </div>
 
+            <!-- COLLAPSIBLE PRE-FLIGHT CHECK COIL MULTI-DIAGNOSIS DRAWER -->
+            <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
+                <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-yellow, #ffe600); display: flex; justify-content: space-between; align-items: center;">
+                    <span>🔍 PRE-FLIGHT CHECK COIL & DIAGNOSIS KONEKSI ▾</span>
+                    <span style="font-size: 0.68rem; color: var(--text-muted);">Siklus: <strong>${checkPulses}x Pulses</strong></span>
+                </summary>
+                <div style="padding-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        <span style="font-size: 0.72rem; color: var(--text-muted);">PILIH JUMLAH PULSA UJI KILAT:</span>
+                        <div style="display: flex; gap: 4px;">
+                            ${[1, 2, 3, 5, 10].map(p => html`
+                                <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 2px 6px; font-size: 0.68rem; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.2)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
+                            `)}
+                        </div>
+                        <button class="btn" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 800; background: #FFE600; color: #000;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>
+                            ⚡ JALANKAN CHECK COIL (${checkPulses}x)
+                        </button>
+                    </div>
+
+                    <!-- Diagnosis Verdict Banner -->
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; font-size: 0.74rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>HASIL DIAGNOSIS PRE-FLIGHT:</span>
+                        <strong style="color: ${checkVerdict.includes('PASS') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">${checkVerdict}</strong>
+                    </div>
+                </div>
+            </details>
+
             <!-- COLLAPSIBLE PROBE SENSITIVITY FILTER -->
-            <details style="margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
+            <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
                 <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
                     <span>🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36) ▾</span>
-                    <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: normal;">Aktif: <strong>${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
+                    <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong>${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
                 </summary>
                 <div style="padding-top: 8px;">
-                    <div style="font-size: 0.72rem; color: var(--neon-cyan); margin-bottom: 6px;">${sensLabels.find(s => s.id === currentSens)?.desc || ""}</div>
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;">
                         ${sensLabels.map(s => html`
-                            <button class="btn ${currentSens === s.id ? 'btn-active' : ''}" style="padding: 4px 2px; font-size: 0.68rem; font-weight: bold; text-align: center; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.15)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" onClick=${() => sendAction('setLeakSensitivity', s.id)} disabled=${!state.connected}>${s.name}</button>
+                            <button class="btn ${currentSens === s.id ? 'btn-active' : ''}" style="padding: 4px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.15)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" onClick=${() => sendAction('setLeakSensitivity', s.id)} disabled=${!state.connected}>${s.name}</button>
                         `)}
                     </div>
                     ${currentSens === 5 ? html`
@@ -185,47 +224,30 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                             </div>
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>FILTER WAKTU (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${customDebounce} ms</strong>
+                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${customDebounce} ms</strong>
                                 </div>
                                 <input type="range" min="0.1" max="3.0" step="0.1" value=${customDebounce} style="width: 100%; accent-color: var(--neon-cyan);" onInput=${(e) => sendAction('setLeakDebounce', parseFloat(e.target.value))} disabled=${!state.connected} />
                             </div>
                         </div>
                     ` : ''}
-                    <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--text-muted);">
-                        <span>Buzzer Status: ${state.isRunning ? (isLeaking ? 'BEEPING 🔊' : 'STANDBY') : 'MUTED (RUN OFF)'}</span>
-                        <button class="btn" style="padding: 2px 8px; font-size: 0.68rem;" onClick=${() => sendAction('resetLeakCounter')} disabled=${!state.connected}>Reset Counter Leak</button>
-                    </div>
                 </div>
             </details>
 
             <!-- COLLAPSIBLE REAL-TIME PERFORMANCE TREND GRAPH (SVG) -->
             <details style="margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px;">
                 <summary style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                    <span>📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP ANALYZER) ▾</span>
+                    <span>📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP) ▾</span>
                     <div style="display: flex; gap: 8px; font-size: 0.65rem;">
-                        <span style="color: var(--neon-cyan);">■ Arus Api (0-80mA)</span>
-                        <span style="color: var(--neon-purple);">■ Irama Detak (0-100%)</span>
+                        <span style="color: var(--neon-cyan);">■ Arus Api (mA)</span>
+                        <span style="color: var(--neon-purple);">■ Irama Detak (%)</span>
                     </div>
                 </summary>
                 <div style="margin-top: 8px;">
-                    <div style="width: 100%; height: 85px; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden;">
-                        <div style="position: absolute; width: 100%; top: 25%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
-                        <div style="position: absolute; width: 100%; top: 50%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
-                        <div style="position: absolute; width: 100%; top: 75%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
+                    <div style="width: 100%; height: 80px; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden;">
                         <svg viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
                             ${sparkPts ? html`<polyline fill="none" stroke="var(--neon-cyan)" stroke-width="2" points="${sparkPts}" stroke-linecap="round" stroke-linejoin="round" />` : ''}
                             ${cadencePts ? html`<polyline fill="none" stroke="var(--neon-purple)" stroke-width="2" points="${cadencePts}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,2" />` : ''}
                         </svg>
-                        ${ptsCount === 0 ? html`
-                            <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--text-muted);">
-                                Nyalakan Trigger / Sweep untuk merekam grafik tren performa
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">
-                        <span>◀ Awal Uji</span>
-                        <span>Live RPM: <strong style="color: var(--neon-cyan);">${rpm} RPM</strong></span>
-                        <span>Riwayat (50 Sampel) ▶</span>
                     </div>
                 </div>
             </details>

@@ -1,5 +1,6 @@
 import { html, useState } from '../preact.js';
 import { Dial } from './Dial.js';
+import { CalibrationMatrixPanel } from './CalibrationMatrixPanel.js';
 
 export function AdvancedTuningPanel({ 
     state, 
@@ -28,10 +29,10 @@ export function AdvancedTuningPanel({
     };
 
     return html`
-        <!-- ADVANCED TUNING, RANGE LIMITS & FINE SLIDERS (DIRECTLY BELOW SPEED & DWELL) -->
+        <!-- ADVANCED TUNING, RANGE LIMITS, CALIBRATION MATRIX & FINE SLIDERS -->
         <details class="panel" style="margin-top: 6px; grid-column: 1 / -1; border-color: var(--border-sharp); background: rgba(0,0,0,0.25);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
-                <span>⚙️ BATAS RENTANG & FINE TUNING (SPEED & DWELL) ▾</span>
+                <span>⚙️ BATAS RENTANG, KALIBRASI & FINE TUNING ▾</span>
                 <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: normal;">
                     Batas: <strong>${maxRpmLimit} RPM / ${maxDwellLimit.toFixed(1)}ms</strong>
                 </span>
@@ -77,9 +78,6 @@ export function AdvancedTuningPanel({
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(+10)} disabled=${!state.connected || isAutoDiag}>+10</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustRpm(+100)} disabled=${!state.connected || isAutoDiag}>+100</button>
                     </div>
-                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; text-align: right;">
-                        Slide dial utama di atas kini bergerak presisi dari <strong>0 s/d ${maxRpmLimit} RPM</strong>.
-                    </div>
                 </div>
 
                 <!-- SECTION 2: BATAS ATAS DWELL TIME (MAX DWELL LIMIT SELECTION & FINE SLIDER) -->
@@ -120,12 +118,12 @@ export function AdvancedTuningPanel({
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(+0.1)} disabled=${!state.connected || isAutoDiag}>+0.1</button>
                         <button class="btn" style="padding: 4px 8px; font-size: 0.68rem;" onClick=${() => adjustDwell(+0.5)} disabled=${!state.connected || isAutoDiag}>+0.5</button>
                     </div>
-                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; text-align: right;">
-                        Slide dial dwell utama di atas kini bergerak dari <strong>0.0 s/d ${maxDwellLimit.toFixed(1)} ms</strong>.
-                    </div>
                 </div>
 
-                <!-- SECTION 3: SWEEP TIME & RPM STEP SIZE DIALS -->
+                <!-- SECTION 3: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
+                <${CalibrationMatrixPanel} />
+
+                <!-- SECTION 4: SWEEP TIME & RPM STEP SIZE DIALS -->
                 <div class="responsive-grid-2" style="margin-top: 2px;">
                     <${Dial} 
                         compact=${true}

@@ -33,7 +33,13 @@ FIRMWARE_BACKUP/
 │   ├── bootloader.bin
 │   └── partitions.bin
 │
-├── v2.6.0_SAFE_LOCK/              <-- ⭐ VERSI TERBARU & AKTIF (Sticky Emergency Stop + Safety Double-Tap + Fine Sliders + Dwell 0.0ms)
+├── v2.6.0_SAFE_LOCK/              <-- Sticky Emergency Stop + Safety Double-Tap + Fine Sliders + Dwell 0.0ms
+│   ├── firmware.bin
+│   ├── littlefs.bin
+│   ├── bootloader.bin
+│   └── partitions.bin
+│
+├── v2.7.0_BENCHMARK_PRO/          <-- ⭐ VERSI TERBARU & AKTIF (Database Mobil/Koil + ADS1115 Voltmeter & Joystick + Dual Suhu DS18B20 + Anti-Jitter Deadband + Matriks Kalibrasi)
 │   ├── firmware.bin
 │   ├── littlefs.bin
 │   ├── bootloader.bin
@@ -46,9 +52,17 @@ FIRMWARE_BACKUP/
 
 ## 📊 TABEL PERBANDINGAN FITUR ANTAR VERSI
 
-| Kategori Fitur | v1.0.0 | v2.3.0 | v2.4.0 | v2.5.0 | v2.6.0 (Safe Lock) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Status Saat Ini** | Cadangan Asli | Arsip Luas | Arsip Mini | Arsip Custom | **⭐ AKTIF DI PERANGKAT** |
+| Kategori Fitur | v1.0.0 | v2.3.0 | v2.6.0 | v2.7.0 (Benchmark Pro) |
+| :--- | :---: | :---: | :---: | :---: |
+| **Status Saat Ini** | Cadangan Asli | Arsip Luas | Arsip Safe Lock | **⭐ AKTIF DI PERANGKAT** |
+| **Database Profil Mobil & Koil** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **Built-In Presets + Cold vs Hot Endurance Logger** |
+| **Voltmeter Realtime (ADS1115 I2C)** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **Scanner-Style Voltmeter (12.6V Ready)** |
+| **Navigasi Joystick Analog (ADS1115)** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **I2C 16-Bit Dual-Axis VRx/VRy Driver** |
+| **Dual Sensor Suhu DS18B20 (1-Wire)** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **Suhu Bodi Koil & Heatsink Driver IGBT** |
+| **Matriks Kalibrasi Skor Custom** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **Grade A/B/C/D/E Custom Calibration** |
+| **Pre-Flight Check Coil Drawer** | ❌ Belum Ada | ❌ Belum Ada | Standar | ✅ **Collapsible + Custom 1x/2x/3x/5x/10x Pulses** |
+| **Slider Anti-Jitter Touch Deadband** | ❌ Belum Ada | ❌ Belum Ada | Standar | ✅ **Deadband ≥4px (Digit Terkunci Mantap)** |
+| **Safety Lock & Emergency Stop** | Standar | Standar | ✅ Sticky Bottom | ✅ **Sticky Bottom + Double-Tap + 1-Tap STOP** |
 | **Safety Lock & Emergency Stop** | Standar | Standar | Standar | Standar | ✅ **Sticky Bottom + Double-Tap Unlock + Instant STOP** |
 | **Fine Tuning Slider Speed & Dwell** | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ❌ Belum Ada | ✅ **Slider Halus Step 10 RPM & 0.05ms + Tombol Nudge** |
 | **Batas Minimum Dwell Time** | 0.5 ms | 0.5 ms | 0.5 ms | 0.5 ms | ✅ **Bisa 0.0 ms (OLED & Web UI)** |

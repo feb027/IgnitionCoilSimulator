@@ -43,12 +43,16 @@
 #define PIN_ENC_DT  23
 #define PIN_ENC_SW  27
 
-// --- OLED Display & MCP4725 DAC (I2C) ---
+// --- OLED Display, MCP4725 DAC & ADS1115 ADC (I2C) ---
 // Standard ESP32 I2C pins
 #define PIN_OLED_SDA 21
 #define PIN_OLED_SCL 22
-#define MCP4725_I2C_ADDR 0x60 // Default MCP4725 address (A0 to GND)
+#define MCP4725_I2C_ADDR 0x60     // Default MCP4725 address (A0 to GND)
 #define MCP4725_I2C_ADDR_ALT 0x61 // Alternate MCP4725 address (A0 to VCC)
+#define ADS1115_I2C_ADDR 0x48     // Default ADS1115 I2C ADC address (ADDR to GND)
+
+// --- Dual Temperature Sensor (Dallas 1-Wire DS18B20) ---
+#define PIN_DS18B20_1WIRE 13      // 1-Wire Data Line for Coil & Driver Temp (GPIO 13)
 
 // --- TFT Display (SPI) - Reserved for future ---
 // Standard ESP32 VSPI pins

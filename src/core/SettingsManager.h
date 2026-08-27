@@ -126,6 +126,14 @@ struct AppSettings {
     bool coilConnected;         // True if coil load is detected via Auto-Ping / Current Sense
     char coilLeakSeverity[32];  // "PERFECT (0 LEAK)", "MICRO-LEAKAGE", "MEDIUM ARCING", "SEVERE BREAKDOWN"
     char coilCurrentStatus[32]; // "OPTIMAL (6-10A)", "WEAK (<5A)", "OVERCURRENT (>11A)", "STANDBY"
+
+    // Auxiliary Sensors (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
+    float supplyVoltage;        // Battery supply voltage in Volts (e.g. 12.6V)
+    float realCurrentA;         // Real continuous average/quiescent current in Amperes
+    float tempCoilC;            // Coil body temperature in °C
+    float tempDriverC;          // IGBT driver heatsink temperature in °C
+    int checkCoilPulseCount;    // Custom Check Coil pulse count (1x, 2x, 3x, 5x, 10x)
+    char checkCoilVerdict[64];  // Multi-case Check Coil verdict string
 };
 
 class SettingsManager {

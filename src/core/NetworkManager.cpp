@@ -9,6 +9,8 @@
 #include "../modes/PeripheralStepperIacv.h"
 #include "../modes/PeripheralStepperUni.h"
 #include "CoilLeakSensor.h"
+#include "services/Ads1115Service.h"
+#include "services/TempSensorService.h"
 
 NetworkManager::NetworkManager(SettingsManager& settingsMgr, PeripheralManager& peripheralMgr, MenuSystem& menuSys)
     : _settingsMgr(settingsMgr), 
@@ -176,6 +178,14 @@ void NetworkManager::broadcastState() {
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
+
+    // Auxiliary Sensor Telemetry (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
+    doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage();
+    doc["realCurrentA"] = s.realCurrentA;
+    doc["tempCoilC"] = TempSensorService::getInstance().getCoilTempC();
+    doc["tempDriverC"] = TempSensorService::getInstance().getDriverTempC();
+    doc["checkCoilPulseCount"] = s.checkCoilPulseCount;
+    doc["checkCoilVerdict"] = s.checkCoilVerdict;
     
     // Injector Telemetry
     doc["injectorMs"] = s.injectorMs;
@@ -590,9 +600,31 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
                 _settingsMgr.save();
                 changed = true;
             }
-        } else if (action == "probeCoil") {
+        } else if (action == "probeCoil" || action == "runCheckCoil") {
             if (_peripheralMgr.getActive() != nullptr) {
                 _peripheralMgr.getActive()->probeCoil();
+                // Formulate multi-case diagnostic verdict
+                float vBat = Ads1115Service::getInstance().getSupplyVoltage();
+                if (vBat < 9.0f && vBat > 0.1f) {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "⚠️ LOW SUPPLY VOLTAGE (%.1fV)", vBat);
+                } else if (s.coilPeakCurrentA > 11.0f) {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "🚨 DANGER: OVERCURRENT SHORT (>11A)");
+                } else if (s.coilPeakCurrentA < 0.5f && s.coilFiredCount > 0) {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "⚠️ OPEN CIRCUIT: NO PRIMARY CURRENT (0A)");
+                } else if (s.coilLeakDetected || s.coilLeakCount > 0) {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "⚠️ INSULATION LEAK DETECTED (PIN 36)");
+                } else if (s.coilPeakCurrentA >= 5.0f) {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "✅ PASS: COIL & WIRING READY (%.1fA)", s.coilPeakCurrentA);
+                } else {
+                    snprintf(s.checkCoilVerdict, sizeof(s.checkCoilVerdict), "✓ PRE-FLIGHT CHECK COMPLETED (%.1fA)", s.coilPeakCurrentA);
+                }
+                changed = true;
+            }
+        } else if (action == "setCheckCoilPulses") {
+            int p = doc["value"].as<int>();
+            if (p >= 1 && p <= 10) {
+                s.checkCoilPulseCount = p;
+                _settingsMgr.save();
                 changed = true;
             }
         }

@@ -8,6 +8,8 @@
 #include "ui/MenuSystem.h"
 #include "core/NetworkManager.h"
 #include "core/CoilLeakSensor.h"
+#include "services/Ads1115Service.h"
+#include "services/TempSensorService.h"
 #include "config/Pins.h"
 
 // Instantiate core modules
@@ -68,6 +70,8 @@ void setup() {
     // Initialize in order of dependencies
     settingsMgr.begin();
     CoilLeakSensor::begin();
+    Ads1115Service::getInstance().begin();
+    TempSensorService::getInstance().begin();
     peripheralMgr.begin();
     displayMgr.begin();
     menuSys.begin();
@@ -90,6 +94,10 @@ void loop() {
     // Reset watchdog timer
     esp_task_wdt_reset();
     
+    // Process auxiliary services (ADC Voltmeter, Joystick & Temp sensors)
+    Ads1115Service::getInstance().update();
+    TempSensorService::getInstance().update();
+
     // Process peripheral state (Core 1 loop)
     peripheralMgr.update();
     

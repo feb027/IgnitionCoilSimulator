@@ -194,9 +194,14 @@ void SettingsManager::load() {
     _settings.coilLeakDebounceMs = preferences.getFloat("lk_db", 1.0f);
     if (_settings.coilLeakDebounceMs < 0.1f) _settings.coilLeakDebounceMs = 0.1f;
     if (_settings.coilLeakDebounceMs > 5.0f) _settings.coilLeakDebounceMs = 5.0f;
-    _settings.coilConnected = false;
-    strncpy(_settings.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(_settings.coilLeakSeverity));
-    strncpy(_settings.coilCurrentStatus, "STANDBY", sizeof(_settings.coilCurrentStatus));
+    
+    _settings.supplyVoltage = 12.6f;
+    _settings.realCurrentA = 0.0f;
+    _settings.tempCoilC = 28.5f;
+    _settings.tempDriverC = 29.0f;
+    _settings.checkCoilPulseCount = preferences.getInt("chk_pulses", 3);
+    if (_settings.checkCoilPulseCount < 1 || _settings.checkCoilPulseCount > 10) _settings.checkCoilPulseCount = 3;
+    strncpy(_settings.checkCoilVerdict, "READY", sizeof(_settings.checkCoilVerdict));
 
     // Setup fallback defaults just in case
     _settings.isRunning = false; // Always start stopped for safety

@@ -2,6 +2,7 @@ import { html, useState } from '../preact.js';
 import { Dial } from './Dial.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
 import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
+import { CoilDatabaseCard } from './CoilDatabaseCard.js';
 import { SafetyTriggerBar } from './SafetyTriggerBar.js';
 
 export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
@@ -51,7 +52,7 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
             />
         </div>
 
-        <!-- ADVANCED RANGE LIMITS & FINE TUNING DIRECTLY BELOW ENGINE SPEED & DWELL -->
+        <!-- ADVANCED RANGE LIMITS, CALIBRATION MATRIX & FINE TUNING -->
         <${AdvancedTuningPanel} 
             state=${state} 
             sendAction=${sendAction} 
@@ -60,6 +61,9 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
             maxDwellLimit=${maxDwellLimit}
             onMaxDwellChange=${handleMaxDwellChange}
         />
+
+        <!-- VEHICLE SPECIFICATION & COIL BENCHMARK DATABASE -->
+        <${CoilDatabaseCard} state=${state} sendAction=${sendAction} />
 
         ${modeSelector}
 
@@ -94,16 +98,6 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                             • Koil sehat wajib melompati celah 10-12 mm dengan kilatan biru tebal dan suara cetak-cetak nyaring.
                         </div>
                     </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
-                    <strong style="color: var(--neon-purple);">3. TAHAP PENGUJIAN & DETEKSI KERUSAKAN:</strong>
-                    <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
-                        <li><strong>Uji Arus Primer (PEAK CURRENT):</strong> Koil sehat menarik arus <strong>6.5A s/d 9.0A</strong>. Jika di bawah 5.0A berarti igniter internal drop (penyebab brebet). Jika >11.0A berarti kumparan korslet.</li>
-                        <li><strong>Uji Dwell Singkat (2.0 ms @ 5000 RPM):</strong> Geser Dwell ke 2.0 ms. Koil prima tetap mampu menembak api stabil. Jika api mati/redup, koil sudah lemah.</li>
-                        <li><strong>Uji Ketahanan Panas (Endurance Test):</strong> Jalankan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mulai putus-putus apinya saat badan koil mulai hangat.</li>
-                        <li><strong>Uji Kebocoran Bodi:</strong> Perhatikan status <strong>LEAK BODI</strong> di atas. Jika muncul status kuning/merah atau buzzer berbunyi, isolator batang koil bocor.</li>
-                    </ol>
                 </div>
 
                 <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
