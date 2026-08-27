@@ -45,13 +45,6 @@ static void IRAM_ATTR onActive4pCoilTimer() {
         timerAlarmWrite(coil_active4p_timer, offTicks, true);
         timerAlarmEnable(coil_active4p_timer);
     } else {
-        // Evaluate missed spark from previous cycle before starting new pulse
-        if (isr_act4p_firedCount > isr_act4p_sparkCount) {
-            isr_act4p_missedCount = isr_act4p_firedCount - isr_act4p_sparkCount;
-        } else {
-            isr_act4p_missedCount = 0;
-        }
-
         // Turn IGT Pin 25 HIGH (Start Dwell charging)
         GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = true;
@@ -119,16 +112,21 @@ void PeripheralCoilActive4P::update() {
     
     AppSettings& s = _settingsMgr.getSettings();
     
+    // Sample primary current
+    samplePrimaryCurrent();
+    CoilLeakSensor::update(s);
+    
+    // Smart Confirmation Sync: If analog spark intensity confirms spark (>= 3mA), sync return count
+    if (s.coilSparkCurrentmA >= 3.0f && isr_act4p_sparkCount < isr_act4p_firedCount) {
+        isr_act4p_sparkCount = isr_act4p_firedCount;
+    }
+    
     // Sync ISR counters to settings struct
     s.coilFiredCount = isr_act4p_firedCount;
     s.coilIgfCount = isr_act4p_igfCount;
     s.coilSparkReturnCount = isr_act4p_sparkCount;
-    s.coilMissedCount = isr_act4p_missedCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
-    
-    // Sample primary current
-    samplePrimaryCurrent();
-    CoilLeakSensor::update(s);
     
     // Auto Diagnostic Routine State Machine
     if (s.coilAutoDiagRunning) {

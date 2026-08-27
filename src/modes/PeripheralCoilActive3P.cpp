@@ -49,13 +49,6 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         timerAlarmWrite(coil_active3p_timer, offTicks, true);
         timerAlarmEnable(coil_active3p_timer);
     } else {
-        // Evaluate missed spark from previous cycle before starting new pulse
-        if (isr_act3p_firedCount > isr_act3p_sparkReturnCount) {
-            isr_act3p_missedCount = isr_act3p_firedCount - isr_act3p_sparkReturnCount;
-        } else {
-            isr_act3p_missedCount = 0;
-        }
-
         // Turn IGT Pin 25 HIGH (Direct register write)
         GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = true;
@@ -101,14 +94,20 @@ void PeripheralCoilActive3P::update() {
     
     AppSettings& s = _settingsMgr.getSettings();
     
+    // Sample primary and secondary spark sensors
+    samplePrimaryCurrent();
+    CoilLeakSensor::update(s);
+    
+    // Smart Confirmation Sync: If analog spark intensity confirms spark (>= 3mA), sync return count
+    if (s.coilSparkCurrentmA >= 3.0f && isr_act3p_sparkReturnCount < isr_act3p_firedCount) {
+        isr_act3p_sparkReturnCount = isr_act3p_firedCount;
+    }
+    
     s.coilFiredCount = isr_act3p_firedCount;
     s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
     s.coilIgfCount = isr_act3p_sparkReturnCount;
-    s.coilMissedCount = isr_act3p_missedCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
-    
-    samplePrimaryCurrent();
-    CoilLeakSensor::update(s);
     
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {

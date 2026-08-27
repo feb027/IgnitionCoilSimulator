@@ -49,13 +49,6 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         timerAlarmWrite(coil_passive_timer, offTicks, true);
         timerAlarmEnable(coil_passive_timer);
     } else {
-        // Evaluate missed spark from previous cycle before starting new pulse
-        if (isr_pass_firedCount > isr_pass_sparkReturnCount) {
-            isr_pass_missedCount = isr_pass_firedCount - isr_pass_sparkReturnCount;
-        } else {
-            isr_pass_missedCount = 0;
-        }
-
         // Turn IGBT Gate ON (GPIO 33 HIGH)
         GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = true;
@@ -101,14 +94,20 @@ void PeripheralCoilPassive::update() {
     
     AppSettings& s = _settingsMgr.getSettings();
     
+    // Sample primary and secondary spark sensors
+    samplePrimaryCurrent();
+    CoilLeakSensor::update(s);
+    
+    // Smart Confirmation Sync: If analog spark intensity confirms spark (>= 3mA), sync return count
+    if (s.coilSparkCurrentmA >= 3.0f && isr_pass_sparkReturnCount < isr_pass_firedCount) {
+        isr_pass_sparkReturnCount = isr_pass_firedCount;
+    }
+    
     s.coilFiredCount = isr_pass_firedCount;
     s.coilSparkReturnCount = isr_pass_sparkReturnCount;
     s.coilIgfCount = isr_pass_sparkReturnCount;
-    s.coilMissedCount = isr_pass_missedCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
-    
-    samplePrimaryCurrent();
-    CoilLeakSensor::update(s);
     
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
