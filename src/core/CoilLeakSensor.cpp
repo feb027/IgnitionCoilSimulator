@@ -1,22 +1,24 @@
 #include "CoilLeakSensor.h"
 
-static volatile uint32_t isr_leak_total = 0;
+static volatile uint32_t isr_leak_raw_hits = 0;
 static volatile uint32_t isr_leak_last_us = 0;
 static volatile uint32_t isr_leak_last_time_ms = 0;
-static volatile uint32_t isr_leak_debounce_us = 1000; // Default 1.0ms lockout
+static volatile uint32_t isr_leak_debounce_us = 3000; // Default 3.0ms lockout
 static uint32_t last_rate_check_time = 0;
 static uint32_t prev_leak_snapshot = 0;
 static uint32_t buzzer_off_time = 0;
-static uint32_t window_start_total = 0;
+static uint32_t window_start_hits = 0;
 static uint32_t last_window_reset = 0;
+static uint32_t verified_arcs_total = 0;
+static uint32_t last_processed_raw = 0;
 
 static void IRAM_ATTR onLeakageInterrupt() {
     uint32_t nowUs = micros();
-    // Dynamic anti-ringing hardware debounce filter (0.1ms - 3.0ms)
+    // Dynamic anti-ringing hardware debounce filter (0.8ms - 5.0ms)
     if (nowUs - isr_leak_last_us < isr_leak_debounce_us) return;
     isr_leak_last_us = nowUs;
     
-    isr_leak_total++;
+    isr_leak_raw_hits++;
     isr_leak_last_time_ms = millis();
 }
 
@@ -31,8 +33,6 @@ void CoilLeakSensor::begin() {
 void CoilLeakSensor::update(AppSettings& s) {
     uint32_t now = millis();
     
-    s.coilLeakCount = isr_leak_total;
-    
     // Safety: If ignition simulator is NOT running, mute buzzer and clear active flag immediately
     if (!s.isRunning) {
         s.coilLeakDetected = false;
@@ -41,61 +41,71 @@ void CoilLeakSensor::update(AppSettings& s) {
     }
     
     // Multi-Tier Sensitivity Calibration:
-    // Level 1: Ultra (Debounce 0.3ms, Thresh 2 - Micro leakage detection)
-    // Level 2: High (Debounce 0.8ms, Thresh 4 - Fine resin cracks)
-    // Level 3: Medium / Standard (Debounce 1.5ms, Thresh 6 - Standard)
-    // Level 4: Super Immune (Debounce 3.5ms, Thresh 12 - Heavy sustained flashover breakdown only)
+    // Level 1: Ultra (Debounce 0.8ms, Thresh 1 - Direct micro crack probe contact)
+    // Level 2: High (Debounce 1.5ms, Thresh 2 - Fine resin cracks)
+    // Level 3: Standard (Debounce 3.0ms, Thresh 4 - Robust against air EMI, triggers on body leak)
+    // Level 4: Super Immune (Debounce 5.0ms, Thresh 8 - Heavy sustained flashover breakdown only)
     // Level 5: Custom (User slider defined: Thresh 1-25, Debounce 0.1-5.0ms)
-    uint32_t threshold = 6;
-    float debounceMs = 1.5f;
+    uint32_t threshold = 4;
+    float debounceMs = 3.0f;
     
     switch (s.coilLeakSensitivity) {
-        case 1: debounceMs = 0.3f; threshold = 2; break;
-        case 2: debounceMs = 0.8f; threshold = 4; break;
-        case 3: debounceMs = 1.5f; threshold = 6; break;
-        case 4: debounceMs = 3.5f; threshold = 12; break;
+        case 1: debounceMs = 0.8f; threshold = 1; break;
+        case 2: debounceMs = 1.5f; threshold = 2; break;
+        case 3: debounceMs = 3.0f; threshold = 4; break;
+        case 4: debounceMs = 5.0f; threshold = 8; break;
         case 5: 
-            debounceMs = (s.coilLeakDebounceMs >= 0.1f) ? s.coilLeakDebounceMs : 1.5f;
-            threshold = (s.coilLeakThreshold >= 1) ? s.coilLeakThreshold : 6;
+            debounceMs = (s.coilLeakDebounceMs >= 0.1f) ? s.coilLeakDebounceMs : 3.0f;
+            threshold = (s.coilLeakThreshold >= 1) ? s.coilLeakThreshold : 4;
             break;
-        default: debounceMs = 1.5f; threshold = 6; break;
+        default: debounceMs = 3.0f; threshold = 4; break;
     }
     
     isr_leak_debounce_us = (uint32_t)(debounceMs * 1000.0f);
     
-    // Rolling 350ms window count calculation
+    // Rolling 350ms window count calculation for burst qualification
     if (now - last_window_reset >= 350) {
-        window_start_total = isr_leak_total;
+        window_start_hits = isr_leak_raw_hits;
         last_window_reset = now;
     }
-    uint32_t current_window_hits = isr_leak_total - window_start_total;
+    uint32_t current_window_hits = isr_leak_raw_hits - window_start_hits;
+    
+    // Noise Gate: Qualify whether activity is real physical arcing
+    bool isLeakingNow = (now - isr_leak_last_time_ms < 350) && (current_window_hits >= threshold);
+    s.coilLeakDetected = isLeakingNow;
+    
+    // Accumulate into official ARCS counter only when qualified (blocks stray single air spikes)
+    if (isr_leak_raw_hits > last_processed_raw) {
+        uint32_t newHits = isr_leak_raw_hits - last_processed_raw;
+        if (isLeakingNow || threshold <= 1) {
+            verified_arcs_total += newHits;
+        }
+        last_processed_raw = isr_leak_raw_hits;
+    }
+    s.coilLeakCount = verified_arcs_total;
     
     // Leak rate per second calculation
     if (now - last_rate_check_time >= 1000) {
-        s.coilLeakRate = (uint16_t)(isr_leak_total - prev_leak_snapshot);
-        prev_leak_snapshot = isr_leak_total;
+        s.coilLeakRate = (uint16_t)(verified_arcs_total - prev_leak_snapshot);
+        prev_leak_snapshot = verified_arcs_total;
         last_rate_check_time = now;
         
         // 4-Tier Severity Classification
-        if (s.coilLeakRate == 0 && isr_leak_total == 0) {
+        if (s.coilLeakRate == 0 && verified_arcs_total == 0) {
             strncpy(s.coilLeakSeverity, "PERFECT (0 LEAK)", sizeof(s.coilLeakSeverity));
         } else if (s.coilLeakRate <= 5) {
             strncpy(s.coilLeakSeverity, "MICRO-LEAKAGE", sizeof(s.coilLeakSeverity));
-        } else if (s.coilLeakRate <= 25) {
+        } else if (s.coilLeakRate <= 20) {
             strncpy(s.coilLeakSeverity, "MEDIUM ARCING", sizeof(s.coilLeakSeverity));
         } else {
             strncpy(s.coilLeakSeverity, "SEVERE BREAKDOWN", sizeof(s.coilLeakSeverity));
         }
     }
     
-    // Active detection: triggers if hit received within 350ms AND hits >= threshold
-    bool isLeakingNow = (now - isr_leak_last_time_ms < 350) && (current_window_hits >= threshold);
-    s.coilLeakDetected = isLeakingNow;
-    
     // Integrate Body Leakage Penalty into Coil Health Analyzer
     if (s.coilFiredCount > 0) {
         float baseHealth = s.coilHealthPercent;
-        if (s.coilLeakRate > 25 || strstr(s.coilLeakSeverity, "SEVERE") != nullptr) {
+        if (s.coilLeakRate > 20 || strstr(s.coilLeakSeverity, "SEVERE") != nullptr) {
             s.coilHealthPercent = (baseHealth > 20.0f) ? 20.0f : baseHealth;
         } else if (s.coilLeakRate > 5 || strstr(s.coilLeakSeverity, "MEDIUM") != nullptr) {
             s.coilHealthPercent = (baseHealth > 50.0f) ? 50.0f : baseHealth;
@@ -104,12 +114,18 @@ void CoilLeakSensor::update(AppSettings& s) {
         }
     }
     
-    // Buzzer alarm control
+    // Buzzer Alarm Synchronization
     if (isLeakingNow) {
-        if (now > buzzer_off_time) {
+        if (s.coilLeakRate > 15 || current_window_hits > 12) {
+            // High-speed / severe continuous arcing: Sustained continuous tone
             digitalWrite(PIN_BUZZER, HIGH);
-            uint32_t pulseDuration = (s.coilLeakRate > 25) ? 25 : 40;
-            buzzer_off_time = now + pulseDuration;
+            buzzer_off_time = now + 150;
+        } else {
+            // Moderate cadence arcing: Synchronized distinct pulses
+            if (now > buzzer_off_time) {
+                digitalWrite(PIN_BUZZER, HIGH);
+                buzzer_off_time = now + 40;
+            }
         }
     } else {
         if (now >= buzzer_off_time) {
@@ -119,9 +135,13 @@ void CoilLeakSensor::update(AppSettings& s) {
 }
 
 void CoilLeakSensor::reset(AppSettings& s) {
-    isr_leak_total = 0;
+    isr_leak_raw_hits = 0;
+    last_processed_raw = 0;
+    verified_arcs_total = 0;
     isr_leak_last_time_ms = 0;
     prev_leak_snapshot = 0;
+    window_start_hits = 0;
+    last_window_reset = millis();
     s.coilLeakCount = 0;
     s.coilLeakRate = 0;
     s.coilLeakDetected = false;
