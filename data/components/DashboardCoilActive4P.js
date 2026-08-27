@@ -1,5 +1,6 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
+import { LeakageCard } from './LeakageCard.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
 
 export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
@@ -8,11 +9,17 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const verdict = state.coilDiagVerdict || "READY";
 
     return html`
-        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
+        <div class="panel-main">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
+                    ⚡ IGT (PIN 25) | IGF (PIN 34) | SENSE (PIN 35) | SPARK (PIN 39)
+                </div>
+                <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
+                    ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
+                </span>
+            </div>
             <${Dial} 
-                compact=${true}
-                label=${isAutoDiag ? "AUTO DIAG..." : ((isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
+                label=${isAutoDiag ? "AUTO DIAGNOSTIC RPM" : ((isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
                 unit="RPM"
                 min="0"
@@ -21,10 +28,11 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
             />
-            
+        </div>
+        
+        <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
             <${Dial} 
-                compact=${true}
-                label="DWELL TIME (IGT)"
+                label="DWELL TIME (IGT PULSE WIDTH)"
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.5"
@@ -53,38 +61,57 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
             </button>
         </div>
         
-        <!-- UNIFIED TRI-DIMENSION IGNITION & LEAK ANALYZER COCKPIT -->
-        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN COMPARATOR (IGF + SPARK)" is4Pin=${true} />
+        <!-- 4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK CURRENT + LIVE GRAPH) -->
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK)" is4Pin=${true} />
 
-        <!-- 20-SECOND AUTO HEALTH & STRESS SCAN (COMPACT CARD) -->
-        <div class="panel" style="margin-top: 10px; grid-column: 1 / -1; padding: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+        <!-- 20-SECOND AUTO HEALTH & STRESS SCAN PANEL -->
+        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: var(--space-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
                 <div>
-                    <div style="font-weight: 700; font-size: 0.82rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted);">
-                        Tes Dwell 1.2ms, Throttle Burst 6500 RPM, & Thermal Stress 7000 RPM.
+                    <div style="font-weight: 700; font-size: 0.95rem;">20-SECOND AUTO HEALTH & STRESS SCAN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        Tests Low-Dwell Margin (1.2ms), WOT Throttle Burst (6500 RPM), & High-Temp Stress (7000 RPM).
                     </div>
                 </div>
-                <div style="display: flex; gap: 6px;">
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.72rem;" onClick=${() => sendAction('resetCoilCounters')} disabled=${!state.connected || isAutoDiag}>RESET</button>
-                    <button class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}" style="padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};" onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')} disabled=${!state.connected}>
-                        ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO SCAN'}
+                
+                <div style="display: flex; gap: 8px;">
+                    <button 
+                        class="btn"
+                        style="padding: 8px 12px; font-size: 0.8rem;"
+                        onClick=${() => sendAction('resetCoilCounters')}
+                        disabled=${!state.connected || isAutoDiag}
+                    >
+                        RESET COUNTERS
+                    </button>
+                    
+                    <button 
+                        class="btn ${isAutoDiag ? 'is-running' : 'btn-active'}"
+                        style="padding: 8px 16px; font-size: 0.85rem; font-weight: bold; border-color: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'}; color: ${isAutoDiag ? '#fff' : '#000'}; background: ${isAutoDiag ? 'var(--neon-red)' : 'var(--neon-green)'};"
+                        onClick=${() => sendAction(isAutoDiag ? 'stopCoilDiag' : 'startCoilDiag')}
+                        disabled=${!state.connected}
+                    >
+                        ${isAutoDiag ? 'ABORT SCAN' : 'START AUTO HEALTH SCAN'}
                     </button>
                 </div>
             </div>
 
+            <!-- Progress Bar & Active Phase Message -->
             ${isAutoDiag ? html`
-                <div style="margin-top: 8px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px;">
-                        <span>${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Sweep (1.2ms → 3.5ms)' : state.coilDiagPhase === 2 ? 'Phase 2: Burst (800 → 6500 RPM)' : 'Phase 3: Thermal Stress (7000 RPM)'}</span>
-                        <strong>${state.coilDiagProgress || 0}%</strong>
+                <div style="margin-top: 12px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                        <span>
+                            ${state.coilDiagPhase === 1 ? 'Phase 1: Dwell Saturation Margin Sweep (1.2ms → 3.5ms)' :
+                            state.coilDiagPhase === 2 ? 'Phase 2: Throttle Tip-In Burst (800 → 6500 RPM)' :
+                            'Phase 3: High-RPM Thermal Breakdown Stress (7000 RPM)'}
+                        </span>
+                        <span style="font-weight: bold;">${state.coilDiagProgress || 0}%</span>
                     </div>
-                    <div style="width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; border: 1px solid var(--border-sharp);">
-                        <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green);"></div>
+                    <div style="width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-sharp);">
+                        <div style="height: 100%; width: ${state.coilDiagProgress || 0}%; background: var(--neon-green); transition: width 0.2s;"></div>
                     </div>
                 </div>
             ` : html`
-                <div style="margin-top: 6px; font-size: 0.75rem; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 3px; display: flex; justify-content: space-between;">
+                <div style="margin-top: 8px; font-size: 0.85rem; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; justify-content: space-between;">
                     <span>LAST SCAN VERDICT:</span>
                     <strong style="color: ${verdict.includes('HEALTHY') ? 'var(--neon-green)' : (verdict.includes('DEGRADED') ? 'var(--neon-orange)' : (verdict.includes('FAIL') ? 'var(--neon-red)' : 'var(--text-primary)'))}">
                         ${verdict}
@@ -92,39 +119,88 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 </div>
             `}
         </div>
+        
+        <!-- BODY LEAKAGE DETECTION CARD (PIN 36 SENSITIVITY & ARC COUNTERS) -->
+        <${LeakageCard} state=${state} sendAction=${sendAction} />
 
-        <!-- PANDUAN PENGUJIAN & PINOUT (COLLAPSED BY DEFAULT) -->
-        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp);">
-            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--text-primary); font-weight: bold;">
-                📖 PANDUAN PENGUJIAN, PINOUT & WIRING KOIL 4-PIN ▾
+        <!-- PIN INFO CARD -->
+        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
+            <div class="panel-header">
+                <span>4-PIN ACTIVE COIL PINOUT & WIRING</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                • <strong>PIN 1 (+B):</strong> +12V Power Supply / Aki (via sensor arus ACS712)<br/>
+                • <strong>PIN 2 (IGT):</strong> Terminal IGT Output (Pin 25)<br/>
+                • <strong>PIN 3 (IGF):</strong> Terminal IGF Input (Pin 34)<br/>
+                • <strong>PIN 4 (GND):</strong> Terminal Ground Aki 12V<br/>
+                • <strong>Probe Leak (Pin 36):</strong> Lilitkan kawat sensor di leher karet koil
+            </div>
+        </div>
+
+        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL 4-PIN -->
+        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-cyan, #00d4ff);" open>
+            <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-cyan, #00d4ff); font-weight: bold; letter-spacing: 0.05em;">
+                📖 TATA CARA & PANDUAN PENGUJIAN KOIL 4-PIN LENGKAP ▾
             </summary>
-            <div style="padding-top: 10px; font-size: 0.8rem; color: var(--text-primary); line-height: 1.6;">
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 10px; margin-bottom: 8px;">
-                    <strong style="color: var(--neon-orange);">KONEKSI KABEL:</strong><br/>
-                    • <strong>Pin 1 (+B):</strong> +12V Aki (via ACS712)<br/>
-                    • <strong>Pin 2 (IGT):</strong> Output IGT Pin 25<br/>
-                    • <strong>Pin 3 (IGF):</strong> Input IGF Pin 34<br/>
-                    • <strong>Pin 4 (GND):</strong> Ground Aki / Simulator<br/>
-                    • <strong>Probe Leak:</strong> Lilitkan sensor di leher karet koil
+            <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+                
+                <div style="background: rgba(0, 212, 255, 0.06); border-left: 3px solid var(--neon-cyan, #00d4ff); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-cyan, #00d4ff);">🎯 TUJUAN DIAGNOSA:</strong><br/>
+                    Mengetahui apakah koil benar-benar sehat di bawah beban kompresi 15 Bar, bebas dari gejala brebet saat akselerasi, bebas kebocoran kilovolt, dan tidak pincang saat mesin panas.
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 10px;">
-                    <strong style="color: var(--neon-green);">TIPS ANALISA KELAYAKAN:</strong><br/>
-                    • <strong>Arus Primer:</strong> 6.5A - 9.5A.<br/>
-                    • <strong>Dual Channel (IGF + Spark):</strong> Membandingkan detak konfirmasi IGF transistor dengan loncatan arus api nyata Pin 39.<br/>
-                    • <strong>Insulation Leak:</strong> Sensor Pin 36 mendeteksi kebocoran tegangan tinggi tembus selongsong karet.
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-orange);">1. KONEKSI KABEL KOIL 4-PIN:</strong>
+                        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                            <li><strong>Pin 1 (+B):</strong> Sambung ke +12V Aki (via ACS712).</li>
+                            <li><strong>Pin 2 (IGT):</strong> Sambung ke Pin IGT Output (Pin 25).</li>
+                            <li><strong>Pin 3 (IGF):</strong> Sambung ke Pin IGF Input (Pin 34).</li>
+                            <li><strong>Pin 4 (GND):</strong> Sambung ke Ground Aki 12V.</li>
+                            <li><strong>Probe Leak:</strong> Lilitkan kawat di leher karet koil.</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px;">
+                        <strong style="color: var(--neon-green);">2. SETTING CELAH BUSI (SPARK GAP):</strong>
+                        <div style="font-size: 0.8rem; margin-top: 6px;">
+                            • Gunakan <strong>Adjustable Spark Gap Tester</strong>.<br/>
+                            • Atur celah loncatan ke <strong>10 mm s/d 12 mm</strong> (jarak ini meniru hambatan kompresi 15 Bar di ruang silinder mesin mobil).
+                        </div>
+                    </div>
                 </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 12px; margin-bottom: 14px;">
+                    <strong style="color: var(--neon-purple);">3. TAHAP PENGUJIAN MANUAL & DETEKSI BREBET:</strong>
+                    <ol style="margin: 6px 0 0 16px; padding: 0; font-size: 0.8rem;">
+                        <li><strong>Uji Langsam (Idle Test):</strong> Set RPM 1.200, Dwell 3.0 ms → Tekan <strong>MASTER RUN</strong>. Amati api wajib biru tebal dan suara cetak-cetak padat.</li>
+                        <li><strong>Uji Arus Primer:</strong> Koil sehat wajib berada di rentang <strong>6.5A s/d 9.5A</strong>. Jika di bawah 5.0A berarti kumparan loyo.</li>
+                        <li><strong>Uji Akselerasi Spontan:</strong> Naikkan RPM ke 5.000 dan turunkan Dwell ke <strong>2.0 ms</strong>. Koil sehat tetap memercik kuat tanpa ada <em>Missed Sparks</em>.</li>
+                        <li><strong>Uji Ketahanan Panas:</strong> Pilih mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mengalami penurunan api saat badan koil mulai hangat.</li>
+                    </ol>
+                </div>
+
+                <!-- PANDUAN TROUBLESHOOTING KESALAHAN KONEKSI KABEL -->
+                <div style="background: rgba(255, 45, 85, 0.06); border: 1px solid var(--neon-red); border-radius: 4px; padding: 12px;">
+                    <strong style="color: var(--neon-red);">⚠️ PANDUAN JIKA PENYAMBUNGAN KABEL TIDAK BENAR:</strong>
+                    <div style="margin-top: 8px; font-size: 0.8rem; line-height: 1.5;">
+                        • <strong>PEAK CURRENT = 0.0A & Tidak Ada Api:</strong> Periksa kabel +12V/GND, posisi saklar 5V/12V, atau igniter koil putus.<br/>
+                        • <strong>Api Memercik TAPI IGF CONFIRMED = 0:</strong> Resistor Pull-up IGF 1kΩ belum terpasang atau sensor feedback IGF rusak.<br/>
+                        • <strong>OVERCURRENT (>11A) / Cepat Panas:</strong> Matikan segera! Kabel IGT menyentuh +12V atau kumparan primer korslet internal.<br/>
+                        • <strong>Api Melompat Liar ke Bodi:</strong> Penjepit Ground Logam Busi BELUM terpasang ke Ground Aki!
+                    </div>
+                </div>
+
             </div>
         </details>
 
         <!-- ADVANCED SETTINGS ACCORDION -->
-        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1;">
-            <summary class="panel-header" style="cursor: pointer; user-select: none; font-size: 0.72rem; color: var(--text-muted);">
-                ⚙️ ADVANCED SWEEP & STEP SETTINGS ▾
+        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
+            <summary class="panel-header" style="cursor: pointer; user-select: none;">
+                <span>ADVANCED SETTINGS ▾</span>
             </summary>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 8px;">
+            <div class="responsive-grid-2" style="padding-top: var(--space-md);">
                 <${Dial} 
-                    compact=${true}
                     label="SWEEP TIME"
                     value=${state.sweepTimeSec}
                     unit="SEC"
@@ -136,8 +212,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                     disabled=${!state.connected || isAutoDiag || (state.runMode === 3 && state.isRunning)}
                 />
                 <${Dial} 
-                    compact=${true}
-                    label="RPM STEP"
+                    label="RPM STEP SIZE"
                     value=${state.rpmStep}
                     unit="RPM"
                     min="10"
