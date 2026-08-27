@@ -550,3 +550,49 @@ header {
     }
 }
 
+/* --- WARNING PULSATING ALARM EFFECTS FOR FAULTY COILS --- */
+@keyframes pulse-alarm-red {
+    0% {
+        box-shadow: 0 0 8px rgba(255, 45, 85, 0.4);
+        border-color: #ff2d55;
+        background: rgba(255, 45, 85, 0.08);
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(255, 45, 85, 0.95), inset 0 0 12px rgba(255, 45, 85, 0.4);
+        border-color: #ff0033;
+        background: rgba(255, 45, 85, 0.25);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 45, 85, 0.4);
+        border-color: #ff2d55;
+        background: rgba(255, 45, 85, 0.08);
+    }
+}
+
+@keyframes pulse-alarm-orange {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 149, 0, 0.3);
+        border-color: #ff9500;
+        background: rgba(255, 149, 0, 0.06);
+    }
+    50% {
+        box-shadow: 0 0 18px rgba(255, 149, 0, 0.8), inset 0 0 8px rgba(255, 149, 0, 0.3);
+        border-color: #ffaa00;
+        background: rgba(255, 149, 0, 0.18);
+    }
+    100% {
+        box-shadow: 0 0 6px rgba(255, 149, 0, 0.3);
+        border-color: #ff9500;
+        background: rgba(255, 149, 0, 0.06);
+    }
+}
+
+.pulse-alarm-red {
+    animation: pulse-alarm-red 1.2s infinite ease-in-out !important;
+}
+
+.pulse-alarm-orange {
+    animation: pulse-alarm-orange 1.6s infinite ease-in-out !important;
+}
+
+

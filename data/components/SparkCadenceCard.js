@@ -15,7 +15,9 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
     const rpm = state.currentRpm || state.rpm || 800;
 
-    const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 100;
+    const isStandby = (fired === 0 && !state.isRunning);
+    const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 0;
+    const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0;
     const energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / 50.0)) : 1.0;
 
     const isLeaking = state.coilLeakDetected;
@@ -33,20 +35,20 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     }
 
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
-    let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal';
+    let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal', isAlarm = false;
 
     if (fired === 0) {
         healthColor = 'var(--text-muted)'; healthBadge = 'STANDBY'; healthDesc = 'Tekan Trigger / Run untuk Menguji';
     } else if (parseFloat(currentA) > 11.5) {
-        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT (>11A)'; healthDesc = 'Korsleting Primer / IGBT Rusak';
+        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT (>11A)'; healthDesc = 'Korsleting Primer / IGBT Rusak'; isAlarm = true;
     } else if (leakSeverity.includes("SEVERE") || leakRate > 25) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Ekstrem!';
-    } else if (isLeaking || leakCount > 0) {
-        healthColor = '#FFE600'; healthBadge = '⚡ 75% MIKRO LEAKAGE'; healthDesc = 'Kebocoran Bodi Terdeteksi';
-    } else if (confirmed > 0 && cadenceRate >= 95) {
-        healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Api Normal & Detak Sinkron';
+        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Ekstrem!'; isAlarm = true;
+    } else if (totalHealthScore < 50 || cadenceRate < 50) {
+        healthColor = 'var(--neon-red)'; healthBadge = '🔴 <50% MATI SURI'; healthDesc = 'Kerusakan Berat / Banyak Misfire'; isAlarm = true;
+    } else if (totalHealthScore < 75 || isLeaking || leakCount > 0) {
+        healthColor = '#FFE600'; healthBadge = '🟡 75% DEGRADASI'; healthDesc = 'Penurunan Daya / Mikro Leak';
     } else {
-        healthColor = 'var(--neon-orange)'; healthBadge = '⚠️ DEGRADED'; healthDesc = 'Ada Detak Hilang / Misfire';
+        healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Api Normal & Detak 100% Sinkron';
     }
 
     const currentSens = state.coilLeakSensitivity || 3;
@@ -62,6 +64,13 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         { id: 4, name: "4: KEBAL" },
         { id: 5, name: "5: CUSTOM" }
     ];
+
+    const handleFullReset = () => {
+        historyRef.current = [];
+        setHistory([]);
+        sendAction('resetCounters');
+        sendAction('resetLeakCounter');
+    };
 
     useEffect(() => {
         if (!state.isRunning && fired === 0) return;
@@ -82,7 +91,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     }
 
     return html`
-        <div class="panel" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor};">
+        <div class="panel ${isAlarm ? 'pulse-alarm-red' : ''}" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor};">
             <!-- SCANNER-STYLE LIVE VOLTMETER & DUAL TEMPERATURE STATUS STRIP -->
             <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.72rem; margin-bottom: 8px;">
                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -100,78 +109,82 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
             <!-- HEADER -->
             <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                <span style="font-weight: 700; letter-spacing: 0.05em; color: ${healthColor};">⚡ ${title}</span>
+                <span style="font-weight: 800; letter-spacing: 0.05em; color: ${healthColor};">⚡ ${title}</span>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08);" onClick=${() => { historyRef.current = []; setHistory([]); sendAction('resetCounters'); sendAction('resetLeakCounter'); }} disabled=${!state.connected}>🔄 RESET</button>
-                    <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor};">${healthBadge}</span>
+                    <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08);" onClick=${handleFullReset} disabled=${!state.connected}>🔄 RESET</button>
+                    <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor}; font-weight: 800;">${healthBadge}</span>
                 </div>
             </div>
 
             <!-- DUAL INDEPENDENT GAUGES -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px;">
                 <!-- GAUGE 1: KUALITAS API (mA) -->
-                <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
+                <div style="background: rgba(0,0,0,0.35); border: 1.5px solid var(--neon-cyan); border-radius: 6px; padding: 10px 14px; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-cyan);">⚡ GAUGE 1: KUALITAS API (mA)</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: >45 mA</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px;">
-                        <div style="font-size: 1.8rem; font-weight: 800; color: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))};">
-                            ${sparkmA.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">mA</span>
+                        <div style="font-size: 1.85rem; font-weight: 900; color: ${isStandby ? 'var(--text-muted)' : (sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)')))}">
+                            ${isStandby ? '--' : sparkmA.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">mA</span>
                         </div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
-                            ${sparkmA >= 45 ? 'API BIRU TEBAL' : (sparkmA >= 30 ? 'API STANDAR' : (sparkmA >= 15 ? 'API KECIL' : 'API LILIN / MATI'))}
+                        <div style="font-size: 0.75rem; font-weight: 700; color: ${isStandby ? 'var(--text-muted)' : (sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
+                            ${isStandby ? 'STANDBY' : (sparkmA >= 45 ? 'API BIRU TEBAL' : (sparkmA >= 30 ? 'API STANDAR' : (sparkmA >= 15 ? 'API KECIL' : 'API LILIN / MATI')))}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 6px;">
-                        <div style="width: ${Math.min(100, (sparkmA / 80.0) * 100)}%; height: 100%; background: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}; transition: width 0.2s;"></div>
+                        <div style="width: ${isStandby ? 0 : Math.min(100, (sparkmA / 80.0) * 100)}%; height: 100%; background: ${sparkmA >= 45 ? 'var(--neon-green)' : (sparkmA >= 30 ? '#A6FF00' : (sparkmA >= 15 ? 'var(--neon-orange)' : 'var(--neon-red)'))}; transition: width 0.2s;"></div>
                     </div>
                 </div>
 
                 <!-- GAUGE 2: IRAMA DETAK (%) -->
-                <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
+                <div style="background: rgba(0,0,0,0.35); border: 1.5px solid var(--neon-purple); border-radius: 6px; padding: 10px 14px; box-shadow: 0 0 10px rgba(189, 0, 255, 0.15);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">⏱️ GAUGE 2: KETERATURAN DETAK</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: 100%</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px;">
-                        <div style="font-size: 1.8rem; font-weight: 800; color: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')};">
-                            ${cadenceRate.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">%</span>
+                        <div style="font-size: 1.85rem; font-weight: 900; color: ${isStandby ? 'var(--text-muted)' : (cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)'))}">
+                            ${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">%</span>
                         </div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: ${missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)'};">
-                            ${missed === 0 ? 'IRAMA NORMAL' : (missed + ' HILANG')}
+                        <div style="font-size: 0.75rem; font-weight: 700; color: ${isStandby ? 'var(--text-muted)' : (missed === 0 ? 'var(--neon-green)' : 'var(--neon-red)'))}">
+                            ${isStandby ? 'SIAP DIUJI' : (missed === 0 ? 'IRAMA NORMAL' : (missed + ' MISSED (' + arrhythmiaRate.toFixed(1) + '%)'))}
                         </div>
                     </div>
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 6px;">
-                        <div style="width: ${cadenceRate}%; height: 100%; background: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')}; transition: width 0.2s;"></div>
+                        <div style="width: ${isStandby ? 0 : cadenceRate}%; height: 100%; background: ${cadenceRate >= 95 ? 'var(--neon-green)' : (cadenceRate >= 80 ? 'var(--neon-orange)' : 'var(--neon-red)')}; transition: width 0.2s;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- UNIFIED METRICS ROW: SKOR, ARUS PRIMER, LEAK BODI, & DETAK -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 10px;">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">SKOR KELAYAKAN</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; color: ${healthColor}; margin-top: 2px;">${totalHealthScore.toFixed(0)}%</div>
-                    <div style="font-size: 0.62rem; color: var(--text-muted);">${healthDesc}</div>
+            <!-- UNIFIED METRICS ROW: SKOR, ARUS PRIMER, LEAK BODI, & DETAK (ENLARGED VALUES & BORDER HIGHLIGHTS) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;">
+                <!-- 1. SKOR KELAYAKAN -->
+                <div class="${isAlarm ? 'pulse-alarm-red' : ''}" style="background: rgba(0,0,0,0.4); border: 1.5px solid ${healthColor}; box-shadow: 0 0 12px ${healthColor}33; border-radius: 6px; padding: 10px 8px; text-align: center;">
+                    <div style="font-size: 0.7rem; font-weight: bold; color: ${healthColor}; text-transform: uppercase;">SKOR KELAYAKAN</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; color: ${healthColor}; margin-top: 2px;">${isStandby ? '--%' : totalHealthScore.toFixed(0) + '%'}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold;">${healthDesc}</div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">ARUS PRIMER PEAK</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; margin-top: 2px;">${currentA} A</div>
-                    <div style="font-size: 0.62rem; color: var(--text-muted);">DC: ${realA} A</div>
+                <!-- 2. ARUS PRIMER PEAK -->
+                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 10px 8px; text-align: center;">
+                    <div style="font-size: 0.7rem; font-weight: bold; color: var(--neon-cyan); text-transform: uppercase;">ARUS PRIMER PEAK</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--text-primary)')}; margin-top: 2px;">${currentA} A</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);">DC: <strong style="color: var(--neon-green);">${realA} A</strong></div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid ${leakBadgeColor}; border-radius: 4px; padding: 8px; text-align: center;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">LEAK BODI (PIN 36)</div>
-                    <div style="font-size: 0.82rem; font-weight: 800; color: ${leakBadgeColor}; margin-top: 4px; line-height: 1.2;">${leakStatusText}</div>
-                    <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 2px;">${leakCount} Arcs (${leakRate}/s)</div>
+                <!-- 3. LEAK BODI (PIN 36) - ENLARGED ARC COUNTS & IDENTITY COLOR -->
+                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${leakBadgeColor}; box-shadow: 0 0 10px ${leakBadgeColor}33; border-radius: 6px; padding: 10px 8px; text-align: center;">
+                    <div style="font-size: 0.7rem; font-weight: bold; color: ${leakBadgeColor}; text-transform: uppercase;">LEAK BODI (PIN 36)</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; color: ${leakBadgeColor}; margin-top: 2px;">${leakCount} <span style="font-size: 0.85rem; font-weight: 700;">Arcs</span></div>
+                    <div style="font-size: 0.68rem; color: ${leakBadgeColor}; font-weight: 800;">(${leakRate}/s) • ${leakStatusText}</div>
                 </div>
 
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px; text-align: center;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">DETAK IGT / RESPON</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">${fired} <span style="font-size: 0.8rem; color: var(--neon-green);">/ ${confirmed}</span></div>
-                    <div style="font-size: 0.62rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; margin-top: 2px;">${missed} Missed</div>
+                <!-- 4. DETAK IGT / RESPON / MISSED - ENLARGED NUMBERS & GREEN BORDER -->
+                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${missed > 0 ? 'var(--neon-red)' : 'var(--neon-green)'}; box-shadow: 0 0 10px ${missed > 0 ? 'rgba(255,45,85,0.3)' : 'rgba(0,255,102,0.2)'}; border-radius: 6px; padding: 10px 8px; text-align: center;">
+                    <div style="font-size: 0.7rem; font-weight: bold; color: var(--neon-green); text-transform: uppercase;">DETAK IGT / RESPON</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; color: #ffffff; margin-top: 2px;">${fired} <span style="font-size: 1.15rem; color: var(--neon-green); font-weight: 900;">/ ${confirmed}</span></div>
+                    <div style="font-size: 0.68rem; font-weight: 800; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--neon-green)'};">${missed > 0 ? missed + ' MISSED' : '0 MISSED (100% SINKRON)'}</div>
                 </div>
             </div>
 
