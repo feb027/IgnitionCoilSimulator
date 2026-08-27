@@ -15,11 +15,15 @@ static volatile bool coil_act3p_hasNewAdc = false;
 static volatile uint32_t isr_act3p_firedCount = 0;
 static volatile uint32_t isr_act3p_sparkReturnCount = 0;
 static volatile uint32_t isr_act3p_missedCount = 0;
+static volatile uint32_t isr_act3p_lastFireUs = 0;
 static volatile uint32_t isr_act3p_lastSparkUs = 0;
+static volatile uint32_t isr_act3p_debounceUs = 1500;
+static volatile uint32_t isr_act3p_windowUs = 3500;
 
 static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
     uint32_t nowUs = micros();
-    if (nowUs - isr_act3p_lastSparkUs < 1500) return; // 1.5ms anti-ringing dead-time filter
+    if (nowUs - isr_act3p_lastSparkUs < isr_act3p_debounceUs) return; // Anti-ringing dead-time filter
+    if (nowUs - isr_act3p_lastFireUs > isr_act3p_windowUs) return; // Time-gate coincidence window
     isr_act3p_lastSparkUs = nowUs;
     isr_act3p_sparkReturnCount++;
 }
@@ -29,6 +33,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         // Turn IGT Pin 25 LOW (Spark Fired)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = false;
+        isr_act3p_lastFireUs = micros();
         isr_act3p_firedCount++;
         
         if (coil_act3p_pulsesRemaining > 0) {
@@ -93,6 +98,10 @@ void PeripheralCoilActive3P::update() {
     }
     
     AppSettings& s = _settingsMgr.getSettings();
+    isr_act3p_debounceUs = (uint32_t)(s.calCadenceDebounceMs * 1000.0f);
+    if (isr_act3p_debounceUs < 200) isr_act3p_debounceUs = 200;
+    isr_act3p_windowUs = (uint32_t)(s.calCadenceWindowMs * 1000.0f);
+    if (isr_act3p_windowUs < 500) isr_act3p_windowUs = 500;
     
     // Sample primary and secondary spark sensors
     samplePrimaryCurrent();

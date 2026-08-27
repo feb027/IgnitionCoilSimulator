@@ -121,55 +121,10 @@ export function AdvancedTuningPanel({
                     </div>
                 </div>
 
-                <!-- SECTION 3: PENGATURAN SENSITIFITAS PROBE LEAK (5 PERSENTASE + 1 CUSTOM) -->
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
-                        <span style="font-weight: bold; color: var(--neon-cyan);">🎯 PILIHAN SENSITIFITAS KEBOCORAN BODI:</span>
-                        <span style="font-size: 0.68rem; color: var(--text-muted);">Aktif: <strong style="color: var(--neon-yellow);">${sensLabels.find(s => s.id === currentSens)?.name || ""}</strong></span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(75px, 1fr)); gap: 4px;">
-                        ${sensLabels.map(s => html`
-                            <button 
-                                class="btn ${currentSens === s.id ? 'btn-active' : ''}" 
-                                style="padding: 5px 2px; font-size: 0.68rem; font-weight: bold; border-color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${currentSens === s.id ? 'rgba(0, 255, 102, 0.2)' : 'transparent'}; color: ${currentSens === s.id ? 'var(--neon-green)' : 'var(--text-muted)'};" 
-                                onClick=${() => sendAction('setLeakSensitivity', s.id)} 
-                                disabled=${!state.connected}
-                                title=${s.tip}
-                            >
-                                ${s.name}
-                            </button>
-                        `)}
-                    </div>
-                    ${currentSens === 6 ? html`
-                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-sharp); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${localTh} Arcs</strong>
-                                </div>
-                                <input type="range" min="1" max="50" step="1" value=${localTh} style="width: 100%; accent-color: var(--neon-yellow);"
-                                    onPointerDown=${() => { isDragTh.current = true; }}
-                                    onInput=${(e) => { setLocalTh(parseInt(e.target.value)); }}
-                                    onChange=${(e) => { isDragTh.current = false; const v = parseInt(e.target.value); setLocalTh(v); sendAction('setLeakThreshold', v); }}
-                                    disabled=${!state.connected} />
-                            </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
-                                    <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${localDb} ms</strong>
-                                </div>
-                                <input type="range" min="0.1" max="8.0" step="0.1" value=${localDb} style="width: 100%; accent-color: var(--neon-cyan);"
-                                    onPointerDown=${() => { isDragDb.current = true; }}
-                                    onInput=${(e) => { setLocalDb(parseFloat(e.target.value).toFixed(1)); }}
-                                    onChange=${(e) => { isDragDb.current = false; const v = parseFloat(e.target.value); setLocalDb(v.toFixed(1)); sendAction('setLeakDebounce', v); }}
-                                    disabled=${!state.connected} />
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-
-                <!-- SECTION 4: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
+                <!-- SECTION 3: 5-PARAMETER CALIBRATION & SUB-SENSITIVITIES MATRIX -->
                 <${CalibrationMatrixPanel} state=${state} sendAction=${sendAction} />
 
-                <!-- SECTION 5: SWEEP TIME & RPM STEP SIZE DIALS -->
+                <!-- SECTION 4: SWEEP TIME & RPM STEP SIZE DIALS -->
                 <div class="responsive-grid-2" style="margin-top: 2px;">
                     <${Dial} 
                         compact=${true}

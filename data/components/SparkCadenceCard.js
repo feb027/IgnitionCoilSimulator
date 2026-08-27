@@ -23,6 +23,12 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const crK = state.calCurrentKurang !== undefined ? state.calCurrentKurang : 3.0;
     const crM = state.calCurrentMax !== undefined ? state.calCurrentMax : 11.5;
 
+    const tpP = state.calTempPrima !== undefined ? state.calTempPrima : 45.0;
+    const tpB = state.calTempBaik !== undefined ? state.calTempBaik : 55.0;
+    const tpC = state.calTempCukup !== undefined ? state.calTempCukup : 65.0;
+    const tpPanas = state.calTempPanas !== undefined ? state.calTempPanas : 75.0;
+    const tpCut = state.calTempCutoff !== undefined ? state.calTempCutoff : 85.0;
+
     const isStandby = (fired === 0 && !state.isRunning);
     const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 0;
     const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / spP)) : 1.0;
@@ -40,24 +46,29 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         insulationFactor = 0.75; leakBadgeColor = "var(--neon-yellow, #ffe600)"; leakStatusText = state.coilLeakSeverity || `⚡ MIKRO LEAK (${leakPercent}%)`;
     }
 
-    const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
+    const maxTemp = Math.max(parseFloat(tempCoil), parseFloat(tempDriver));
+    const thermalFactor = maxTemp >= tpCut ? 0.25 : (maxTemp >= tpPanas ? 0.65 : (maxTemp >= tpC ? 0.85 : 1.0));
+
+    const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor * thermalFactor) : 100;
     let healthColor = 'var(--neon-green)', healthBadge = '🟢 PRIMA (100%)', healthDesc = 'Sangat Baik & Siap Pakai';
     const numCurr = parseFloat(currentA);
-    const isAlarm = (fired >= 10 && (totalHealthScore < 50 || numCurr > crM || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < spK && sparkmA > 0)));
+    const isAlarm = (fired >= 10 && (totalHealthScore < 50 || numCurr > crM || maxTemp >= tpCut || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < spK && sparkmA > 0)));
 
     if (isStandby) {
         healthColor = 'var(--text-muted)'; healthBadge = 'STANDBY'; healthDesc = 'Tekan Trigger / Run';
     } else if (numCurr > crM) {
         healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT'; healthDesc = `Korsleting Primer (>${crM}A)`;
+    } else if (maxTemp >= tpCut) {
+        healthColor = 'var(--neon-red)'; healthBadge = '🔥 OVERHEAT'; healthDesc = `Suhu Kritis (>${tpCut}°C)`;
     } else if (leakPercent >= 75 || leakSeverity.includes("JEBOL") || leakRate > 25) {
         healthColor = 'var(--neon-red)'; healthBadge = '🚨 JEBOL TOTAL'; healthDesc = 'Isolasi Bodi Rusak Total';
     } else if (totalHealthScore < 25 || (sparkmA < spK && sparkmA > 0) || cadenceRate < cdK) {
         healthColor = 'var(--neon-red)'; healthBadge = '🔴 RUSAK (0%)'; healthDesc = 'Api Lilin / Aritmia Misfire';
-    } else if (totalHealthScore < 50 || sparkmA < spC || cadenceRate < cdC || (numCurr < crK && numCurr > 0)) {
-        healthColor = 'var(--neon-orange)'; healthBadge = '🟧 TIDAK LAYAK (25%)'; healthDesc = 'Daya Drop / Arus Lemah';
-    } else if (totalHealthScore < 75 || sparkmA < spB || cadenceRate < cdB || isLeaking || leakCount > 0) {
+    } else if (totalHealthScore < 50 || sparkmA < spC || cadenceRate < cdC || (numCurr < crK && numCurr > 0) || maxTemp >= tpPanas) {
+        healthColor = 'var(--neon-orange)'; healthBadge = '🟧 TIDAK LAYAK (25%)'; healthDesc = maxTemp >= tpPanas ? 'Thermal Stress / Daya Drop' : 'Daya Drop / Arus Lemah';
+    } else if (totalHealthScore < 75 || sparkmA < spB || cadenceRate < cdB || isLeaking || leakCount > 0 || maxTemp >= tpC) {
         healthColor = 'var(--neon-yellow)'; healthBadge = '🟨 BISA DIGUNAKAN (50%)'; healthDesc = 'Penurunan Daya / Mikro Leak';
-    } else if (totalHealthScore < 90 || sparkmA < spP || cadenceRate < cdP || numCurr < crP) {
+    } else if (totalHealthScore < 90 || sparkmA < spP || cadenceRate < cdP || numCurr < crP || maxTemp >= tpB) {
         healthColor = '#A6FF00'; healthBadge = '🟩 BAIK (75%)'; healthDesc = 'Koil Normal & Layak Pakai';
     } else {
         healthColor = 'var(--neon-green)'; healthBadge = '🟢 PRIMA (100%)'; healthDesc = 'Kondisi Sempurna & Efisien';

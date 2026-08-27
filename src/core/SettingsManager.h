@@ -134,22 +134,33 @@ struct AppSettings {
     char coilLeakSeverity[32];  // "PERFECT (0 LEAK)", "MICRO-LEAKAGE", "MEDIUM ARCING", "SEVERE BREAKDOWN"
     char coilCurrentStatus[32]; // "OPTIMAL (6-10A)", "WEAK (<5A)", "OVERCURRENT (>11A)", "STANDBY"
 
-    // 4-Parameter 5-Tier Manual Calibration Matrix
+    // 5-Parameter 5-Tier Manual Calibration Matrix & Sub-Sensitivities
     float calSparkPrima;        // Default 45.0 mA
     float calSparkBaik;         // Default 35.0 mA
     float calSparkCukup;        // Default 25.0 mA
     float calSparkKurang;       // Default 15.0 mA
+    float calSparkGain;         // Secondary ADC multiplier gain (default: 1.00)
     
     float calCadencePrima;      // Default 98.0 %
     float calCadenceBaik;       // Default 90.0 %
     float calCadenceCukup;      // Default 80.0 %
     float calCadenceKurang;     // Default 60.0 %
+    float calCadenceDebounceMs; // Anti-ringing response debounce (default: 1.5 ms)
+    float calCadenceWindowMs;   // Time-gate firing window (default: 3.5 ms)
     
     float calCurrentPrima;      // Default 6.5 A
     float calCurrentBaik;       // Default 5.5 A
     float calCurrentCukup;      // Default 4.5 A
     float calCurrentKurang;     // Default 3.0 A
     float calCurrentMax;        // Default 11.5 A
+    float calCurrentZeroVolt;   // ACS712 zero offset voltage (default: 1.85 V)
+    
+    float calTempPrima;         // Default 45.0 °C
+    float calTempBaik;          // Default 55.0 °C
+    float calTempCukup;         // Default 65.0 °C
+    float calTempPanas;         // Default 75.0 °C
+    float calTempCutoff;        // Default 85.0 °C
+    float calTempOffset;        // Sensor temp offset (default: 0.0 °C)
 
     // Auxiliary Sensors (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
     float supplyVoltage;        // Battery supply voltage in Volts (e.g. 12.6V)

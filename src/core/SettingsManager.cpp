@@ -71,19 +71,18 @@ void SettingsManager::commitToNvs() {
     preferences.putUChar("lk_75", _settings.leakArc75);
     preferences.putUChar("lk_100", _settings.leakArc100);
     preferences.putUChar("lk_max", _settings.leakArcMax);
-    preferences.putFloat("c_sp_p", _settings.calSparkPrima);
-    preferences.putFloat("c_sp_b", _settings.calSparkBaik);
-    preferences.putFloat("c_sp_c", _settings.calSparkCukup);
-    preferences.putFloat("c_sp_k", _settings.calSparkKurang);
-    preferences.putFloat("c_cd_p", _settings.calCadencePrima);
-    preferences.putFloat("c_cd_b", _settings.calCadenceBaik);
-    preferences.putFloat("c_cd_c", _settings.calCadenceCukup);
-    preferences.putFloat("c_cd_k", _settings.calCadenceKurang);
-    preferences.putFloat("c_cr_p", _settings.calCurrentPrima);
-    preferences.putFloat("c_cr_b", _settings.calCurrentBaik);
-    preferences.putFloat("c_cr_c", _settings.calCurrentCukup);
-    preferences.putFloat("c_cr_k", _settings.calCurrentKurang);
-    preferences.putFloat("c_cr_m", _settings.calCurrentMax);
+    preferences.putFloat("c_sp_p", _settings.calSparkPrima); preferences.putFloat("c_sp_b", _settings.calSparkBaik);
+    preferences.putFloat("c_sp_c", _settings.calSparkCukup); preferences.putFloat("c_sp_k", _settings.calSparkKurang);
+    preferences.putFloat("c_sp_g", _settings.calSparkGain);
+    preferences.putFloat("c_cd_p", _settings.calCadencePrima); preferences.putFloat("c_cd_b", _settings.calCadenceBaik);
+    preferences.putFloat("c_cd_c", _settings.calCadenceCukup); preferences.putFloat("c_cd_k", _settings.calCadenceKurang);
+    preferences.putFloat("c_cd_db", _settings.calCadenceDebounceMs); preferences.putFloat("c_cd_win", _settings.calCadenceWindowMs);
+    preferences.putFloat("c_cr_p", _settings.calCurrentPrima); preferences.putFloat("c_cr_b", _settings.calCurrentBaik);
+    preferences.putFloat("c_cr_c", _settings.calCurrentCukup); preferences.putFloat("c_cr_k", _settings.calCurrentKurang);
+    preferences.putFloat("c_cr_m", _settings.calCurrentMax); preferences.putFloat("c_cr_z", _settings.calCurrentZeroVolt);
+    preferences.putFloat("c_tp_p", _settings.calTempPrima); preferences.putFloat("c_tp_b", _settings.calTempBaik);
+    preferences.putFloat("c_tp_c", _settings.calTempCukup); preferences.putFloat("c_tp_h", _settings.calTempPanas);
+    preferences.putFloat("c_tp_cut", _settings.calTempCutoff); preferences.putFloat("c_tp_off", _settings.calTempOffset);
     _savedSettings = _settings;
 }
 
@@ -175,17 +174,28 @@ void SettingsManager::load() {
     _settings.calSparkBaik = preferences.getFloat("c_sp_b", 35.0f);
     _settings.calSparkCukup = preferences.getFloat("c_sp_c", 25.0f);
     _settings.calSparkKurang = preferences.getFloat("c_sp_k", 15.0f);
+    _settings.calSparkGain = preferences.getFloat("c_sp_g", 1.00f);
     
     _settings.calCadencePrima = preferences.getFloat("c_cd_p", 98.0f);
     _settings.calCadenceBaik = preferences.getFloat("c_cd_b", 90.0f);
     _settings.calCadenceCukup = preferences.getFloat("c_cd_c", 80.0f);
     _settings.calCadenceKurang = preferences.getFloat("c_cd_k", 60.0f);
+    _settings.calCadenceDebounceMs = preferences.getFloat("c_cd_db", 1.5f);
+    _settings.calCadenceWindowMs = preferences.getFloat("c_cd_win", 3.5f);
     
     _settings.calCurrentPrima = preferences.getFloat("c_cr_p", 6.5f);
     _settings.calCurrentBaik = preferences.getFloat("c_cr_b", 5.5f);
     _settings.calCurrentCukup = preferences.getFloat("c_cr_c", 4.5f);
     _settings.calCurrentKurang = preferences.getFloat("c_cr_k", 3.0f);
     _settings.calCurrentMax = preferences.getFloat("c_cr_m", 11.5f);
+    _settings.calCurrentZeroVolt = preferences.getFloat("c_cr_z", 1.85f);
+    
+    _settings.calTempPrima = preferences.getFloat("c_tp_p", 45.0f);
+    _settings.calTempBaik = preferences.getFloat("c_tp_b", 55.0f);
+    _settings.calTempCukup = preferences.getFloat("c_tp_c", 65.0f);
+    _settings.calTempPanas = preferences.getFloat("c_tp_h", 75.0f);
+    _settings.calTempCutoff = preferences.getFloat("c_tp_cut", 85.0f);
+    _settings.calTempOffset = preferences.getFloat("c_tp_off", 0.0f);
     
     _settings.supplyVoltage = 12.6f; _settings.realCurrentA = 0.0f;
     _settings.tempCoilC = 28.5f; _settings.tempDriverC = 29.0f;
@@ -231,9 +241,16 @@ void SettingsManager::resetToDefaults() {
     _settings.leakArc75 = 40; _settings.leakArc100 = 50; _settings.leakArcMax = 50; _settings.coilLeakPercent = 0;
     
     _settings.calSparkPrima = 45.0f; _settings.calSparkBaik = 35.0f; _settings.calSparkCukup = 25.0f; _settings.calSparkKurang = 15.0f;
+    _settings.calSparkGain = 1.00f;
+    
     _settings.calCadencePrima = 98.0f; _settings.calCadenceBaik = 90.0f; _settings.calCadenceCukup = 80.0f; _settings.calCadenceKurang = 60.0f;
+    _settings.calCadenceDebounceMs = 1.5f; _settings.calCadenceWindowMs = 3.5f;
+    
     _settings.calCurrentPrima = 6.5f; _settings.calCurrentBaik = 5.5f; _settings.calCurrentCukup = 4.5f; _settings.calCurrentKurang = 3.0f;
-    _settings.calCurrentMax = 11.5f;
+    _settings.calCurrentMax = 11.5f; _settings.calCurrentZeroVolt = 1.85f;
+    
+    _settings.calTempPrima = 45.0f; _settings.calTempBaik = 55.0f; _settings.calTempCukup = 65.0f; _settings.calTempPanas = 75.0f;
+    _settings.calTempCutoff = 85.0f; _settings.calTempOffset = 0.0f;
     
     _savedSettings = _settings;
 }

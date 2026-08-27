@@ -18,11 +18,17 @@ static volatile uint32_t isr_act4p_missedCount = 0;
 static volatile uint16_t coil_act4p_peakRawAdc = 0;
 static volatile bool coil_act4p_hasNewAdc = false;
 
+static volatile uint32_t isr_act4p_lastFireUs = 0;
+static volatile uint32_t isr_act4p_lastSparkUs = 0;
+static volatile uint32_t isr_act4p_debounceUs = 1500;
+static volatile uint32_t isr_act4p_windowUs = 3500;
+
 static void IRAM_ATTR onActive4pCoilTimer() {
     if (isActive4pCoilOn) {
         // Turn IGT Pin 25 LOW (Spark Fired)
         GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = false;
+        isr_act4p_lastFireUs = micros();
         
         // Count spark generation
         isr_act4p_firedCount++;
@@ -57,17 +63,20 @@ static void IRAM_ATTR onActive4pCoilTimer() {
     }
 }
 
-static volatile uint32_t isr_act4p_lastSparkUs = 0;
-
 // Hardware Interrupt for Internal IGF confirmation pulses from 4-Pin Smart Coil (GPIO 34)
 static void IRAM_ATTR onActive4pIgfInterrupt() {
+    uint32_t nowUs = micros();
+    if (nowUs - isr_act4p_lastSparkUs < isr_act4p_debounceUs) return;
+    if (nowUs - isr_act4p_lastFireUs > isr_act4p_windowUs) return;
+    isr_act4p_lastSparkUs = nowUs;
     isr_act4p_igfCount++;
 }
 
 // Hardware Interrupt for External Spark Gap Return Sensor (GPIO 26 / GPIO 39)
 static void IRAM_ATTR onActive4pSparkInterrupt() {
     uint32_t nowUs = micros();
-    if (nowUs - isr_act4p_lastSparkUs < 1500) return; // 1.5ms anti-ringing dead-time filter
+    if (nowUs - isr_act4p_lastSparkUs < isr_act4p_debounceUs) return; // Anti-ringing dead-time filter
+    if (nowUs - isr_act4p_lastFireUs > isr_act4p_windowUs) return; // Time-gate coincidence window
     isr_act4p_lastSparkUs = nowUs;
     isr_act4p_sparkCount++;
 }
@@ -98,7 +107,7 @@ void PeripheralCoilActive4P::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         coil_active4p_timer = timerBegin(1000000);
 #else
-        coil_active4p_timer = timerBegin(2, 80, true);
+        coil_active4p_timer = timerBegin(1, 80, true);
 #endif
         timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
     }
@@ -111,6 +120,10 @@ void PeripheralCoilActive4P::update() {
     }
     
     AppSettings& s = _settingsMgr.getSettings();
+    isr_act4p_debounceUs = (uint32_t)(s.calCadenceDebounceMs * 1000.0f);
+    if (isr_act4p_debounceUs < 200) isr_act4p_debounceUs = 200;
+    isr_act4p_windowUs = (uint32_t)(s.calCadenceWindowMs * 1000.0f);
+    if (isr_act4p_windowUs < 500) isr_act4p_windowUs = 500;
     
     // Sample primary current
     samplePrimaryCurrent();
