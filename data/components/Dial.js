@@ -4,6 +4,7 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
     const trackRef = useRef(null);
     const isDraggingRef = useRef(false);
     const lastSentValRef = useRef(null);
+    const pendingValRef = useRef(null);
     const throttleTimerRef = useRef(null);
 
     const numMin = Number(min) || 0;
@@ -14,7 +15,7 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
     const [dragVal, setDragVal] = useState(incomingVal);
     const [isDragging, setIsDragging] = useState(false);
 
-    // Keep dragVal in sync with incoming prop ONLY when NOT dragging
+    // Keep dragVal in sync with incoming prop ONLY when user is NOT dragging
     useEffect(() => {
         if (!isDraggingRef.current) {
             setDragVal(incomingVal);
@@ -23,6 +24,22 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
 
     const activeVal = isDragging ? dragVal : incomingVal;
     const dispVal = (displayValue !== undefined) ? displayValue : activeVal;
+
+    // Calculate percentage (0 - 100%)
+    const range = numMax - numMin;
+    const pct = range > 0 ? Math.max(0, Math.min(100, ((activeVal - numMin) / range) * 100)) : 0;
+
+    // Dynamic Color Gradient: Green -> Yellow/Orange -> Red
+    let dynamicColor = accentColor;
+    if (!accentColor) {
+        if (pct < 45) {
+            dynamicColor = "#00ff66"; // Safe / Normal (Green)
+        } else if (pct < 75) {
+            dynamicColor = "#ffb700"; // Medium / Caution (Yellow-Orange)
+        } else {
+            dynamicColor = "#ff2d55"; // High / Redline (Neon Red)
+        }
+    }
 
     const calculateValueFromPointer = (e) => {
         if (!trackRef.current) return activeVal;
@@ -35,31 +52,41 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         const rawValue = (percentage * (numMax - numMin)) + numMin;
         const steppedValue = Math.round(rawValue / numStep) * numStep;
         const decimals = (numStep.toString().split('.')[1] || '').length;
-        return Math.max(numMin, Math.min(numMax, Number(steppedValue.toFixed(decimals))));
+        const clamped = Math.max(numMin, Math.min(numMax, Number(steppedValue.toFixed(decimals))));
+        return clamped;
     };
 
     const emitChange = (val, immediate = false) => {
-        if (!onChange || val === lastSentValRef.current) return;
-        
+        if (!onChange) return;
+        pendingValRef.current = val;
+
         if (immediate) {
-            if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current);
+            if (throttleTimerRef.current) {
+                clearTimeout(throttleTimerRef.current);
+                throttleTimerRef.current = null;
+            }
             lastSentValRef.current = val;
             onChange(val);
             return;
         }
 
         if (!throttleTimerRef.current) {
+            lastSentValRef.current = val;
+            onChange(val);
             throttleTimerRef.current = setTimeout(() => {
                 throttleTimerRef.current = null;
-                lastSentValRef.current = val;
-                onChange(val);
-            }, 45);
+                if (pendingValRef.current !== null && pendingValRef.current !== lastSentValRef.current) {
+                    lastSentValRef.current = pendingValRef.current;
+                    onChange(pendingValRef.current);
+                }
+            }, 50);
         }
     };
 
     const handlePointerDown = (e) => {
         if (disabled) return;
         e.preventDefault();
+        e.stopPropagation();
         isDraggingRef.current = true;
         setIsDragging(true);
         if (trackRef.current) {
@@ -73,6 +100,7 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
     const handlePointerMove = (e) => {
         if (disabled || !isDraggingRef.current) return;
         e.preventDefault();
+        e.stopPropagation();
         const newVal = calculateValueFromPointer(e);
         setDragVal(newVal);
         emitChange(newVal);
@@ -80,6 +108,8 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
 
     const handlePointerUp = (e) => {
         if (!isDraggingRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
         isDraggingRef.current = false;
         setIsDragging(false);
         if (trackRef.current && trackRef.current.hasPointerCapture(e.pointerId)) {
@@ -90,34 +120,54 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         emitChange(finalVal, true);
     };
 
-    const range = numMax - numMin;
-    const percentage = range > 0 ? Math.max(0, Math.min(100, ((activeVal - numMin) / range) * 100)) : 0;
-
     return html`
-        <div class="${panelClass || 'panel'}" style="${compact ? 'padding: 8px 12px;' : ''}">
-            <div class="panel-header" style="${compact ? 'margin-bottom: 2px; font-size: 0.7rem;' : ''}">
-                <span style="${accentColor ? ('color: ' + accentColor + '; font-weight: 700;') : ''}">${label}</span>
-                <span>${min}-${max}${unit}</span>
+        <div class="${panelClass || 'panel'}" style="padding: 10px 14px; touch-action: none; user-select: none;">
+            <!-- HEADER INFO -->
+            <div class="panel-header" style="margin-bottom: 2px; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: ${dynamicColor}; font-weight: 800; letter-spacing: 0.04em;">${label}</span>
+                <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: bold;">${min} - ${max} ${unit}</span>
             </div>
-            <div class="huge-value" style="${compact ? 'font-size: 1.7rem; line-height: 1.1;' : ''}">
-                ${dispVal}<span class="value-unit" style="${accentColor ? ('color: ' + accentColor + ';') : ''} ${compact ? 'font-size: 0.8rem; margin-left: 4px;' : ''}">${unit}</span>
+
+            <!-- HUGE VALUE DISPLAY -->
+            <div class="huge-value" style="font-size: 1.85rem; line-height: 1.1; margin: 2px 0 4px 0;">
+                <span style="color: ${dynamicColor}; font-weight: 900;">${dispVal}</span>
+                <span class="value-unit" style="color: ${dynamicColor}; font-size: 0.82rem; margin-left: 4px; font-weight: bold;">${unit}</span>
             </div>
-            ${subInfo ? html`<div style="font-size: 0.72em; color: var(--text-muted); text-align: center; margin-top: ${compact ? '-2px' : '-8px'}; margin-bottom: ${compact ? '4px' : '8px'};">${subInfo}</div>` : ''}
-            <div class="slider-container" style="opacity: ${disabled ? 0.3 : 1}; pointer-events: ${disabled ? 'none' : 'auto'}; ${compact ? 'padding-top: 6px;' : ''}">
+
+            ${subInfo ? html`
+                <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: -4px; margin-bottom: 6px;">
+                    ${subInfo}
+                </div>
+            ` : ''}
+
+            <!-- LARGE TACTILE SLIDER (ANTI-SCROLL & EASY FINGER TOUCH) -->
+            <div 
+                class="slider-container" 
+                style="opacity: ${disabled ? 0.35 : 1}; pointer-events: ${disabled ? 'none' : 'auto'}; padding: 12px 0; touch-action: none;"
+            >
                 <div 
                     class="fader-track" 
                     ref=${trackRef}
-                    style="touch-action: none; cursor: pointer; ${compact ? 'height: 14px; border-radius: 7px;' : ''}"
+                    style="height: 22px; border-radius: 11px; background: #0c0e14; border: 1.5px solid #2a313d; position: relative; cursor: pointer; touch-action: none; box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);"
                     onPointerDown=${handlePointerDown}
                     onPointerMove=${handlePointerMove}
                     onPointerUp=${handlePointerUp}
                     onPointerCancel=${handlePointerUp}
                 >
-                    <div class="fader-fill" style="width: ${percentage}%; background: ${accentColor || 'var(--text-primary)'}; box-shadow: ${accentColor ? '0 0 8px ' + accentColor : 'none'}; ${compact ? 'border-radius: 7px;' : ''}; pointer-events: none;"></div>
+                    <!-- PROGRESS FILL BAR WITH DYNAMIC MULTI-STAGE GRADIENT -->
+                    <div 
+                        class="fader-fill" 
+                        style="width: ${pct}%; height: 100%; border-radius: 10px; background: linear-gradient(to right, #00ff66 0%, #ffb700 65%, #ff2d55 100%); box-shadow: 0 0 12px ${dynamicColor}; pointer-events: none; transition: width 0.05s ease-out;"
+                    ></div>
+
+                    <!-- EXTRA-LARGE HIGH-CONTRAST THUMB BUTTON (34px DIAMETER) -->
                     <div 
                         class="fader-thumb" 
-                        style="left: ${percentage}%; pointer-events: none; border-color: ${accentColor || 'var(--surface-matte)'}; ${compact ? 'width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;' : ''}"
-                    ></div>
+                        style="position: absolute; top: 50%; left: ${pct}%; width: 34px; height: 34px; transform: translate(-50%, -50%); border-radius: 50%; background: #ffffff; border: 3.5px solid ${dynamicColor}; box-shadow: 0 0 16px ${dynamicColor}, 0 4px 10px rgba(0,0,0,0.9); pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 5;"
+                    >
+                        <!-- Center Tactile Core Dot -->
+                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${dynamicColor}; box-shadow: 0 0 6px ${dynamicColor};"></div>
+                    </div>
                 </div>
             </div>
         </div>
