@@ -1,6 +1,8 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
+import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
+import { SafetyTriggerBar } from './SafetyTriggerBar.js';
 
 export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
@@ -28,7 +30,7 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                 label="DWELL TIME (IGT)"
                 value=${state.dwellMs}
                 unit="MS"
-                min="0.5"
+                min="0.0"
                 max="5.0"
                 step="0.1"
                 subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
@@ -37,26 +39,13 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
             />
         </div>
 
+        <!-- ADVANCED SETTINGS DIRECTLY BELOW ENGINE SPEED & DWELL -->
+        <${AdvancedTuningPanel} state=${state} sendAction=${sendAction} maxRpmLimit=${16000} />
+
         ${modeSelector}
-        
-        <!-- COMPACT & HIGH-SAFETY MASTER TRIGGER BUTTON (BOTTOM) -->
-        <div style="grid-column: 1 / -1; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px;">
-            <button 
-                class="btn ${state.isRunning ? 'is-running' : ''}"
-                style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.05em; border-color: ${state.isRunning ? 'var(--neon-red)' : 'var(--neon-green)'}; background: ${state.isRunning ? 'var(--neon-red)' : 'rgba(0, 255, 102, 0.12)'}; color: ${state.isRunning ? '#ffffff' : 'var(--neon-green)'}; cursor: pointer;"
-                onClick=${() => sendAction('toggleRun')}
-                disabled=${!state.connected}
-            >
-                ${state.runMode === 2 
-                    ? (state.isRunning ? '⚡ FIRING SINGLE PULSE...' : '⚡ FIRE SINGLE PULSE')
-                    : (state.runMode === 1
-                        ? (state.isRunning ? '⚡ FIRING BURST 10x...' : '⚡ FIRE BURST (10x)')
-                        : (state.isRunning ? '🔥 IGT TRIGGER: ON (RUNNING ⚡)' : '⚡ IGT TRIGGER: OFF (STANDBY 🛡️)'))}
-            </button>
-        </div>
 
         <!-- PANDUAN PENGUJIAN & PINOUT (COLLAPSIBLE BY DEFAULT) -->
-        <details class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: var(--border-sharp);">
+        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-orange); font-weight: bold; letter-spacing: 0.05em;">
                 📖 PANDUAN PENGUJIAN, PINOUT & WIRING KOIL 3-PIN ▾
             </summary>
@@ -94,7 +83,7 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                         <li><strong>Uji Arus Primer (PEAK CURRENT):</strong> Koil sehat menarik arus <strong>6.5A s/d 9.0A</strong>. Jika di bawah 5.0A berarti igniter internal drop (penyebab brebet). Jika >11.0A berarti kumparan korslet.</li>
                         <li><strong>Uji Dwell Singkat (2.0 ms @ 5000 RPM):</strong> Geser Dwell ke 2.0 ms. Koil prima tetap mampu menembak api stabil. Jika api mati/redup, koil sudah lemah.</li>
                         <li><strong>Uji Ketahanan Panas (Endurance Test):</strong> Jalankan mode <strong>SWEEP</strong> selama 5-10 menit. Koil yang rusak akan mulai putus-putus apinya saat badan koil mulai hangat.</li>
-                        <li><strong>Uji Kebocoran Bodi:</strong> Perhatikan kartu <strong>LEAKAGE DETECTOR</strong> di atas. Jika muncul status kuning/merah atau buzzer berbunyi, isolator batang koil bocor.</li>
+                        <li><strong>Uji Kebocoran Bodi:</strong> Perhatikan status <strong>LEAK BODI</strong> di atas. Jika muncul status kuning/merah atau buzzer berbunyi, isolator batang koil bocor.</li>
                     </ol>
                 </div>
 
@@ -111,34 +100,7 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
             </div>
         </details>
 
-        <!-- ADVANCED SETTINGS ACCORDION -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
-            <summary class="panel-header" style="cursor: pointer; user-select: none;">
-                <span>ADVANCED SETTINGS ▾</span>
-            </summary>
-            <div class="responsive-grid-2" style="padding-top: var(--space-md);">
-                <${Dial} 
-                    label="SWEEP TIME"
-                    value=${state.sweepTimeSec}
-                    unit="SEC"
-                    min="1"
-                    max="60"
-                    step="1"
-                    accentColor="var(--neon-purple)"
-                    onChange=${(val) => sendAction('setSweepTime', val)}
-                    disabled=${!state.connected || (state.runMode === 3 && state.isRunning)}
-                />
-                <${Dial} 
-                    label="RPM STEP SIZE"
-                    value=${state.rpmStep}
-                    unit="RPM"
-                    min="10"
-                    max="1000"
-                    step="10"
-                    onChange=${(val) => sendAction('setRpmStep', val)}
-                    disabled=${!state.connected}
-                />
-            </div>
-        </details>
+        <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR -->
+        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGT TRIGGER" />
     `;
 }

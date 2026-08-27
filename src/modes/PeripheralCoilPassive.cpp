@@ -442,7 +442,7 @@ void PeripheralCoilPassive::handleEncoder(int diff, int focusIndex) {
         if (s.mode != MODE_SWEEP || !s.isRunning) s.currentRpm = s.rpm;
     } else if (focusIndex == 2) { // DWELL
         s.dwellMs += (diff * 0.1f);
-        if (s.dwellMs < 0.1f) s.dwellMs = 0.1f;
+        if (s.dwellMs < 0.0f) s.dwellMs = 0.0f;
         if (s.dwellMs > 5.0f) s.dwellMs = 5.0f;
     }
     

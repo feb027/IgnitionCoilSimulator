@@ -1,6 +1,8 @@
 import { html } from '../preact.js';
 import { Dial } from './Dial.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
+import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
+import { SafetyTriggerBar } from './SafetyTriggerBar.js';
 
 export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
@@ -28,7 +30,7 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
                 label="DWELL TIME (IGBT)"
                 value=${state.dwellMs}
                 unit="MS"
-                min="0.5"
+                min="0.0"
                 max="5.0"
                 step="0.1"
                 subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
@@ -37,26 +39,13 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             />
         </div>
 
+        <!-- ADVANCED SETTINGS DIRECTLY BELOW ENGINE SPEED & DWELL -->
+        <${AdvancedTuningPanel} state=${state} sendAction=${sendAction} maxRpmLimit=${12000} />
+
         ${modeSelector}
-        
-        <!-- COMPACT & HIGH-SAFETY MASTER TRIGGER BUTTON (BOTTOM) -->
-        <div style="grid-column: 1 / -1; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 6px;">
-            <button 
-                class="btn ${state.isRunning ? 'is-running' : ''}"
-                style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.05em; border-color: ${state.isRunning ? 'var(--neon-red)' : 'var(--neon-green)'}; background: ${state.isRunning ? 'var(--neon-red)' : 'rgba(0, 255, 102, 0.12)'}; color: ${state.isRunning ? '#ffffff' : 'var(--neon-green)'}; cursor: pointer;"
-                onClick=${() => sendAction('toggleRun')}
-                disabled=${!state.connected}
-            >
-                ${state.runMode === 2 
-                    ? (state.isRunning ? '⚡ FIRING SINGLE PULSE...' : '⚡ FIRE SINGLE PULSE')
-                    : (state.runMode === 1
-                        ? (state.isRunning ? '⚡ FIRING BURST 10x...' : '⚡ FIRE BURST (10x)')
-                        : (state.isRunning ? '🔥 IGBT DRIVE: ON (RUNNING ⚡)' : '⚡ IGBT DRIVE: OFF (STANDBY 🛡️)'))}
-            </button>
-        </div>
 
         <!-- PANDUAN PENGUJIAN & PINOUT (COLLAPSIBLE BY DEFAULT) -->
-        <details class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: var(--border-sharp);">
+        <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-purple); font-weight: bold; letter-spacing: 0.05em;">
                 📖 PANDUAN PENGUJIAN, PINOUT & WIRING KOIL PASIF (2-PIN) ▾
             </summary>
@@ -109,34 +98,7 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
             </div>
         </details>
 
-        <!-- ADVANCED SETTINGS ACCORDION -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
-            <summary class="panel-header" style="cursor: pointer; user-select: none;">
-                <span>ADVANCED SETTINGS ▾</span>
-            </summary>
-            <div class="responsive-grid-2" style="padding-top: var(--space-md);">
-                <${Dial} 
-                    label="SWEEP TIME"
-                    value=${state.sweepTimeSec}
-                    unit="SEC"
-                    min="1"
-                    max="60"
-                    step="1"
-                    accentColor="var(--neon-purple)"
-                    onChange=${(val) => sendAction('setSweepTime', val)}
-                    disabled=${!state.connected || (state.runMode === 3 && state.isRunning)}
-                />
-                <${Dial} 
-                    label="RPM STEP SIZE"
-                    value=${state.rpmStep}
-                    unit="RPM"
-                    min="10"
-                    max="1000"
-                    step="10"
-                    onChange=${(val) => sendAction('setRpmStep', val)}
-                    disabled=${!state.connected}
-                />
-            </div>
-        </details>
+        <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR -->
+        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGBT DRIVE" />
     `;
 }
