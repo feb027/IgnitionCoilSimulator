@@ -12,6 +12,8 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
     const [maxRpmLimit, setMaxRpmLimit] = useState(16000);
     const [maxDwellLimit, setMaxDwellLimit] = useState(5.0);
+    const [isLocked, setIsLocked] = useState(true);
+    const handleToggleLock = () => setIsLocked(!isLocked);
 
     const handleMaxRpmChange = (newMax) => {
         setMaxRpmLimit(newMax);
@@ -25,7 +27,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
 
     return html`
         <!-- 4-PIN DUAL-CHANNEL COMPARATOR & BODY LEAK MONITOR (UNIFIED TOP TELEMETRY) -->
-        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK)" is4Pin=${true} />
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="4-PIN DUAL-CHANNEL COMPARATOR (IGF + SPARK)" is4Pin=${true} isLocked=${isLocked} onToggleLock=${handleToggleLock} />
 
         <!-- 20-SECOND AUTO HEALTH & STRESS SCAN PANEL -->
         <div class="panel" style="margin-top: 6px; grid-column: 1 / -1; background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px 14px;">
@@ -124,6 +126,6 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
         </div>
 
         <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR (LOCKED TO BOTTOM) -->
-        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGT TRIGGER" is4Pin=${true} />
+        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGT TRIGGER" is4Pin=${true} isLocked=${isLocked} onToggleLock=${handleToggleLock} />
     `;
 }

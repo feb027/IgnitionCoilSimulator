@@ -1,33 +1,32 @@
-import { html, useState, useEffect } from '../preact.js';
+﻿import { html, useState, useEffect } from '../preact.js';
 
-export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4Pin = false }) {
+export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4Pin = false, isLocked: extLocked, onToggleLock: extToggleLock }) {
     const isRunning = state.isRunning;
     const isAutoDiag = state.coilAutoDiagRunning;
 
-    // isVisible: whether the full button bar is expanded or hidden in a sleek bottom strip
     const [isVisible, setIsVisible] = useState(false);
-    // isLocked: safety lock state (cannot trigger until unlocked)
-    const [isLocked, setIsLocked] = useState(true);
+    const [localLocked, setLocalLocked] = useState(true);
 
-    // Auto expand bar when running so emergency STOP is always visible immediately!
+    const isLocked = extLocked !== undefined ? extLocked : localLocked;
+    const handleToggleLock = (e) => {
+        if (e) e.stopPropagation();
+        if (extToggleLock) extToggleLock();
+        else setLocalLocked(!localLocked);
+    };
+
     useEffect(() => {
         if (isRunning) {
             setIsVisible(true);
-            setIsLocked(false);
+            if (extToggleLock && isLocked) extToggleLock();
+            else setLocalLocked(false);
         }
     }, [isRunning]);
 
-    // Handle double-tap on the bottom bar zone to toggle visibility / unlock
     let lastTap = 0;
     const handleBottomBarTap = (e) => {
         const now = Date.now();
         if (now - lastTap < 380) {
-            // Double tap detected!
-            if (!isVisible) {
-                setIsVisible(true);
-            } else {
-                setIsVisible(false);
-            }
+            setIsVisible(!isVisible);
         }
         lastTap = now;
     };
@@ -37,10 +36,8 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
         if (!state.connected || isAutoDiag) return;
         
         if (isRunning) {
-            // EMERGENCY STOP is ALWAYS executed on 1-click
             sendAction('toggleRun');
         } else {
-            // If locked, do NOT start trigger! User must explicitly unlock
             if (isLocked) {
                 return;
             } else {
@@ -49,34 +46,24 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
         }
     };
 
-    const handleToggleLock = (e) => {
-        e.stopPropagation();
-        setIsLocked(!isLocked);
-    };
-
     return html`
-        <!-- FIXED BOTTOM SAFETY TRIGGER BAR (NEVER MOVES WHEN SCROLLING) -->
         <div 
             class="safety-dock-fixed" 
             style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000; background: rgba(8, 10, 14, 0.96); backdrop-filter: blur(14px); border-top: 1px solid ${isRunning ? 'var(--neon-red)' : (isVisible ? 'var(--border-sharp)' : 'rgba(255,255,255,0.08)')}; box-shadow: 0 -4px 28px rgba(0,0,0,0.9); user-select: none; transition: all 0.25s ease;"
             onClick=${handleBottomBarTap}
         >
             ${!isVisible && !isRunning ? html`
-                <!-- SLEEK MINIMAL STRIP (TIDAK MENGHALANGI MENU TAMPILAN UTAMA) -->
                 <div style="padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
                     <div style="font-size: 0.72rem; font-weight: 700; color: var(--neon-cyan); display: flex; align-items: center; gap: 6px;">
                         <span>⚡ DOCK TRIGGER TERSEMBUNYI</span>
                         <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: normal;">(Ketuk 2x di sini untuk memunculkan)</span>
                     </div>
-                    <span class="status-badge" style="font-size: 0.65rem; border-color: var(--neon-orange); color: var(--neon-orange); padding: 1px 6px;">
-                        🔒 KUNCI AKTIF
+                    <span class="status-badge" style="font-size: 0.65rem; border-color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; padding: 1px 6px;">
+                        ${isLocked ? '🔒 KUNCI AKTIF' : '🔓 TERBUKA'}
                     </span>
                 </div>
             ` : html`
-                <!-- FULL EXPANDED SAFETY TRIGGER CONTROLS -->
                 <div style="max-width: 1200px; margin: 0 auto; padding: 8px 12px; display: flex; align-items: stretch; gap: 8px;">
-                    
-                    <!-- TOMBOL KUNCI / BUKA PENGAMAN -->
                     ${!isRunning ? html`
                         <button
                             class="btn"
@@ -92,7 +79,6 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
                         </span>
                     `}
 
-                    <!-- MASTER TRIGGER ON / OFF BUTTON -->
                     <button 
                         class="btn ${isRunning ? 'is-running' : ''}"
                         style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.05em; border-color: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'var(--border-sharp)' : 'var(--neon-green)')}; background: ${isRunning ? 'var(--neon-red)' : (isLocked ? 'rgba(255,255,255,0.03)' : 'rgba(0, 255, 102, 0.15)')}; color: ${isRunning ? '#ffffff' : (isLocked ? 'var(--text-muted)' : 'var(--neon-green)')}; cursor: ${isLocked && !isRunning ? 'not-allowed' : 'pointer'}; box-shadow: ${isRunning ? '0 0 18px rgba(255, 45, 85, 0.7)' : 'none'}; opacity: ${isLocked && !isRunning ? '0.7' : '1'};"
@@ -110,7 +96,6 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
                                         : `⚡ ${label}: OFF (STANDBY - KLIK UNTUK HIDUPKAN)`)))}
                     </button>
 
-                    <!-- TOMBOL TUTUP / SEMBUNYIKAN KEMBALI -->
                     ${!isRunning ? html`
                         <button
                             class="btn"
@@ -121,7 +106,6 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
                             ✕
                         </button>
                     ` : ''}
-
                 </div>
             `}
         </div>

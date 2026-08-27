@@ -1,6 +1,6 @@
 ﻿import { html } from '../preact.js';
 
-export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULATION ANALYZER", is4Pin = false }) {
+export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULATION ANALYZER", is4Pin = false, isLocked = true, onToggleLock }) {
     const fired = state.coilFiredCount || 0, confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
     const missed = state.coilMissedCount || Math.max(0, fired - confirmed), sparkmA = state.coilSparkCurrentmA || 0.0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
@@ -208,10 +208,15 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                     </div>
                 </div>
 
-                <!-- RIGHT 50%: PRE-FLIGHT CHECK COIL -->
-                <div style="background: rgba(0,0,0,0.3); border: 2px solid rgba(255, 230, 0, 0.4); border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 76px; box-sizing: border-box;">
+                <!-- RIGHT 50%: PRE-FLIGHT CHECK COIL (WITH LOCK INTERLOCK) -->
+                <div style="background: rgba(0,0,0,0.3); border: 2px solid ${isLocked ? 'rgba(255, 149, 0, 0.4)' : 'rgba(255, 230, 0, 0.5)'}; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 76px; box-sizing: border-box;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.74rem; font-weight: 800; color: var(--neon-yellow);">⚡ PRE-FLIGHT CHECK:</span>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <span style="font-size: 0.74rem; font-weight: 800; color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-yellow)'};">⚡ PRE-FLIGHT:</span>
+                            <button class="btn" style="padding: 1px 5px; font-size: 0.65rem; font-weight: 800; border-color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'}; background: ${isLocked ? 'rgba(255, 149, 0, 0.15)' : 'rgba(0, 255, 102, 0.15)'}; color: ${isLocked ? 'var(--neon-orange)' : 'var(--neon-green)'};" onClick=${onToggleLock} title="Klik untuk Buka/Kunci Pengaman Utama">
+                                ${isLocked ? '🔒 KUNCI' : '🔓 BUKA'}
+                            </button>
+                        </div>
                         <div style="display: flex; gap: 3px;">
                             ${[1, 2, 3, 5, 10].map(p => html`
                                 <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 1px 5px; font-size: 0.65rem; font-weight: 800; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.25)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
@@ -219,8 +224,10 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         </div>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 6px;">
-                        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 900; background: #FFE600; color: #000; border-color: #FFE600;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>
-                            ⚡ RUN (${checkPulses}x)
+                        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 900; background: ${isLocked ? 'rgba(255,255,255,0.06)' : '#FFE600'}; color: ${isLocked ? 'var(--text-muted)' : '#000'}; border-color: ${isLocked ? 'var(--border-sharp)' : '#FFE600'}; cursor: ${isLocked ? 'not-allowed' : 'pointer'};" 
+                            onClick=${() => { if (!isLocked) sendAction('runCheckCoil'); }} 
+                            disabled=${!state.connected || state.isRunning || isLocked}>
+                            ${isLocked ? '🔒 TERKUNCI' : `⚡ RUN (${checkPulses}x)`}
                         </button>
                         <span style="font-size: 0.72rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${checkVerdict.includes('PASS') || checkVerdict.includes('PERFECT') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') || checkVerdict.includes('SHORT') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">
                             ${checkVerdict}

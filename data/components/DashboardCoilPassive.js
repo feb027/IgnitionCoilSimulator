@@ -9,6 +9,8 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     const [maxRpmLimit, setMaxRpmLimit] = useState(12000);
     const [maxDwellLimit, setMaxDwellLimit] = useState(5.0);
+    const [isLocked, setIsLocked] = useState(true);
+    const handleToggleLock = () => setIsLocked(!isLocked);
 
     const handleMaxRpmChange = (newMax) => {
         setMaxRpmLimit(newMax);
@@ -22,7 +24,7 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
     
     return html`
         <!-- 2-PIN TRI-DIMENSION IGNITION ANALYZER & BODY LEAK MONITOR (UNIFIED TOP TELEMETRY) -->
-        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="2-PIN IGNITION & INSULATION ANALYZER" />
+        <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="2-PIN IGNITION & INSULATION ANALYZER" isLocked=${isLocked} onToggleLock=${handleToggleLock} />
 
         <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (DYNAMIC 0-100% SCALING ACCORDING TO LIMITS) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
@@ -113,6 +115,6 @@ export function DashboardCoilPassive({ state, sendAction, modeSelector }) {
         </details>
 
         <!-- STICKY BOTTOM SAFETY TRIGGER & EMERGENCY STOP BAR (LOCKED TO BOTTOM) -->
-        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGBT DRIVE" />
+        <${SafetyTriggerBar} state=${state} sendAction=${sendAction} label="IGBT DRIVE" isLocked=${isLocked} onToggleLock=${handleToggleLock} />
     `;
 }
