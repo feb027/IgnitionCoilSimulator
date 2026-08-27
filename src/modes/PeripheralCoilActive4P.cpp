@@ -259,9 +259,11 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
             }
         }
     } else {
-        // When OFF: strictly 0A and auto-zero calibrate ACS712 quiescent offset
-        s.coilPeakCurrentA = 0.0f;
-        strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+        // When OFF: Auto-zero calibrate ACS712 quiescent offset without erasing last test results
+        if (s.coilFiredCount == 0) {
+            s.coilPeakCurrentA = 0.0f;
+            strncpy(s.coilCurrentStatus, "STANDBY", sizeof(s.coilCurrentStatus));
+        }
         
         if (now - _lastCurrentSampleTime >= 50) {
             _lastCurrentSampleTime = now;

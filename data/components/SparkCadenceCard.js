@@ -35,20 +35,49 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     }
 
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
-    let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal', isAlarm = false;
+    let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal';
 
-    if (fired === 0) {
+    // Persistent Alarm Flag: Stays active after stop until explicitly reset
+    const isAlarm = (fired > 0 && (totalHealthScore < 50 || parseFloat(currentA) > 11.5 || leakSeverity.includes("SEVERE") || (fired > 5 && confirmed === 0) || (fired > 5 && sparkmA < 15.0)));
+
+    if (isStandby) {
         healthColor = 'var(--text-muted)'; healthBadge = 'STANDBY'; healthDesc = 'Tekan Trigger / Run untuk Menguji';
     } else if (parseFloat(currentA) > 11.5) {
-        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT (>11A)'; healthDesc = 'Korsleting Primer / IGBT Rusak'; isAlarm = true;
+        healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT (>11A)'; healthDesc = 'Korsleting Primer / IGBT Rusak';
     } else if (leakSeverity.includes("SEVERE") || leakRate > 25) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Ekstrem!'; isAlarm = true;
-    } else if (totalHealthScore < 50 || cadenceRate < 50) {
-        healthColor = 'var(--neon-red)'; healthBadge = '🔴 <50% MATI SURI'; healthDesc = 'Kerusakan Berat / Banyak Misfire'; isAlarm = true;
+        healthColor = 'var(--neon-red)'; healthBadge = '🚨 20% BOCOR PARAH'; healthDesc = 'Isolasi Koil Jebol / Arcing Ekstrem!';
+    } else if (totalHealthScore < 50 || (fired > 5 && sparkmA < 15.0)) {
+        healthColor = 'var(--neon-red)'; healthBadge = '🔴 <50% MATI SURI'; healthDesc = 'Api Lilin / Banyak Misfire';
     } else if (totalHealthScore < 75 || isLeaking || leakCount > 0) {
         healthColor = '#FFE600'; healthBadge = '🟡 75% DEGRADASI'; healthDesc = 'Penurunan Daya / Mikro Leak';
     } else {
         healthColor = 'var(--neon-green)'; healthBadge = '🟢 100% PRIMA'; healthDesc = 'Api Normal & Detak 100% Sinkron';
+    }
+
+    // Gauge 1 Dynamic Border Color
+    let gauge1Border = '1.5px solid rgba(0, 212, 255, 0.4)', gauge1Shadow = '0 0 10px rgba(0, 212, 255, 0.15)';
+    if (!isStandby) {
+        if (sparkmA >= 45.0) {
+            gauge1Border = '1.5px solid var(--neon-green)'; gauge1Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
+        } else if (sparkmA >= 30.0) {
+            gauge1Border = '1.5px solid #A6FF00'; gauge1Shadow = '0 0 10px rgba(166, 255, 0, 0.25)';
+        } else if (sparkmA >= 15.0) {
+            gauge1Border = '1.5px solid var(--neon-orange)'; gauge1Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
+        } else {
+            gauge1Border = '2px solid var(--neon-red)'; gauge1Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
+        }
+    }
+
+    // Gauge 2 Dynamic Border Color
+    let gauge2Border = '1.5px solid rgba(189, 0, 255, 0.4)', gauge2Shadow = '0 0 10px rgba(189, 0, 255, 0.15)';
+    if (!isStandby) {
+        if (cadenceRate >= 95.0) {
+            gauge2Border = '1.5px solid var(--neon-green)'; gauge2Shadow = '0 0 12px rgba(0, 255, 102, 0.3)';
+        } else if (cadenceRate >= 80.0) {
+            gauge2Border = '1.5px solid var(--neon-orange)'; gauge2Shadow = '0 0 12px rgba(255, 149, 0, 0.35)';
+        } else {
+            gauge2Border = '2px solid var(--neon-red)'; gauge2Shadow = '0 0 16px rgba(255, 45, 85, 0.6)';
+        }
     }
 
     const currentSens = state.coilLeakSensitivity || 3;
@@ -119,7 +148,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
             <!-- DUAL INDEPENDENT GAUGES -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px;">
                 <!-- GAUGE 1: KUALITAS API (mA) -->
-                <div style="background: rgba(0,0,0,0.35); border: 1.5px solid var(--neon-cyan); border-radius: 6px; padding: 10px 14px; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);">
+                <div style="background: rgba(0,0,0,0.35); border: ${gauge1Border}; border-radius: 6px; padding: 10px 14px; box-shadow: ${gauge1Shadow}; transition: all 0.2s;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-cyan);">⚡ GAUGE 1: KUALITAS API (mA)</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: >45 mA</span>
@@ -138,7 +167,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
 
                 <!-- GAUGE 2: IRAMA DETAK (%) -->
-                <div style="background: rgba(0,0,0,0.35); border: 1.5px solid var(--neon-purple); border-radius: 6px; padding: 10px 14px; box-shadow: 0 0 10px rgba(189, 0, 255, 0.15);">
+                <div style="background: rgba(0,0,0,0.35); border: ${gauge2Border}; border-radius: 6px; padding: 10px 14px; box-shadow: ${gauge2Shadow}; transition: all 0.2s;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.75rem; font-weight: 700; color: var(--neon-purple);">⏱️ GAUGE 2: KETERATURAN DETAK</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">Target: 100%</span>
@@ -167,9 +196,9 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
 
                 <!-- 2. ARUS PRIMER PEAK -->
-                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 10px 8px; text-align: center;">
+                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) > 0 ? 'var(--neon-orange)' : 'rgba(0, 255, 102, 0.3)'))}; border-radius: 6px; padding: 10px 8px; text-align: center; box-shadow: 0 0 10px rgba(0, 255, 102, 0.15);">
                     <div style="font-size: 0.7rem; font-weight: bold; color: var(--neon-cyan); text-transform: uppercase;">ARUS PRIMER PEAK</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--text-primary)')}; margin-top: 2px;">${currentA} A</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; color: ${parseFloat(currentA) >= 5.0 && parseFloat(currentA) <= 10.5 ? 'var(--neon-green)' : (parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) > 0 ? 'var(--neon-orange)' : 'var(--text-primary)'))}; margin-top: 2px;">${currentA} A</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted);">DC: <strong style="color: var(--neon-green);">${realA} A</strong></div>
                 </div>
 
