@@ -25,10 +25,6 @@ static void IRAM_ATTR onPassiveSparkReturnInterrupt() {
 
 static void IRAM_ATTR onPassiveCoilTimer() {
     if (isPassiveCoilOn) {
-        // Sample peak primary charging current right at the exact end of Dwell ramp
-        coil_pass_peakRawAdc = analogRead(PIN_COIL_ISENSE);
-        coil_pass_hasNewAdc = true;
-
         // Turn IGBT Gate OFF (GPIO 33 LOW)
         GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = false;
@@ -224,9 +220,16 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
     AppSettings& s = _settingsMgr.getSettings();
     
     if (s.isRunning) {
-        if (coil_pass_hasNewAdc) {
-            coil_pass_hasNewAdc = false;
-            int rawAdc = coil_pass_peakRawAdc;
+        if (now - _lastCurrentSampleTime >= 40) {
+            _lastCurrentSampleTime = now;
+            
+            // Sample hardware peak detector (1N4148 + 100nF hold cap) with 4-sample burst
+            int rawAdc = 0;
+            for (int i = 0; i < 4; i++) {
+                int v = analogRead(PIN_COIL_ISENSE);
+                if (v > rawAdc) rawAdc = v;
+            }
+            
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
             
             // ACS712-30A with 1N4148 Peak Detector (Gain factor: 3.2x)
@@ -236,9 +239,9 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
             
             // Fast attack, stable decay peak current filter
             if (amps > s.coilPeakCurrentA) {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.3f) + (amps * 0.7f);
+                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.25f) + (amps * 0.75f);
             } else {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.85f) + (amps * 0.15f);
+                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.90f) + (amps * 0.10f);
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
             

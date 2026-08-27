@@ -106,7 +106,7 @@ void NetworkManager::update() {
 void NetworkManager::broadcastState() {
     AppSettings& s = _settingsMgr.getSettings();
     _lastBroadcastedState = s;
-    if (_ws.count() == 0) return;
+    if (_ws.count() == 0 || !_ws.availableForWriteAll()) return;
     
     JsonDocument doc;
     
