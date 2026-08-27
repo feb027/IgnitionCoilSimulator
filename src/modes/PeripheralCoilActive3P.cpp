@@ -107,11 +107,6 @@ void PeripheralCoilActive3P::update() {
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
-    // Smart Confirmation Sync: If analog spark intensity confirms spark (>= 3mA), sync return count
-    if (s.coilSparkCurrentmA >= 3.0f && isr_act3p_sparkReturnCount < isr_act3p_firedCount) {
-        isr_act3p_sparkReturnCount = isr_act3p_firedCount;
-    }
-    
     s.coilFiredCount = isr_act3p_firedCount;
     s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
     s.coilIgfCount = isr_act3p_sparkReturnCount;
@@ -167,6 +162,7 @@ void PeripheralCoilActive3P::probeCoil() {
         delayMicroseconds(activeDwellUs);
         int raw2 = analogRead(PIN_COIL_ISENSE);
         digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+        isr_act3p_lastFireUs = micros();
         
         float v2 = ((float)raw2 / 4095.0f) * 3.3f;
         float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
@@ -183,8 +179,8 @@ void PeripheralCoilActive3P::probeCoil() {
         
         // Register test pulse in counters
         isr_act3p_firedCount++;
-        if (sparkmA >= 3.0f || isr_act3p_sparkReturnCount < isr_act3p_firedCount) {
-            isr_act3p_sparkReturnCount = isr_act3p_firedCount;
+        if (sparkmA >= 3.0f) {
+            isr_act3p_sparkReturnCount++;
         }
         
         if (p < numPulses - 1) {
@@ -305,11 +301,6 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
                 _sampleCountSpark++;
             }
             
-            // Smart Spark Confirmation: If analog voltage confirms spark (>= 3mA), sync return count
-            if (s.coilSparkCurrentmA >= 3.0f && isr_act3p_sparkReturnCount < isr_act3p_firedCount) {
-                isr_act3p_sparkReturnCount = isr_act3p_firedCount;
-            }
-            
             // Continuous 5-Tier Health Evaluation (Supports both 4N35 Digital Cadence & Analog mA)
             float deliveryPct = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
             
@@ -335,11 +326,15 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             // Compute real-time Average DC Current Consumption (Arus DC)
             float peak = (s.coilPeakCurrentA > 0.5f) ? s.coilPeakCurrentA : amps;
             if (peak < 0.2f) peak = 0.0f;
-            float dcAmps = (peak * s.dwellMs * (float)s.rpm) / 120000.0f;
+            float baseDc = (peak * s.dwellMs * (float)s.rpm) / 120000.0f;
+            float dcAmps = (baseDc * s.calDcCurrentGain) + s.calDcCurrentOffset;
+            if (dcAmps < 0.0f) dcAmps = 0.0f;
             s.realCurrentA = (s.realCurrentA * 0.7f) + (dcAmps * 0.3f);
         }
     } else {
-        s.realCurrentA = 0.0f;
+        float standbyDc = s.calDcCurrentOffset;
+        if (standbyDc < 0.0f) standbyDc = 0.0f;
+        s.realCurrentA = standbyDc;
         // When OFF: Auto-zero calibrate ACS712 quiescent offset without erasing last test results
         if (s.coilFiredCount == 0) {
             s.coilPeakCurrentA = 0.0f;

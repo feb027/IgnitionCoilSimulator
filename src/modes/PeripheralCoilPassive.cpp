@@ -98,11 +98,6 @@ void PeripheralCoilPassive::update() {
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
-    // Smart Confirmation Sync: If analog spark intensity confirms spark (>= 3mA), sync return count
-    if (s.coilSparkCurrentmA >= 3.0f && isr_pass_sparkReturnCount < isr_pass_firedCount) {
-        isr_pass_sparkReturnCount = isr_pass_firedCount;
-    }
-    
     s.coilFiredCount = isr_pass_firedCount;
     s.coilSparkReturnCount = isr_pass_sparkReturnCount;
     s.coilIgfCount = isr_pass_sparkReturnCount;
@@ -174,8 +169,8 @@ void PeripheralCoilPassive::probeCoil() {
         
         // Register test pulse in counters
         isr_pass_firedCount++;
-        if (sparkmA >= 3.0f || isr_pass_sparkReturnCount < isr_pass_firedCount) {
-            isr_pass_sparkReturnCount = isr_pass_firedCount;
+        if (sparkmA >= 3.0f) {
+            isr_pass_sparkReturnCount++;
         }
         
         if (p < numPulses - 1) {
@@ -296,11 +291,6 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
                 _sampleCountSpark++;
             }
             
-            // Smart Spark Confirmation: If analog voltage confirms spark (>= 3mA), sync return count
-            if (s.coilSparkCurrentmA >= 3.0f && isr_pass_sparkReturnCount < isr_pass_firedCount) {
-                isr_pass_sparkReturnCount = isr_pass_firedCount;
-            }
-            
             // Continuous 5-Tier Health Evaluation (Supports both 4N35 Digital Cadence & Analog mA)
             float deliveryPct = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
             
@@ -326,11 +316,15 @@ void PeripheralCoilPassive::samplePrimaryCurrent() {
             // Compute real-time Average DC Current Consumption (Arus DC)
             float peak = (s.coilPeakCurrentA > 0.5f) ? s.coilPeakCurrentA : amps;
             if (peak < 0.2f) peak = 0.0f;
-            float dcAmps = (peak * s.dwellMs * (float)s.rpm) / 120000.0f;
+            float baseDc = (peak * s.dwellMs * (float)s.rpm) / 120000.0f;
+            float dcAmps = (baseDc * s.calDcCurrentGain) + s.calDcCurrentOffset;
+            if (dcAmps < 0.0f) dcAmps = 0.0f;
             s.realCurrentA = (s.realCurrentA * 0.7f) + (dcAmps * 0.3f);
         }
     } else {
-        s.realCurrentA = 0.0f;
+        float standbyDc = s.calDcCurrentOffset;
+        if (standbyDc < 0.0f) standbyDc = 0.0f;
+        s.realCurrentA = standbyDc;
         // When OFF: Auto-zero calibrate ACS712 quiescent offset without erasing last test results
         if (s.coilFiredCount == 0) {
             s.coilPeakCurrentA = 0.0f;

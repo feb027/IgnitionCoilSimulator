@@ -21,8 +21,11 @@ public:
     int16_t getJoystickX() const { return _joyX; }
     int16_t getJoystickY() const { return _joyY; }
     
-    // Battery supply voltage in Volts (0.0V - 18.0V)
-    float getSupplyVoltage() const { return _supplyVoltage; }
+    // Battery supply voltage in Volts (0.0V - 18.0V) with calibration support
+    float getSupplyVoltage(float calGain = 1.0f, float calOffset = 0.0f) const {
+        float v = (_supplyVoltage * calGain) + calOffset;
+        return (v < 0.0f) ? 0.0f : v;
+    }
     
     // Auxiliary raw voltage in Volts
     float getAuxVoltage() const { return _auxVoltage; }

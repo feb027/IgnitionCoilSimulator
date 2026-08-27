@@ -190,34 +190,48 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </div>
 
-            <!-- 4 BOLD GLOWING CENTERED METRIC CARDS -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px;">
+            <!-- 6 BOLD GLOWING COMPACT METRIC CARDS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-top: 8px;">
                 <!-- Card 1: TOTAL DETAK -->
-                <div style="background: rgba(0, 212, 255, 0.05); border: 2px solid rgba(0, 212, 255, 0.5); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK (IGT)</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${fired}</div>
-                    <div style="font-size: 0.65rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Detak Terpicu</div>
+                <div style="background: rgba(0, 212, 255, 0.05); border: 2px solid rgba(0, 212, 255, 0.5); border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${fired}</div>
+                    <div style="font-size: 0.62rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Terpicu (IGT)</div>
                 </div>
 
                 <!-- Card 2: RESPON DETAK -->
-                <div style="background: rgba(0, 255, 102, 0.05); border: 2px solid var(--neon-green); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 12px rgba(0, 255, 102, 0.2);">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON (CONFIRMED)</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-green);">${confirmed}</div>
-                    <div style="font-size: 0.65rem; color: var(--neon-green); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Terkonfirmasi</div>
+                <div style="background: rgba(0, 255, 102, 0.05); border: 2px solid var(--neon-green); border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON DETAK</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-green);">${confirmed}</div>
+                    <div style="font-size: 0.62rem; color: var(--neon-green); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Konfirmasi</div>
                 </div>
 
                 <!-- Card 3: DETAK HILANG -->
-                <div style="background: ${missed > 0 ? 'rgba(255, 45, 85, 0.12)' : 'rgba(255, 45, 85, 0.03)'}; border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'rgba(255, 45, 85, 0.4)'}; border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: ${missed > 0 ? '0 0 14px rgba(255, 45, 85, 0.35)' : 'none'};">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG (MISSED)</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div>
-                    <div style="font-size: 0.65rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Hilang Api</div>
+                <div style="background: ${missed > 0 ? 'rgba(255, 45, 85, 0.12)' : 'rgba(255, 45, 85, 0.03)'}; border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'rgba(255, 45, 85, 0.4)'}; border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div>
+                    <div style="font-size: 0.62rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Missed</div>
                 </div>
 
                 <!-- Card 4: ARUS PRIMER PEAK -->
-                <div style="background: rgba(0, 212, 255, 0.06); border: 2px solid var(--neon-cyan, #00d4ff); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PRIMER PEAK</div>
-                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${isStandby ? '--' : currentA} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">A</span></div>
-                    <div style="font-size: 0.65rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACS712 Peak-Hold</div>
+                <div style="background: rgba(0, 212, 255, 0.06); border: 2px solid var(--neon-cyan); border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PEAK</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${isStandby ? '--' : currentA}<span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">A</span></div>
+                    <div style="font-size: 0.62rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Primer ACS712</div>
+                </div>
+
+                <!-- Card 5: SUHU KOIL -->
+                <div style="background: rgba(255, 149, 0, 0.05); border: 2px solid ${parseFloat(tempCoil) >= 75 ? 'var(--neon-red)' : 'rgba(255, 149, 0, 0.6)'}; border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SUHU KOIL</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${parseFloat(tempCoil) >= 75 ? 'var(--neon-red)' : 'var(--neon-orange)'};">${tempCoil}<span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">°C</span></div>
+                    <div style="font-size: 0.62rem; color: var(--neon-orange); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Probe DS18B20</div>
+                </div>
+
+                <!-- Card 6: SUHU IGBT -->
+                <div style="background: rgba(189, 0, 255, 0.05); border: 2px solid ${parseFloat(tempDriver) >= 80 ? 'var(--neon-red)' : 'rgba(189, 0, 255, 0.6)'}; border-radius: 6px; padding: 6px 8px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SUHU IGBT</div>
+                    <div style="font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${parseFloat(tempDriver) >= 80 ? 'var(--neon-red)' : 'var(--neon-purple)'};">${tempDriver}<span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">°C</span></div>
+                    <div style="font-size: 0.62rem; color: var(--neon-purple); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Driver Heatsink</div>
                 </div>
             </div>
 

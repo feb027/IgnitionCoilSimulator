@@ -83,6 +83,8 @@ void SettingsManager::commitToNvs() {
     preferences.putFloat("c_tp_p", _settings.calTempPrima); preferences.putFloat("c_tp_b", _settings.calTempBaik);
     preferences.putFloat("c_tp_c", _settings.calTempCukup); preferences.putFloat("c_tp_h", _settings.calTempPanas);
     preferences.putFloat("c_tp_cut", _settings.calTempCutoff); preferences.putFloat("c_tp_off", _settings.calTempOffset);
+    preferences.putFloat("c_vt_g", _settings.calVoltGain); preferences.putFloat("c_vt_o", _settings.calVoltOffset);
+    preferences.putFloat("c_dc_g", _settings.calDcCurrentGain); preferences.putFloat("c_dc_o", _settings.calDcCurrentOffset);
     _savedSettings = _settings;
 }
 
@@ -196,6 +198,10 @@ void SettingsManager::load() {
     _settings.calTempPanas = preferences.getFloat("c_tp_h", 75.0f);
     _settings.calTempCutoff = preferences.getFloat("c_tp_cut", 85.0f);
     _settings.calTempOffset = preferences.getFloat("c_tp_off", 0.0f);
+    _settings.calVoltGain = preferences.getFloat("c_vt_g", 1.00f);
+    _settings.calVoltOffset = preferences.getFloat("c_vt_o", 0.0f);
+    _settings.calDcCurrentGain = preferences.getFloat("c_dc_g", 1.00f);
+    _settings.calDcCurrentOffset = preferences.getFloat("c_dc_o", 0.0f);
     
     _settings.supplyVoltage = 12.6f; _settings.realCurrentA = 0.0f;
     _settings.tempCoilC = 28.5f; _settings.tempDriverC = 29.0f;
@@ -251,6 +257,8 @@ void SettingsManager::resetToDefaults() {
     
     _settings.calTempPrima = 45.0f; _settings.calTempBaik = 55.0f; _settings.calTempCukup = 65.0f; _settings.calTempPanas = 75.0f;
     _settings.calTempCutoff = 85.0f; _settings.calTempOffset = 0.0f;
+    _settings.calVoltGain = 1.00f; _settings.calVoltOffset = 0.0f;
+    _settings.calDcCurrentGain = 1.00f; _settings.calDcCurrentOffset = 0.0f;
     
     _savedSettings = _settings;
 }

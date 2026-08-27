@@ -205,12 +205,16 @@ void NetworkManager::broadcastState() {
     doc["calTempPanas"] = s.calTempPanas;
     doc["calTempCutoff"] = s.calTempCutoff;
     doc["calTempOffset"] = s.calTempOffset;
+    doc["calVoltGain"] = s.calVoltGain;
+    doc["calVoltOffset"] = s.calVoltOffset;
+    doc["calDcCurrentGain"] = s.calDcCurrentGain;
+    doc["calDcCurrentOffset"] = s.calDcCurrentOffset;
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
 
     // Auxiliary Sensor Telemetry (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
-    doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage();
+    doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage(s.calVoltGain, s.calVoltOffset);
     doc["realCurrentA"] = s.realCurrentA;
     doc["tempCoilC"] = TempSensorService::getInstance().getCoilTempC();
     doc["tempDriverC"] = TempSensorService::getInstance().getDriverTempC();
@@ -337,10 +341,14 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["calTempPanas"] = s.calTempPanas;
         doc["calTempCutoff"] = s.calTempCutoff;
         doc["calTempOffset"] = s.calTempOffset;
+        doc["calVoltGain"] = s.calVoltGain;
+        doc["calVoltOffset"] = s.calVoltOffset;
+        doc["calDcCurrentGain"] = s.calDcCurrentGain;
+        doc["calDcCurrentOffset"] = s.calDcCurrentOffset;
         doc["coilLeakSeverity"] = s.coilLeakSeverity;
         doc["coilCurrentStatus"] = s.coilCurrentStatus;
         doc["coilConnected"] = s.coilConnected;
-        doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage();
+        doc["supplyVoltage"] = Ads1115Service::getInstance().getSupplyVoltage(s.calVoltGain, s.calVoltOffset);
         doc["realCurrentA"] = s.realCurrentA;
         doc["tempCoilC"] = TempSensorService::getInstance().getCoilTempC();
         doc["tempDriverC"] = TempSensorService::getInstance().getDriverTempC();
@@ -710,6 +718,11 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             if (doc["tempPanas"].is<float>()) s.calTempPanas = doc["tempPanas"].as<float>();
             if (doc["tempCutoff"].is<float>()) s.calTempCutoff = doc["tempCutoff"].as<float>();
             if (doc["tempOffset"].is<float>()) s.calTempOffset = doc["tempOffset"].as<float>();
+            
+            if (doc["voltGain"].is<float>()) s.calVoltGain = doc["voltGain"].as<float>();
+            if (doc["voltOffset"].is<float>()) s.calVoltOffset = doc["voltOffset"].as<float>();
+            if (doc["dcCurrentGain"].is<float>()) s.calDcCurrentGain = doc["dcCurrentGain"].as<float>();
+            if (doc["dcCurrentOffset"].is<float>()) s.calDcCurrentOffset = doc["dcCurrentOffset"].as<float>();
             
             if (doc["cutIn"].is<int>()) s.leakArcCutIn = doc["cutIn"].as<int>();
             if (doc["arc25"].is<int>()) s.leakArc25 = doc["arc25"].as<int>();

@@ -161,6 +161,12 @@ struct AppSettings {
     float calTempPanas;         // Default 75.0 °C
     float calTempCutoff;        // Default 85.0 °C
     float calTempOffset;        // Sensor temp offset (default: 0.0 °C)
+    
+    // DC Power Calibration (Voltage Divider & DC Current Offset/Gain)
+    float calVoltGain;          // Supply voltage multiplier (default: 1.00)
+    float calVoltOffset;        // Supply voltage offset in Volts (default: 0.00)
+    float calDcCurrentGain;     // Real DC current multiplier (default: 1.00)
+    float calDcCurrentOffset;   // Real DC current offset in Amperes (default: 0.00)
 
     // Auxiliary Sensors (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
     float supplyVoltage;        // Battery supply voltage in Volts (e.g. 12.6V)
