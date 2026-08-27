@@ -246,41 +246,41 @@ export function SparkCadenceCard({ state, sendAction, title = "TRI-DIMENSION IGN
                 </div>
             </div>
 
-            <!-- REAL-TIME PERFORMANCE TREND GRAPH (SVG) -->
-            <div style="margin-top: 14px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-primary);">
-                        📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP ANALYZER)
-                    </span>
-                    <div style="display: flex; gap: 12px; font-size: 0.68rem;">
+            <!-- COLLAPSIBLE REAL-TIME PERFORMANCE TREND GRAPH (SVG) -->
+            <details style="margin-top: 14px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 10px;">
+                <summary style="cursor: pointer; user-select: none; font-size: 0.75rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <span>📈 GRAFIK TREN PERFORMA vs RPM (LIVE SWEEP ANALYZER) ▾</span>
+                    <div style="display: flex; gap: 10px; font-size: 0.68rem;">
                         <span style="color: var(--neon-cyan);">■ Arus Api (0-80mA)</span>
-                        <span style="color: var(--neon-purple);">■ Keteraturan Detak (0-100%)</span>
+                        <span style="color: var(--neon-purple);">■ Irama Detak (0-100%)</span>
+                    </div>
+                </summary>
+
+                <div style="margin-top: 10px;">
+                    <div style="width: 100%; height: 95px; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; width: 100%; top: 25%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
+                        <div style="position: absolute; width: 100%; top: 50%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
+                        <div style="position: absolute; width: 100%; top: 75%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
+
+                        <svg viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
+                            ${sparkPts ? html`<polyline fill="none" stroke="var(--neon-cyan)" stroke-width="2" points="${sparkPts}" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+                            ${cadencePts ? html`<polyline fill="none" stroke="var(--neon-purple)" stroke-width="2" points="${cadencePts}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,2" />` : ''}
+                        </svg>
+
+                        ${ptsCount === 0 ? html`
+                            <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted);">
+                                Nyalakan Trigger / Sweep untuk merekam grafik tren performa
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">
+                        <span>◀ Awal Uji</span>
+                        <span>Live RPM: <strong style="color: var(--neon-cyan);">${rpm} RPM</strong></span>
+                        <span>Riwayat (50 Sampel) ▶</span>
                     </div>
                 </div>
-
-                <div style="width: 100%; height: 95px; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; width: 100%; top: 25%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
-                    <div style="position: absolute; width: 100%; top: 50%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
-                    <div style="position: absolute; width: 100%; top: 75%; border-top: 1px dashed rgba(255,255,255,0.08);"></div>
-
-                    <svg viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
-                        ${sparkPts ? html`<polyline fill="none" stroke="var(--neon-cyan)" stroke-width="2" points="${sparkPts}" stroke-linecap="round" stroke-linejoin="round" />` : ''}
-                        ${cadencePts ? html`<polyline fill="none" stroke="var(--neon-purple)" stroke-width="2" points="${cadencePts}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,2" />` : ''}
-                    </svg>
-
-                    ${ptsCount === 0 ? html`
-                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted);">
-                            Nyalakan Trigger / Sweep untuk merekam grafik tren performa
-                        </div>
-                    ` : ''}
-                </div>
-
-                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">
-                    <span>◀ Titik Awal Pengujian</span>
-                    <span>RPM: <strong style="color: var(--neon-cyan);">${rpm} RPM</strong></span>
-                    <span>Live Riwayat (50 Sampel) ▶</span>
-                </div>
-            </div>
+            </details>
         </div>
     `;
 }

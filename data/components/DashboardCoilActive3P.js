@@ -7,17 +7,11 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
     
     return html`
-        <div class="panel-main">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
-                    ⚡ IGT (PIN 25) | SENSOR API (PIN 39 / VN) | SENSE (PIN 35)
-                </div>
-                <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
-                    ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
-                </span>
-            </div>
+        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
             <${Dial} 
-                label=${(isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED")}
+                compact=${true}
+                label=${(isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED")}
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
                 unit="RPM"
                 min="0"
@@ -26,11 +20,10 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning)}
             />
-        </div>
-        
-        <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
+            
             <${Dial} 
-                label="DWELL TIME (IGT PULSE WIDTH)"
+                compact=${true}
+                label="DWELL TIME (IGT)"
                 value=${state.dwellMs}
                 unit="MS"
                 min="0.5"
@@ -59,28 +52,16 @@ export function DashboardCoilActive3P({ state, sendAction, modeSelector }) {
             </button>
         </div>
         
-        <!-- 3-PIN TRI-DIMENSION IGNITION ANALYZER (DUAL GAUGES + PEAK CURRENT + LIVE GRAPH) -->
+        <!-- 3-PIN TRI-DIMENSION IGNITION ANALYZER (DUAL GAUGES + PEAK CURRENT + COLLAPSIBLE GRAPH) -->
         <${SparkCadenceCard} state=${state} sendAction=${sendAction} title="3-PIN DUAL-DIMENSION IGNITION ANALYZER" />
 
-        <!-- BODY LEAKAGE DETECTION CARD (PIN 36 SENSITIVITY & ARC COUNTERS) -->
+        <!-- BODY LEAKAGE DETECTION CARD (PIN 36 SENSITIVITY PRESETS & SLIDERS) -->
         <${LeakageCard} state=${state} sendAction=${sendAction} />
 
-        <!-- PIN INFO CARD -->
-        <div class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1;">
-            <div class="panel-header">
-                <span>3-PIN ACTIVE COIL PINOUT & WIRING</span>
-            </div>
-            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
-                • <strong>PIN 1 (+12V):</strong> Sambungkan ke +12V Power Supply / Aki (melalui sensor arus ACS712)<br/>
-                • <strong>PIN 2 (GND):</strong> Sambungkan ke Terminal Ground Alat / Aki 12V<br/>
-                • <strong>PIN 3 (IGT):</strong> Sambungkan ke Terminal <strong>IGT Pin 25</strong>
-            </div>
-        </div>
-        
-        <!-- PANDUAN & TATA CARA PENGUJIAN KOIL 3-PIN LENGKAP -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-orange);" open>
+        <!-- PANDUAN PENGUJIAN & PINOUT (COLLAPSIBLE BY DEFAULT) -->
+        <details class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: var(--border-sharp);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-orange); font-weight: bold; letter-spacing: 0.05em;">
-                📖 TATA CARA & PANDUAN PENGUJIAN KOIL 3-PIN LENGKAP ▾
+                📖 PANDUAN PENGUJIAN, PINOUT & WIRING KOIL 3-PIN ▾
             </summary>
             <div style="padding-top: var(--space-md); font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
                 

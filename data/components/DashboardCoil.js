@@ -31,17 +31,11 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
     }
 
     return html`
-        <div class="panel-main">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); letter-spacing: 0.05em;">
-                    ⚡ UNIVERSAL COIL TESTER
-                </div>
-                <span class="status-badge" style="font-size: 0.75rem; border-color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--border-sharp)'}; color: ${state.coilConnected ? 'var(--neon-green)' : 'var(--text-muted)'};">
-                    ${state.coilConnected ? '🟢 COIL CONNECTED' : '⚪ NO COIL (AUTO-PING)'}
-                </span>
-            </div>
+        <!-- COMPACT ENGINE SPEED & DWELL TIME CONTROL ROW (SIDE-BY-SIDE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1;">
             <${Dial} 
-                label=${isAutoDiag ? "AUTO DIAGNOSTIC RPM" : ((isSweep && state.isRunning) ? "SWEEPING RPM..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
+                compact=${true}
+                label=${isAutoDiag ? "AUTO DIAG..." : ((isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
                 value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
                 unit="RPM"
                 min="0"
@@ -50,10 +44,9 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
                 onChange=${(val) => sendAction('setRpm', val)}
                 disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
             />
-        </div>
-        
-        <div class="panel-side-top" style="display: flex; flex-direction: column; gap: var(--space-md);">
+            
             <${Dial} 
+                compact=${true}
                 label="DWELL TIME"
                 value=${state.dwellMs}
                 unit="MS"
@@ -216,7 +209,7 @@ export function DashboardCoil({ state, sendAction, modeSelector }) {
         </details>
 
         <!-- PANDUAN & TATA CARA PENGUJIAN KOIL UMUM -->
-        <details class="panel" style="margin-top: var(--space-md); grid-column: 1 / -1; border-color: var(--neon-cyan, #00d4ff);" open>
+        <details class="panel" style="margin-top: 10px; grid-column: 1 / -1; border-color: var(--border-sharp);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; color: var(--neon-cyan, #00d4ff); font-weight: bold; letter-spacing: 0.05em;">
                 📖 TATA CARA & STANDAR PENGUJIAN KOIL PENGAPIAN ▾
             </summary>

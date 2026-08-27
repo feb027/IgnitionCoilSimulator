@@ -313,7 +313,7 @@ function App() {
 
     return html`
         <header>
-            <div class="title">IGNITION PRO <span style="font-size: 0.65rem; color: var(--neon-cyan); margin-left: 4px; font-weight: normal;">v2.3.0</span></div>
+            <div class="title">IGNITION PRO <span style="font-size: 0.65rem; color: var(--neon-cyan); margin-left: 4px; font-weight: normal;">v2.5.0</span></div>
             <div class="status-badge">
                 <div class="status-dot ${state.connected ? 'connected' : 'disconnected'}"></div>
                 ${state.connected ? 'SYS_LINK_OK' : 'SYS_OFFLINE'}
