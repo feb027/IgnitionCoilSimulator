@@ -37,8 +37,8 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const totalHealthScore = fired > 0 ? (cadenceRate * energyFactor * insulationFactor) : 100;
     let healthColor = 'var(--neon-green)', healthBadge = '🟢 100% PRIMA', healthDesc = 'Detak Sinkron & Api Normal';
 
-    // Persistent Alarm Flag: Stays active after stop until explicitly reset
-    const isAlarm = (fired > 0 && (totalHealthScore < 50 || parseFloat(currentA) > 11.5 || leakSeverity.includes("SEVERE") || (fired > 5 && confirmed === 0) || (fired > 5 && sparkmA < 15.0)));
+    // Persistent Alarm Flag: Stays active after stop until explicitly reset (Requires >= 10 fired pulses)
+    const isAlarm = (fired >= 10 && (totalHealthScore < 50 || parseFloat(currentA) > 11.5 || leakSeverity.includes("SEVERE") || confirmed === 0 || (sparkmA < 15.0 && sparkmA > 0)));
 
     if (isStandby) {
         healthColor = 'var(--text-muted)'; healthBadge = 'STANDBY'; healthDesc = 'Tekan Trigger / Run';
@@ -46,7 +46,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         healthColor = 'var(--neon-red)'; healthBadge = '❌ OVERCURRENT'; healthDesc = 'Korsleting Primer (>11A)';
     } else if (leakSeverity.includes("SEVERE") || leakRate > 25) {
         healthColor = 'var(--neon-red)'; healthBadge = '🚨 BOCOR PARAH'; healthDesc = 'Isolasi Bodi Jebol';
-    } else if (totalHealthScore < 50 || (fired > 5 && sparkmA < 15.0)) {
+    } else if (fired >= 10 && (totalHealthScore < 50 || (sparkmA < 15.0 && sparkmA > 0))) {
         healthColor = 'var(--neon-red)'; healthBadge = '🔴 <50% RUSAK'; healthDesc = 'Api Lilin / Misfire';
     } else if (totalHealthScore < 75 || isLeaking || leakCount > 0) {
         healthColor = '#FFE600'; healthBadge = '🟡 75% DEGRADASI'; healthDesc = 'Penurunan Daya';

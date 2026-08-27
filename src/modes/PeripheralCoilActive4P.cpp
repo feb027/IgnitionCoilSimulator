@@ -211,9 +211,9 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
     AppSettings& s = _settingsMgr.getSettings();
     
     if (s.isRunning) {
-        if (coil_act4p_hasNewAdc) {
-            coil_act4p_hasNewAdc = false;
-            int rawAdc = coil_act4p_peakRawAdc;
+        if (now - _lastCurrentSampleTime >= 50) {
+            _lastCurrentSampleTime = now;
+            int rawAdc = analogRead(PIN_COIL_ISENSE);
             float voltage = ((float)rawAdc / 4095.0f) * 3.3f;
             
             // ACS712-30A with 1N4148 Peak Detector (Gain factor: 3.2x)
