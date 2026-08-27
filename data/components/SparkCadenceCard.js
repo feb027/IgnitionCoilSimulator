@@ -166,34 +166,34 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </div>
 
-            <!-- 4 METRIC CARDS -->
+            <!-- 4 CENTERED METRIC CARDS WITH CONSTANT IDENTICAL BORDERS -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px;">
                 <!-- Card 1: TOTAL DETAK -->
-                <div style="background: rgba(0,0,0,0.25); border: 2px solid var(--border-sharp); border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK (IGT)</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1;">${fired}</div>
-                    <div style="font-size: 0.65rem; color: var(--neon-cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Detak Terpicu</div>
+                <div style="background: rgba(0,0,0,0.25); border: 2px solid var(--border-sharp); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TOTAL DETAK (IGT)</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1;">${fired}</div>
+                    <div style="font-size: 0.65rem; color: var(--neon-cyan); width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Detak Terpicu</div>
                 </div>
 
                 <!-- Card 2: RESPON DETAK -->
-                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${confirmed === fired && fired > 0 ? 'var(--neon-green)' : (confirmed > 0 ? 'var(--border-sharp)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON (CONFIRMED)</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${confirmed > 0 ? 'var(--neon-green)' : 'inherit'};">${confirmed}</div>
-                    <div style="font-size: 0.65rem; color: var(--neon-green); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Terkonfirmasi</div>
+                <div style="background: rgba(0, 255, 102, 0.04); border: 2px solid var(--neon-green); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 255, 102, 0.1);">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RESPON (CONFIRMED)</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-green);">${confirmed}</div>
+                    <div style="font-size: 0.65rem; color: var(--neon-green); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cadenceRate.toFixed(0)}% Terkonfirmasi</div>
                 </div>
 
                 <!-- Card 3: DETAK HILANG -->
-                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'var(--border-sharp)'}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG (MISSED)</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${missed > 0 ? 'var(--neon-red)' : 'inherit'};">${missed}</div>
-                    <div style="font-size: 0.65rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Hilang Api</div>
+                <div style="background: ${missed > 0 ? 'rgba(255, 45, 85, 0.08)' : 'rgba(0,0,0,0.25)'}; border: 2px solid ${missed > 0 ? 'var(--neon-red)' : 'var(--border-sharp)'}; border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: ${missed > 0 ? '0 0 12px rgba(255, 45, 85, 0.25)' : 'none'};">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">DETAK HILANG (MISSED)</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div>
+                    <div style="font-size: 0.65rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'}; font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${arrhythmiaRate.toFixed(0)}% Hilang Api</div>
                 </div>
 
                 <!-- Card 4: ARUS PRIMER PEAK -->
-                <div style="background: rgba(0,0,0,0.25); border: 2px solid ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) >= 3.5 ? 'var(--neon-green)' : 'var(--border-sharp)')}; border-radius: 6px; padding: 6px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PRIMER PEAK</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; color: ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : (parseFloat(currentA) >= 3.5 ? 'var(--neon-green)' : 'inherit')};">${isStandby ? '--' : currentA} A</div>
-                    <div style="font-size: 0.65rem; color: ${parseFloat(currentA) > 11.5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACS712 Peak-Hold</div>
+                <div style="background: rgba(0, 212, 255, 0.04); border: 2px solid var(--neon-cyan); border-radius: 6px; padding: 8px 10px; height: 104px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.1);">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ARUS PRIMER PEAK</div>
+                    <div style="font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: var(--neon-cyan);">${isStandby ? '--' : currentA} <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">A</span></div>
+                    <div style="font-size: 0.65rem; color: var(--neon-cyan); font-weight: 700; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACS712 Peak-Hold</div>
                 </div>
             </div>
 

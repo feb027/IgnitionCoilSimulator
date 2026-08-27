@@ -14,6 +14,7 @@ static volatile uint16_t coil_act3p_peakRawAdc = 0;
 static volatile bool coil_act3p_hasNewAdc = false;
 static volatile uint32_t isr_act3p_firedCount = 0;
 static volatile uint32_t isr_act3p_sparkReturnCount = 0;
+static volatile uint32_t isr_act3p_missedCount = 0;
 static volatile uint32_t isr_act3p_lastSparkUs = 0;
 
 static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
@@ -48,6 +49,13 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         timerAlarmWrite(coil_active3p_timer, offTicks, true);
         timerAlarmEnable(coil_active3p_timer);
     } else {
+        // Evaluate missed spark from previous cycle before starting new pulse
+        if (isr_act3p_firedCount > isr_act3p_sparkReturnCount) {
+            isr_act3p_missedCount = isr_act3p_firedCount - isr_act3p_sparkReturnCount;
+        } else {
+            isr_act3p_missedCount = 0;
+        }
+
         // Turn IGT Pin 25 HIGH (Direct register write)
         GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = true;
@@ -96,7 +104,7 @@ void PeripheralCoilActive3P::update() {
     s.coilFiredCount = isr_act3p_firedCount;
     s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
     s.coilIgfCount = isr_act3p_sparkReturnCount;
-    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    s.coilMissedCount = isr_act3p_missedCount;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     samplePrimaryCurrent();
@@ -242,30 +250,33 @@ void PeripheralCoilActive3P::samplePrimaryCurrent() {
             float amps = (deltaV / 0.066f) * 3.2f;
             if (amps > 25.0f) amps = 25.0f;
             
-            // Fast attack, stable decay peak current filter
-            if (amps > s.coilPeakCurrentA) {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.25f) + (amps * 0.75f);
-            } else {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.90f) + (amps * 0.10f);
+            // Track TRUE PEAK current (Hold peak voltage cleanly across cycles)
+            if (amps >= 2.0f) {
+                if (amps > s.coilPeakCurrentA) {
+                    s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.15f) + (amps * 0.85f);
+                } else {
+                    s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.98f) + (amps * 0.02f);
+                }
+                _sumPeakAmps += s.coilPeakCurrentA;
+                _sampleCountAmps++;
+            } else if (s.coilFiredCount > 0 && s.coilPeakCurrentA < 0.5f) {
+                s.coilPeakCurrentA = amps;
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
-            
-            // Accumulate running test session peak current average
-            if (amps >= 0.5f) {
-                _sumPeakAmps += amps;
-                _sampleCountAmps++;
-            }
             
             // Sample Secondary Spark Intensity via LM358 ADC Pin 39
             int rawSparkAdc = analogRead(PIN_COIL_SPARK_SENSE);
             float sparkV = ((float)rawSparkAdc / 4095.0f) * 3.3f;
             float sparkmA = sparkV * 25.0f;
             if (sparkmA > 100.0f) sparkmA = 100.0f;
-            s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.7f) + (sparkmA * 0.3f);
             
-            // Accumulate running spark mA average
-            if (sparkmA >= 1.0f) {
-                _sumSparkmA += sparkmA;
+            if (sparkmA >= 5.0f) {
+                if (sparkmA > s.coilSparkCurrentmA) {
+                    s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.2f) + (sparkmA * 0.8f);
+                } else {
+                    s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.97f) + (sparkmA * 0.03f);
+                }
+                _sumSparkmA += s.coilSparkCurrentmA;
                 _sampleCountSpark++;
             }
             

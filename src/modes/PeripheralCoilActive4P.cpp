@@ -14,6 +14,7 @@ static volatile bool coil_act4p_autoStopped = false;
 static volatile uint32_t isr_act4p_firedCount = 0;
 static volatile uint32_t isr_act4p_igfCount = 0;
 static volatile uint32_t isr_act4p_sparkCount = 0;
+static volatile uint32_t isr_act4p_missedCount = 0;
 static volatile uint16_t coil_act4p_peakRawAdc = 0;
 static volatile bool coil_act4p_hasNewAdc = false;
 
@@ -44,6 +45,13 @@ static void IRAM_ATTR onActive4pCoilTimer() {
         timerAlarmWrite(coil_active4p_timer, offTicks, true);
         timerAlarmEnable(coil_active4p_timer);
     } else {
+        // Evaluate missed spark from previous cycle before starting new pulse
+        if (isr_act4p_firedCount > isr_act4p_sparkCount) {
+            isr_act4p_missedCount = isr_act4p_firedCount - isr_act4p_sparkCount;
+        } else {
+            isr_act4p_missedCount = 0;
+        }
+
         // Turn IGT Pin 25 HIGH (Start Dwell charging)
         GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = true;
@@ -115,7 +123,7 @@ void PeripheralCoilActive4P::update() {
     s.coilFiredCount = isr_act4p_firedCount;
     s.coilIgfCount = isr_act4p_igfCount;
     s.coilSparkReturnCount = isr_act4p_sparkCount;
-    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    s.coilMissedCount = isr_act4p_missedCount;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     // Sample primary current
@@ -229,19 +237,19 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
             float amps = (deltaV / 0.066f) * 3.2f;
             if (amps > 25.0f) amps = 25.0f;
             
-            // Fast attack, stable decay peak current filter
-            if (amps > s.coilPeakCurrentA) {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.25f) + (amps * 0.75f);
-            } else {
-                s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.90f) + (amps * 0.10f);
+            // Track TRUE PEAK current (Hold peak voltage cleanly across cycles)
+            if (amps >= 2.0f) {
+                if (amps > s.coilPeakCurrentA) {
+                    s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.15f) + (amps * 0.85f);
+                } else {
+                    s.coilPeakCurrentA = (s.coilPeakCurrentA * 0.98f) + (amps * 0.02f);
+                }
+                _sumPeakAmps += s.coilPeakCurrentA;
+                _sampleCountAmps++;
+            } else if (s.coilFiredCount > 0 && s.coilPeakCurrentA < 0.5f) {
+                s.coilPeakCurrentA = amps;
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
-            
-            // Accumulate running test session peak current average
-            if (amps >= 0.5f) {
-                _sumPeakAmps += amps;
-                _sampleCountAmps++;
-            }
             
             // Real-time Dual Confirmation Status for 4-Pin
             if (s.coilFiredCount >= 10) {
