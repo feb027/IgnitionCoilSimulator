@@ -41,24 +41,24 @@ void CoilLeakSensor::update(AppSettings& s) {
     }
     
     // Multi-Tier Sensitivity Calibration:
-    // Level 1: Ultra (Debounce 0.2ms, Thresh 1 - Micro leakage detection)
-    // Level 2: High (Debounce 0.5ms, Thresh 2 - Fine resin cracks)
-    // Level 3: Medium / Standard (Debounce 1.0ms, Thresh 3 - Standard)
-    // Level 4: Super Immune (Debounce 1.5ms, Thresh 5 - Direct spark gap exposure only)
-    // Level 5: Custom (User slider defined: Thresh 1-10, Debounce 0.1-3.0ms)
-    uint32_t threshold = 3;
-    float debounceMs = 1.0f;
+    // Level 1: Ultra (Debounce 0.3ms, Thresh 2 - Micro leakage detection)
+    // Level 2: High (Debounce 0.8ms, Thresh 4 - Fine resin cracks)
+    // Level 3: Medium / Standard (Debounce 1.5ms, Thresh 6 - Standard)
+    // Level 4: Super Immune (Debounce 3.5ms, Thresh 12 - Heavy sustained flashover breakdown only)
+    // Level 5: Custom (User slider defined: Thresh 1-25, Debounce 0.1-5.0ms)
+    uint32_t threshold = 6;
+    float debounceMs = 1.5f;
     
     switch (s.coilLeakSensitivity) {
-        case 1: debounceMs = 0.2f; threshold = 1; break;
-        case 2: debounceMs = 0.5f; threshold = 2; break;
-        case 3: debounceMs = 1.0f; threshold = 3; break;
-        case 4: debounceMs = 1.5f; threshold = 5; break;
+        case 1: debounceMs = 0.3f; threshold = 2; break;
+        case 2: debounceMs = 0.8f; threshold = 4; break;
+        case 3: debounceMs = 1.5f; threshold = 6; break;
+        case 4: debounceMs = 3.5f; threshold = 12; break;
         case 5: 
-            debounceMs = (s.coilLeakDebounceMs >= 0.1f) ? s.coilLeakDebounceMs : 1.0f;
-            threshold = (s.coilLeakThreshold >= 1) ? s.coilLeakThreshold : 3;
+            debounceMs = (s.coilLeakDebounceMs >= 0.1f) ? s.coilLeakDebounceMs : 1.5f;
+            threshold = (s.coilLeakThreshold >= 1) ? s.coilLeakThreshold : 6;
             break;
-        default: debounceMs = 1.0f; threshold = 3; break;
+        default: debounceMs = 1.5f; threshold = 6; break;
     }
     
     isr_leak_debounce_us = (uint32_t)(debounceMs * 1000.0f);

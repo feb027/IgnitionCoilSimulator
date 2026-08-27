@@ -582,24 +582,27 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             if (sens >= 1 && sens <= 5) {
                 s.coilLeakSensitivity = sens;
                 _settingsMgr.save();
-                changed = true;
+                broadcastState();
             }
+            return;
         } else if (action == "setLeakThreshold") {
             int th = doc["value"].as<int>();
-            if (th >= 1 && th <= 15) {
+            if (th >= 1 && th <= 25) {
                 s.coilLeakThreshold = th;
                 s.coilLeakSensitivity = 5; // Switch to Custom mode
                 _settingsMgr.save();
-                changed = true;
+                broadcastState();
             }
+            return;
         } else if (action == "setLeakDebounce") {
             float db = doc["value"].as<float>();
             if (db >= 0.1f && db <= 5.0f) {
                 s.coilLeakDebounceMs = db;
                 s.coilLeakSensitivity = 5; // Switch to Custom mode
                 _settingsMgr.save();
-                changed = true;
+                broadcastState();
             }
+            return;
         } else if (action == "probeCoil" || action == "runCheckCoil") {
             if (_peripheralMgr.getActive() != nullptr) {
                 _peripheralMgr.getActive()->probeCoil();

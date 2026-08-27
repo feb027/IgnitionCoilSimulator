@@ -262,13 +262,13 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
                                     <span>AMBANG TRIGGER:</span><strong style="color: var(--neon-yellow);">${customThreshold} Arcs</strong>
                                 </div>
-                                <input type="range" min="1" max="10" step="1" value=${customThreshold} style="width: 100%; accent-color: var(--neon-yellow);" onInput=${(e) => sendAction('setLeakThreshold', parseInt(e.target.value))} disabled=${!state.connected} />
+                                <input type="range" min="1" max="25" step="1" value=${customThreshold} style="width: 100%; accent-color: var(--neon-yellow);" onChange=${(e) => sendAction('setLeakThreshold', parseInt(e.target.value))} disabled=${!state.connected} />
                             </div>
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px;">
                                     <span>FILTER (DEBOUNCE):</span><strong style="color: var(--neon-cyan);">${customDebounce} ms</strong>
                                 </div>
-                                <input type="range" min="0.1" max="3.0" step="0.1" value=${customDebounce} style="width: 100%; accent-color: var(--neon-cyan);" onInput=${(e) => sendAction('setLeakDebounce', parseFloat(e.target.value))} disabled=${!state.connected} />
+                                <input type="range" min="0.1" max="5.0" step="0.1" value=${customDebounce} style="width: 100%; accent-color: var(--neon-cyan);" onChange=${(e) => sendAction('setLeakDebounce', parseFloat(e.target.value))} disabled=${!state.connected} />
                             </div>
                         </div>
                     ` : ''}
