@@ -27,8 +27,7 @@ export function AdvancedTuningPanel({
         sendAction('setDwell', nextDwell);
     };
 
-    // Pre-Flight & Probe Sensitivity Controls
-    const checkPulses = state.checkCoilPulseCount || 3, checkVerdict = state.checkCoilVerdict || "READY";
+    // Probe Sensitivity Controls
     const currentSens = state.coilLeakSensitivity || 3;
     const sensLabels = [{ id: 1, name: "1: ULTRA" }, { id: 2, name: "2: TINGGI" }, { id: 3, name: "3: STANDAR" }, { id: 4, name: "4: KEBAL" }, { id: 5, name: "5: CUSTOM" }];
 
@@ -40,10 +39,10 @@ export function AdvancedTuningPanel({
     useEffect(() => { if (!isDragDb.current && state.coilLeakDebounceMs !== undefined) setLocalDb(Number(state.coilLeakDebounceMs).toFixed(1)); }, [state.coilLeakDebounceMs]);
 
     return html`
-        <!-- ADVANCED TUNING, RANGE LIMITS, PRE-FLIGHT & CALIBRATION MATRIX (AT BOTTOM) -->
+        <!-- ADVANCED TUNING, RANGE LIMITS, PROBE SENSITIVITY & CALIBRATION MATRIX (AT BOTTOM) -->
         <details class="panel" style="margin-top: 8px; grid-column: 1 / -1; border-color: var(--border-sharp); background: rgba(0,0,0,0.25);">
             <summary class="panel-header" style="cursor: pointer; user-select: none; font-size: 0.74rem; font-weight: 700; color: var(--neon-cyan); display: flex; justify-content: space-between; align-items: center;">
-                <span>⚙️ PENGATURAN KALIBRASI, PRE-FLIGHT & DIAGNOSIS ADVANCED ▾</span>
+                <span>⚙️ PENGATURAN KALIBRASI, SENSITIFITAS & DIAGNOSIS ADVANCED ▾</span>
                 <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: normal;">
                     Batas: <strong>${maxRpmLimit} RPM / ${maxDwellLimit.toFixed(1)}ms</strong>
                 </span>
@@ -115,28 +114,7 @@ export function AdvancedTuningPanel({
                     </div>
                 </div>
 
-                <!-- SECTION 3: PRE-FLIGHT CHECK COIL -->
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
-                        <span style="font-weight: bold; color: var(--neon-yellow);">⚡ PRE-FLIGHT CHECK COIL (UJI AMAN SEBELUM RUN):</span>
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <span style="font-size: 0.68rem; color: var(--text-muted);">Jumlah Pulsa:</span>
-                            ${[1, 2, 3, 5, 10].map(p => html`
-                                <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 2px 6px; font-size: 0.68rem; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.2)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
-                            `)}
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
-                        <button class="btn" style="padding: 6px 12px; font-size: 0.75rem; font-weight: 800; background: #FFE600; color: #000;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>
-                            ⚡ JALANKAN CHECK COIL (${checkPulses}x)
-                        </button>
-                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 4px 8px; font-size: 0.74rem;">
-                            VONIS PRE-FLIGHT: <strong style="color: ${checkVerdict.includes('PASS') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">${checkVerdict}</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION 4: PENGATURAN SENSITIFITAS PROBE LEAK -->
+                <!-- SECTION 3: PENGATURAN SENSITIFITAS PROBE LEAK -->
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 8px 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.72rem; flex-wrap: wrap; gap: 4px;">
                         <span style="font-weight: bold; color: var(--neon-cyan);">🎯 PENGATURAN SENSITIFITAS PROBE LEAK (PIN 36):</span>
@@ -173,10 +151,10 @@ export function AdvancedTuningPanel({
                     ` : ''}
                 </div>
 
-                <!-- SECTION 5: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
+                <!-- SECTION 4: CUSTOM CALIBRATION MATRIX (GRADE THRESHOLDS) -->
                 <${CalibrationMatrixPanel} />
 
-                <!-- SECTION 6: SWEEP TIME & RPM STEP SIZE DIALS -->
+                <!-- SECTION 5: SWEEP TIME & RPM STEP SIZE DIALS -->
                 <div class="responsive-grid-2" style="margin-top: 2px;">
                     <${Dial} 
                         compact=${true}

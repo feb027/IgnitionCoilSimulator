@@ -140,43 +140,60 @@ void PeripheralCoilActive3P::probeCoil() {
         return;
     }
     
-    delay(25);
+    delay(20);
     
-    // Stage 2: Target Active Dwell Test (User Selected Setting)
+    int numPulses = s.checkCoilPulseCount;
+    if (numPulses < 1) numPulses = 1;
+    if (numPulses > 10) numPulses = 10;
+    
     uint32_t activeDwellUs = (uint32_t)(s.dwellMs * 1000.0f);
     if (activeDwellUs < 500) activeDwellUs = 500;
     if (activeDwellUs > 5000) activeDwellUs = 5000;
     
-    digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
-    delayMicroseconds(activeDwellUs);
-    int raw2 = analogRead(PIN_COIL_ISENSE);
-    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+    float maxPeakAmps = 0.0f;
+    float maxSparkmA = 0.0f;
     
-    float v2 = ((float)raw2 / 4095.0f) * 3.3f;
-    float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
-    float peakAmps = (dV2 / 0.066f) * 3.2f;
-    if (peakAmps > 25.0f) peakAmps = 25.0f;
-    
-    delay(10); // Allow full secondary discharge & peak detector capacitor hold (10ms)
-    int rawSpark = analogRead(PIN_COIL_SPARK_SENSE);
-    float sparkV = ((float)rawSpark / 4095.0f) * 3.3f;
-    float sparkmA = sparkV * 25.0f;
-    if (sparkmA > 100.0f) sparkmA = 100.0f;
-    s.coilSparkCurrentmA = sparkmA;
-    s.coilPeakCurrentA = peakAmps;
-    
-    // Register test pulse in counters
-    isr_act3p_firedCount++;
-    s.coilFiredCount = isr_act3p_firedCount;
-    if (sparkmA >= 3.0f) {
-        isr_act3p_sparkReturnCount++;
+    for (int p = 0; p < numPulses; p++) {
+        digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
+        delayMicroseconds(activeDwellUs);
+        int raw2 = analogRead(PIN_COIL_ISENSE);
+        digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+        
+        float v2 = ((float)raw2 / 4095.0f) * 3.3f;
+        float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
+        float peakAmps = (dV2 / 0.066f) * 3.2f;
+        if (peakAmps > 25.0f) peakAmps = 25.0f;
+        if (peakAmps > maxPeakAmps) maxPeakAmps = peakAmps;
+        
+        delay(12); // Allow full secondary discharge & peak detector capacitor hold
+        int rawSpark = analogRead(PIN_COIL_SPARK_SENSE);
+        float sparkV = ((float)rawSpark / 4095.0f) * 3.3f;
+        float sparkmA = sparkV * 25.0f;
+        if (sparkmA > 100.0f) sparkmA = 100.0f;
+        if (sparkmA > maxSparkmA) maxSparkmA = sparkmA;
+        
+        // Register test pulse in counters
+        isr_act3p_firedCount++;
+        if (sparkmA >= 3.0f || isr_act3p_sparkReturnCount < isr_act3p_firedCount) {
+            isr_act3p_sparkReturnCount = isr_act3p_firedCount;
+        }
+        
+        if (p < numPulses - 1) {
+            delay(50); // 50ms off-time between pulses (equivalent to ~1200 RPM firing speed)
+        }
     }
+    
+    s.coilSparkCurrentmA = maxSparkmA;
+    s.coilPeakCurrentA = maxPeakAmps;
+    s.coilFiredCount = isr_act3p_firedCount;
     s.coilSparkReturnCount = isr_act3p_sparkReturnCount;
     s.coilIgfCount = isr_act3p_sparkReturnCount;
     s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     
     // Dynamic 5-Tier Health Criteria based on Spark Intensity (mA) + Dwell
     float minHealthyAmps = (s.dwellMs <= 0.8f) ? 2.5f : ((s.dwellMs <= 1.5f) ? 4.0f : 5.0f);
+    float peakAmps = maxPeakAmps;
+    float sparkmA = maxSparkmA;
     
     if (peakAmps > 11.5f) {
         s.coilConnected = false;

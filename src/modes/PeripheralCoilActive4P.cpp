@@ -163,27 +163,46 @@ void PeripheralCoilActive4P::probeCoil() {
         return;
     }
     
-    delay(25);
+    delay(20);
     
-    // Stage 2: Target Active Dwell Test (User Selected Setting)
+    int numPulses = s.checkCoilPulseCount;
+    if (numPulses < 1) numPulses = 1;
+    if (numPulses > 10) numPulses = 10;
+    
     uint32_t activeDwellUs = (uint32_t)(s.dwellMs * 1000.0f);
     if (activeDwellUs < 500) activeDwellUs = 500;
     if (activeDwellUs > 5000) activeDwellUs = 5000;
     
-    digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
-    delayMicroseconds(activeDwellUs);
-    int raw2 = analogRead(PIN_COIL_ISENSE);
-    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+    float maxPeakAmps = 0.0f;
     
-    float v2 = ((float)raw2 / 4095.0f) * 3.3f;
-    float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
-    float peakAmps = (dV2 / 0.066f) * 3.2f;
-    if (peakAmps > 25.0f) peakAmps = 25.0f;
+    for (int p = 0; p < numPulses; p++) {
+        digitalWrite(PIN_COIL_ACTIVE_IGT, HIGH);
+        delayMicroseconds(activeDwellUs);
+        int raw2 = analogRead(PIN_COIL_ISENSE);
+        digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
+        
+        float v2 = ((float)raw2 / 4095.0f) * 3.3f;
+        float dV2 = (v2 > _zeroCurrentVoltage) ? (v2 - _zeroCurrentVoltage) : 0.0f;
+        float peakAmps = (dV2 / 0.066f) * 3.2f;
+        if (peakAmps > 25.0f) peakAmps = 25.0f;
+        if (peakAmps > maxPeakAmps) maxPeakAmps = peakAmps;
+        
+        isr_act4p_firedCount++;
+        if (p < numPulses - 1) {
+            delay(50); // 50ms off-time between pulses
+        }
+    }
     
-    delay(5); // Allow full secondary discharge and optocoupler pulse latch (5ms)
+    delay(10);
     bool gotIgf = (isr_act4p_igfCount > prevIgf);
     bool gotSpark = (isr_act4p_sparkCount > prevSpark);
-    s.coilPeakCurrentA = peakAmps;
+    s.coilPeakCurrentA = maxPeakAmps;
+    s.coilFiredCount = isr_act4p_firedCount;
+    s.coilIgfCount = isr_act4p_igfCount;
+    s.coilSparkReturnCount = isr_act4p_sparkCount;
+    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
+    
+    float peakAmps = maxPeakAmps;
     
     // Dynamic Health Criteria based on Dwell Setting
     float minHealthyAmps = (s.dwellMs <= 0.8f) ? 2.5f : ((s.dwellMs <= 1.5f) ? 4.0f : 5.0f);

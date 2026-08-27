@@ -42,8 +42,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     // Gauge 1: Kualitas Api (mA) - Murni 0% saat standby tanpa warna merah
     let gauge1Border = '2px solid rgba(0, 212, 255, 0.25)', gauge1Shadow = 'none';
-    let gauge1ValColor = 'var(--text-muted)', gauge1BarColor = 'transparent', gauge1BarWidth = 0;
-    let gauge1Text = 'STANDBY';
+    let gauge1ValColor = 'var(--text-muted)', gauge1BarColor = 'transparent', gauge1BarWidth = 0, gauge1Text = 'STANDBY';
     if (!isStandby) {
         gauge1BarWidth = Math.min(100, (sparkmA / 60) * 100);
         if (sparkmA >= 45.0) {
@@ -63,8 +62,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     // Gauge 2: Keteraturan Detak (%) - Murni 0% saat standby tanpa warna merah
     let gauge2Border = '2px solid rgba(189, 0, 255, 0.25)', gauge2Shadow = 'none';
-    let gauge2ValColor = 'var(--text-muted)', gauge2BarColor = 'transparent', gauge2BarWidth = 0;
-    let gauge2Text = 'STANDBY';
+    let gauge2ValColor = 'var(--text-muted)', gauge2BarColor = 'transparent', gauge2BarWidth = 0, gauge2Text = 'STANDBY';
     if (!isStandby) {
         gauge2BarWidth = cadenceRate;
         if (cadenceRate >= 95.0) {
@@ -79,6 +77,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         }
     }
 
+    const checkPulses = state.checkCoilPulseCount || 3, checkVerdict = state.checkCoilVerdict || "READY (SIAP)";
     const handleFullReset = () => { sendAction('resetCounters'); sendAction('resetLeakCounter'); };
 
     return html`
@@ -195,15 +194,38 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 </div>
             </div>
 
-            <!-- LEAKAGE STRIP -->
-            <div style="background: rgba(0,0,0,0.3); border: 2px solid ${leakBadgeColor}; border-radius: 6px; padding: 8px 12px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; box-sizing: border-box;">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="font-size: 0.8rem; font-weight: 800; color: ${leakBadgeColor};">🛡️ KEBOCORAN BODI (PIN 36):</span>
-                    <span class="status-badge" style="border-color: ${leakBadgeColor}; color: ${leakBadgeColor}; font-weight: 800; font-size: 0.72rem;">${leakStatusText}</span>
+            <!-- DUAL ROW: KEBOCORAN BODI (LEFT 50%) & PRE-FLIGHT CHECK COIL (RIGHT 50%) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 8px;">
+                <!-- LEFT 50%: KEBOCORAN BODI (PIN 36) -->
+                <div style="background: rgba(0,0,0,0.3); border: 2px solid ${leakBadgeColor}; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 76px; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: ${leakBadgeColor};">🛡️ KEBOCORAN BODI (PIN 36):</span>
+                        <span class="status-badge" style="border-color: ${leakBadgeColor}; color: ${leakBadgeColor}; font-weight: 800; font-size: 0.65rem;">${leakStatusText}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 0.74rem; font-variant-numeric: tabular-nums;">
+                        <span>Loncatan: <strong style="color: ${leakCount > 0 ? 'var(--neon-orange)' : 'var(--neon-green)'}; font-size: 0.95rem;">${leakCount} Arcs</strong></span>
+                        <span>Frekuensi: <strong style="color: ${leakRate > 5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-size: 0.95rem;">${leakRate}/dtk</strong></span>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 14px; font-size: 0.75rem; font-variant-numeric: tabular-nums;">
-                    <span>Total Loncatan: <strong style="color: ${leakCount > 0 ? 'var(--neon-orange)' : 'var(--neon-green)'}; font-size: 0.95rem;">${leakCount} Arcs</strong></span>
-                    <span>Frekuensi: <strong style="color: ${leakRate > 5 ? 'var(--neon-red)' : 'var(--neon-cyan)'}; font-size: 0.95rem;">${leakRate} /dtk</strong></span>
+
+                <!-- RIGHT 50%: PRE-FLIGHT CHECK COIL -->
+                <div style="background: rgba(0,0,0,0.3); border: 2px solid rgba(255, 230, 0, 0.4); border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 76px; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: var(--neon-yellow);">⚡ PRE-FLIGHT CHECK:</span>
+                        <div style="display: flex; gap: 3px;">
+                            ${[1, 2, 3, 5, 10].map(p => html`
+                                <button class="btn ${checkPulses === p ? 'btn-active' : ''}" style="padding: 1px 5px; font-size: 0.65rem; font-weight: 800; border-color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${checkPulses === p ? 'rgba(255, 230, 0, 0.25)' : 'transparent'}; color: ${checkPulses === p ? 'var(--neon-yellow)' : 'var(--text-muted)'};" onClick=${() => sendAction('setCheckCoilPulses', p)} disabled=${!state.connected}>${p}x</button>
+                            `)}
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 6px;">
+                        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 900; background: #FFE600; color: #000; border-color: #FFE600;" onClick=${() => sendAction('runCheckCoil')} disabled=${!state.connected || state.isRunning}>
+                            ⚡ RUN (${checkPulses}x)
+                        </button>
+                        <span style="font-size: 0.72rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${checkVerdict.includes('PASS') || checkVerdict.includes('PERFECT') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') || checkVerdict.includes('SHORT') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">
+                            ${checkVerdict}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
