@@ -99,7 +99,7 @@ void SettingsManager::load() {
     _settings.pulseMode = static_cast<PulseMode>(preferences.getUChar("pmode", PULSE_DWELL));
     _settings.mode = static_cast<CoilMode>(preferences.getUChar("mode", MODE_CONTINUOUS));
     _settings.sweepTimeSec = preferences.getFloat("s_time", 5.0f);
-    if (_settings.sweepTimeSec < 0.2f) _settings.sweepTimeSec = 0.2f;
+    if (_settings.sweepTimeSec < 0.01f) _settings.sweepTimeSec = 0.01f;
     if (_settings.sweepTimeSec > 60.0f) _settings.sweepTimeSec = 60.0f;
     _settings.sweepMinRpm = preferences.getInt("sw_min", 500);
     if (_settings.sweepMinRpm < 200) _settings.sweepMinRpm = 200;
