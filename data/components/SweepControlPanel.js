@@ -56,7 +56,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
 
     const minPresets = [500, 800, 1000, 1500, 2000];
     const maxPresets = [4000, 6000, 8000, 12000, 16000];
-    const speedPresets = [{ s: 0.01, l: "⚡ 0.01s" }, { s: 0.05, l: "⚡ 0.05s" }, { s: 0.1, l: "⚡ 0.1s" }, { s: 0.5, l: "0.5s" }, { s: 1, l: "🚀 1s" }, { s: 3, l: "3s" }, { s: 5, l: "⏱️ 5s" }, { s: 10, l: "10s" }];
+    const speedPresets = [{ s: 0.01, l: "0.01s" }, { s: 0.02, l: "0.02s" }, { s: 0.05, l: "0.05s" }, { s: 0.08, l: "0.08s" }, { s: 0.1, l: "0.10s" }, { s: 0.2, l: "0.20s" }, { s: 0.5, l: "0.50s" }, { s: 1, l: "1s" }, { s: 3, l: "3s" }, { s: 5, l: "5s" }, { s: 10, l: "10s" }];
     const dwMinPresets = [0.5, 0.8, 1.0, 1.5, 2.0];
     const dwMaxPresets = [3.0, 3.5, 4.0, 4.5, 5.0];
 
@@ -66,6 +66,13 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
         { id: 2, label: "📈 Searah RPM", desc: "RPM Naik -> Dwell Naik" },
         { id: 3, label: "📉 Berlawanan RPM", desc: "RPM Naik -> Dwell Turun (ECU)" }
     ];
+
+    // Dimmed style helper for fixed skeleton zero-layout-shift
+    const dimStyle = (active) => active ? '' : 'opacity: 0.25; filter: grayscale(1); pointer-events: none; border-color: rgba(255,255,255,0.12) !important; background: rgba(255,255,255,0.01) !important;';
+
+    const isModeStatic = (dwellMode === 0);
+    const isModeIndep = (dwellMode === 1);
+    const isModeDynamic = (dwellMode !== 0);
 
     return html`
         <div class="panel" style="margin-top: 6px; grid-column: 1 / -1; background: rgba(0,0,0,0.55); border: 2px solid var(--neon-cyan); border-radius: 6px; padding: 10px 14px; box-shadow: 0 0 16px rgba(0, 212, 255, 0.15); box-sizing: border-box;">
@@ -78,7 +85,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     </span>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-muted);">
-                    RPM: <strong style="color: var(--neon-cyan);">${localMin}</strong>-<strong style="color: var(--neon-green);">${localMax}</strong> | Dwell: <strong style="color: var(--neon-purple);">${dwellMode === 0 ? localDwStatic.toFixed(1) : `${localDwMin.toFixed(1)}-${localDwMax.toFixed(1)}`} ms</strong>
+                    RPM: <strong style="color: var(--neon-cyan);">${localMin}</strong>-<strong style="color: var(--neon-green);">${localMax}</strong> | Dwell: <strong style="color: var(--neon-purple);">${isModeStatic ? localDwStatic.toFixed(1) : `${localDwMin.toFixed(1)}-${localDwMax.toFixed(1)}`} ms</strong>
                 </div>
             </div>
 
@@ -129,14 +136,14 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 </div>
             </div>
 
-            <!-- KECEPATAN SAPUAN RPM (DURASI SWEEP) -->
+            <!-- KECEPATAN SAPUAN RPM (DURASI SWEEP 0.01s - 60s KONTINU) -->
             <div style="background: rgba(255, 214, 0, 0.03); border: 1px solid rgba(255, 214, 0, 0.3); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; flex-wrap: wrap; gap: 4px;">
                     <span style="font-size: 0.72rem; font-weight: 800; color: var(--neon-yellow);">⚡ KECEPATAN SAPUAN RPM:</span>
-                    <div style="font-size: 1rem; font-weight: 900; color: var(--neon-yellow);">${localSpeed < 0.1 ? localSpeed.toFixed(2) : localSpeed.toFixed(1)} <span style="font-size: 0.65rem; color: var(--text-muted);">DETIK</span> <span style="font-size: 0.65rem; color: #A6FF00;">(~${rpmPerSec.toLocaleString()} RPM/s)</span></div>
+                    <div style="font-size: 1rem; font-weight: 900; color: var(--neon-yellow);">${localSpeed < 1.0 ? localSpeed.toFixed(2) : localSpeed.toFixed(1)} <span style="font-size: 0.65rem; color: var(--text-muted);">DETIK</span> <span style="font-size: 0.65rem; color: #A6FF00;">(~${rpmPerSec.toLocaleString()} RPM/s)</span></div>
                 </div>
                 <div style="display: flex; gap: 3px; margin-bottom: 4px; flex-wrap: wrap;">
-                    ${speedPresets.map(sp => html`<button class="btn ${Math.abs(localSpeed - sp.s) < 0.005 ? 'btn-active' : ''}" style="padding: 1px 5px; font-size: 0.63rem;" onClick=${() => { setLocalSpeed(sp.s); sendAction('setSweepTime', sp.s); }} disabled=${!state.connected}>${sp.l}</button>`)}
+                    ${speedPresets.map(sp => html`<button class="btn ${Math.abs(localSpeed - sp.s) < 0.005 ? 'btn-active' : ''}" style="padding: 1px 5px; font-size: 0.62rem;" onClick=${() => { setLocalSpeed(sp.s); sendAction('setSweepTime', sp.s); }} disabled=${!state.connected}>${sp.l}</button>`)}
                 </div>
                 <div style="display: flex; gap: 3px; align-items: center; flex-wrap: wrap;">
                     <button class="btn" style="padding: 3px 5px; font-size: 0.65rem; font-weight: 900; color: var(--neon-red);" onClick=${() => adjSpeed(-20.0)} disabled=${!state.connected}>-20s</button>
@@ -149,7 +156,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 </div>
             </div>
 
-            <!-- MODULASI DWELL DINAMIS (4 PILIHAN MODE) -->
+            <!-- MODULASI DWELL DINAMIS (FIXED CONTAINER HEIGHT - ZERO LAYOUT SHIFT) -->
             <div style="background: rgba(189, 0, 255, 0.04); border: 2px solid var(--neon-purple); border-radius: 6px; padding: 8px 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
                     <span style="font-size: 0.76rem; font-weight: 900; color: var(--neon-purple);">🎛️ MODULASI DWELL DEGRADASI (4 MODE):</span>
@@ -166,83 +173,76 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     `)}
                 </div>
 
-                ${dwellMode === 0 ? html`
-                    <!-- MODE 0: DWELL TETAP / KONSTAN -->
-                    <div style="display: flex; gap: 4px; align-items: center; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: var(--neon-purple); min-width: 90px;">DWELL TETAP:</span>
-                        <button class="btn" style="padding: 3px 6px; font-size: 0.65rem;" onClick=${() => adjDwStatic(-0.1)} disabled=${!state.connected}>-0.1</button>
-                        <input type="range" min="0.2" max=${maxDwellLimit} step="0.05" value=${localDwStatic} style="flex: 1; accent-color: var(--neon-purple); cursor: pointer;" onPointerDown=${() => { isDragDwStatic.current = true; }} onPointerUp=${() => { isDragDwStatic.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwStatic(v); sendAction('setDwell', v); }} disabled=${!state.connected}/>
-                        <button class="btn" style="padding: 3px 6px; font-size: 0.65rem;" onClick=${() => adjDwStatic(+0.1)} disabled=${!state.connected}>+0.1</button>
-                        <span style="font-size: 0.85rem; font-weight: 900; color: var(--neon-purple); min-width: 50px; text-align: right;">${localDwStatic.toFixed(1)} ms</span>
+                <!-- BLOCK 1: DWELL TETAP (AKTIF HANYA PADA MODE 0, DIMMED JIKA BUKAN) -->
+                <div style="display: flex; gap: 4px; align-items: center; background: rgba(0,0,0,0.3); padding: 5px 8px; border-radius: 4px; margin-bottom: 6px; transition: opacity 0.2s; ${dimStyle(isModeStatic)}">
+                    <span style="font-size: 0.72rem; font-weight: 800; color: var(--neon-purple); min-width: 90px;">⏱️ DWELL TETAP:</span>
+                    <button class="btn" style="padding: 2px 6px; font-size: 0.65rem;" onClick=${() => adjDwStatic(-0.1)} disabled=${!state.connected || !isModeStatic}>-0.1</button>
+                    <input type="range" min="0.2" max=${maxDwellLimit} step="0.05" value=${localDwStatic} style="flex: 1; accent-color: var(--neon-purple); cursor: pointer;" onPointerDown=${() => { if (isModeStatic) isDragDwStatic.current = true; }} onPointerUp=${() => { isDragDwStatic.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwStatic(v); sendAction('setDwell', v); }} disabled=${!state.connected || !isModeStatic}/>
+                    <button class="btn" style="padding: 2px 6px; font-size: 0.65rem;" onClick=${() => adjDwStatic(+0.1)} disabled=${!state.connected || !isModeStatic}>+0.1</button>
+                    <span style="font-size: 0.85rem; font-weight: 900; color: var(--neon-purple); min-width: 55px; text-align: right;">${localDwStatic.toFixed(1)} ms</span>
+                </div>
+
+                <!-- BLOCK 2: LIVE DWELL BAR (AKTIF PADA MODE 1, 2, 3, DIMMED PADA MODE 0) -->
+                <div style="background: rgba(189, 0, 255, 0.08); border: 1px solid rgba(189, 0, 255, 0.3); border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; transition: opacity 0.2s; ${dimStyle(isModeDynamic)}">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
+                        <span style="color: #00d4ff;">📉 MIN: ${localDwMin.toFixed(1)} ms</span>
+                        <span style="color: #ff00ea;">LIVE: ${isModeDynamic ? `${liveDwell.toFixed(2)} ms` : 'TETAP'}</span>
+                        <span style="color: #00ff66;">📈 MAX: ${localDwMax.toFixed(1)} ms</span>
                     </div>
-                ` : html`
-                    <!-- MODE 1, 2, 3: SAPUAN DWELL DINAMIS (MIN, MAX & LIVE BAR) -->
-                    <div>
-                        <!-- LIVE DWELL BAR -->
-                        <div style="background: rgba(189, 0, 255, 0.08); border: 1px solid rgba(189, 0, 255, 0.3); border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
-                                <span style="color: #00d4ff;">📉 MIN: ${localDwMin.toFixed(1)} ms</span>
-                                <span style="color: #ff00ea;">LIVE: ${liveDwell.toFixed(2)} ms</span>
-                                <span style="color: #00ff66;">📈 MAX: ${localDwMax.toFixed(1)} ms</span>
-                            </div>
-                            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
-                                <div style="width: ${liveDwPct}%; height: 100%; background: linear-gradient(90deg, #00d4ff, #ff00ea, #00ff66); transition: width 0.05s linear;"></div>
-                            </div>
-                        </div>
-
-                        <!-- SLIDERS DWELL MIN & DWELL MAX -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px; margin-bottom: 6px;">
-                            <!-- Dwell Min -->
-                            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(189, 0, 255, 0.2); border-radius: 4px; padding: 4px 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
-                                    <span style="color: var(--neon-cyan);">BATAS BAWAH DWELL (MIN):</span>
-                                    <span style="color: var(--neon-cyan); font-weight: 900;">${localDwMin.toFixed(1)} ms</span>
-                                </div>
-                                <div style="display: flex; gap: 2px; margin-bottom: 3px;">
-                                    ${dwMinPresets.map(p => html`<button class="btn ${Math.abs(localDwMin - p) < 0.05 ? 'btn-active' : ''}" style="padding: 1px 4px; font-size: 0.6rem;" onClick=${() => { setLocalDwMin(p); sendAction('setDwellMinMs', p); }} disabled=${!state.connected}>${p}ms</button>`)}
-                                </div>
-                                <div style="display: flex; gap: 3px; align-items: center;">
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMin(-0.1)} disabled=${!state.connected}>-0.1</button>
-                                    <input type="range" min="0.2" max="3.0" step="0.05" value=${localDwMin} style="flex: 1; accent-color: var(--neon-cyan); cursor: pointer;" onPointerDown=${() => { isDragDwMin.current = true; }} onPointerUp=${() => { isDragDwMin.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwMin(v); sendAction('setDwellMinMs', v); }} disabled=${!state.connected}/>
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMin(+0.1)} disabled=${!state.connected}>+0.1</button>
-                                </div>
-                            </div>
-
-                            <!-- Dwell Max -->
-                            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(189, 0, 255, 0.2); border-radius: 4px; padding: 4px 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
-                                    <span style="color: var(--neon-green);">BATAS ATAS DWELL (MAX):</span>
-                                    <span style="color: var(--neon-green); font-weight: 900;">${localDwMax.toFixed(1)} ms</span>
-                                </div>
-                                <div style="display: flex; gap: 2px; margin-bottom: 3px;">
-                                    ${dwMaxPresets.map(p => html`<button class="btn ${Math.abs(localDwMax - p) < 0.05 ? 'btn-active' : ''}" style="padding: 1px 4px; font-size: 0.6rem;" onClick=${() => { setLocalDwMax(p); sendAction('setDwellMaxMs', p); }} disabled=${!state.connected}>${p}ms</button>`)}
-                                </div>
-                                <div style="display: flex; gap: 3px; align-items: center;">
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMax(-0.1)} disabled=${!state.connected}>-0.1</button>
-                                    <input type="range" min="2.0" max=${maxDwellLimit} step="0.05" value=${localDwMax} style="flex: 1; accent-color: var(--neon-green); cursor: pointer;" onPointerDown=${() => { isDragDwMax.current = true; }} onPointerUp=${() => { isDragDwMax.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwMax(v); sendAction('setDwellMaxMs', v); }} disabled=${!state.connected}/>
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMax(+0.1)} disabled=${!state.connected}>+0.1</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        ${dwellMode === 1 ? html`
-                            <!-- MODE 1: KECEPATAN SAPUAN DWELL MANDIRI -->
-                            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 214, 0, 0.3); border-radius: 4px; padding: 4px 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
-                                    <span style="color: var(--neon-yellow);">⚡ KECEPATAN SAPUAN DWELL MANDIRI:</span>
-                                    <span style="color: var(--neon-yellow); font-weight: 900;">${localDwSpeed < 0.1 ? localDwSpeed.toFixed(2) : localDwSpeed.toFixed(1)} DETIK</span>
-                                </div>
-                                <div style="display: flex; gap: 2px; align-items: center; flex-wrap: wrap;">
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 800;" onClick=${() => adjDwSpeed(-1.0)} disabled=${!state.connected}>-1s</button>
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 900; color: #00ffcc;" onClick=${() => adjDwSpeed(-0.01)} disabled=${!state.connected}>-0.01s</button>
-                                    <input type="range" min="0.01" max="20.0" step="0.01" value=${localDwSpeed} style="flex: 1; min-width: 70px; accent-color: var(--neon-yellow); cursor: pointer;" onPointerDown=${() => { isDragDwSpeed.current = true; }} onPointerUp=${() => { isDragDwSpeed.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwSpeed(v); sendAction('setDwellSweepTime', v); }} disabled=${!state.connected}/>
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 900; color: #00ffcc;" onClick=${() => adjDwSpeed(+0.01)} disabled=${!state.connected}>+0.01s</button>
-                                    <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 800;" onClick=${() => adjDwSpeed(+1.0)} disabled=${!state.connected}>+1s</button>
-                                </div>
-                            </div>
-                        ` : ''}
+                    <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                        <div style="width: ${isModeDynamic ? liveDwPct : 50}%; height: 100%; background: linear-gradient(90deg, #00d4ff, #ff00ea, #00ff66); transition: width 0.05s linear;"></div>
                     </div>
-                `}
+                </div>
+
+                <!-- BLOCK 3: SLIDERS DWELL MIN & DWELL MAX (AKTIF PADA MODE 1, 2, 3) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px; margin-bottom: 6px; transition: opacity 0.2s; ${dimStyle(isModeDynamic)}">
+                    <!-- Dwell Min -->
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(189, 0, 255, 0.2); border-radius: 4px; padding: 4px 8px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
+                            <span style="color: var(--neon-cyan);">BATAS BAWAH DWELL (MIN):</span>
+                            <span style="color: var(--neon-cyan); font-weight: 900;">${localDwMin.toFixed(1)} ms</span>
+                        </div>
+                        <div style="display: flex; gap: 2px; margin-bottom: 3px;">
+                            ${dwMinPresets.map(p => html`<button class="btn ${Math.abs(localDwMin - p) < 0.05 ? 'btn-active' : ''}" style="padding: 1px 4px; font-size: 0.6rem;" onClick=${() => { setLocalDwMin(p); sendAction('setDwellMinMs', p); }} disabled=${!state.connected || !isModeDynamic}>${p}ms</button>`)}
+                        </div>
+                        <div style="display: flex; gap: 3px; align-items: center;">
+                            <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMin(-0.1)} disabled=${!state.connected || !isModeDynamic}>-0.1</button>
+                            <input type="range" min="0.2" max="3.0" step="0.05" value=${localDwMin} style="flex: 1; accent-color: var(--neon-cyan); cursor: pointer;" onPointerDown=${() => { if (isModeDynamic) isDragDwMin.current = true; }} onPointerUp=${() => { isDragDwMin.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwMin(v); sendAction('setDwellMinMs', v); }} disabled=${!state.connected || !isModeDynamic}/>
+                            <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMin(+0.1)} disabled=${!state.connected || !isModeDynamic}>+0.1</button>
+                        </div>
+                    </div>
+
+                    <!-- Dwell Max -->
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(189, 0, 255, 0.2); border-radius: 4px; padding: 4px 8px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
+                            <span style="color: var(--neon-green);">BATAS ATAS DWELL (MAX):</span>
+                            <span style="color: var(--neon-green); font-weight: 900;">${localDwMax.toFixed(1)} ms</span>
+                        </div>
+                        <div style="display: flex; gap: 2px; margin-bottom: 3px;">
+                            ${dwMaxPresets.map(p => html`<button class="btn ${Math.abs(localDwMax - p) < 0.05 ? 'btn-active' : ''}" style="padding: 1px 4px; font-size: 0.6rem;" onClick=${() => { setLocalDwMax(p); sendAction('setDwellMaxMs', p); }} disabled=${!state.connected || !isModeDynamic}>${p}ms</button>`)}
+                        </div>
+                        <div style="display: flex; gap: 3px; align-items: center;">
+                            <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMax(-0.1)} disabled=${!state.connected || !isModeDynamic}>-0.1</button>
+                            <input type="range" min="2.0" max=${maxDwellLimit} step="0.05" value=${localDwMax} style="flex: 1; accent-color: var(--neon-green); cursor: pointer;" onPointerDown=${() => { if (isModeDynamic) isDragDwMax.current = true; }} onPointerUp=${() => { isDragDwMax.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwMax(v); sendAction('setDwellMaxMs', v); }} disabled=${!state.connected || !isModeDynamic}/>
+                            <button class="btn" style="padding: 2px 5px; font-size: 0.63rem;" onClick=${() => adjDwMax(+0.1)} disabled=${!state.connected || !isModeDynamic}>+0.1</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BLOCK 4: KECEPATAN SAPUAN DWELL MANDIRI (AKTIF HANYA PADA MODE 1, DIMMED PADA MODE 0, 2, 3) -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 214, 0, 0.3); border-radius: 4px; padding: 4px 8px; transition: opacity 0.2s; ${dimStyle(isModeIndep)}">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; margin-bottom: 2px;">
+                        <span style="color: var(--neon-yellow);">⚡ KECEPATAN SAPUAN DWELL MANDIRI:</span>
+                        <span style="color: var(--neon-yellow); font-weight: 900;">${localDwSpeed < 1.0 ? localDwSpeed.toFixed(2) : localDwSpeed.toFixed(1)} DETIK ${!isModeIndep ? '(Otomatis / Tidak Digunakan)' : ''}</span>
+                    </div>
+                    <div style="display: flex; gap: 2px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 800;" onClick=${() => adjDwSpeed(-1.0)} disabled=${!state.connected || !isModeIndep}>-1s</button>
+                        <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 900; color: #00ffcc;" onClick=${() => adjDwSpeed(-0.01)} disabled=${!state.connected || !isModeIndep}>-0.01s</button>
+                        <input type="range" min="0.01" max="20.0" step="0.01" value=${localDwSpeed} style="flex: 1; min-width: 70px; accent-color: var(--neon-yellow); cursor: pointer;" onPointerDown=${() => { if (isModeIndep) isDragDwSpeed.current = true; }} onPointerUp=${() => { isDragDwSpeed.current = false; }} onInput=${(e) => { const v = parseFloat(e.target.value); setLocalDwSpeed(v); sendAction('setDwellSweepTime', v); }} disabled=${!state.connected || !isModeIndep}/>
+                        <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 900; color: #00ffcc;" onClick=${() => adjDwSpeed(+0.01)} disabled=${!state.connected || !isModeIndep}>+0.01s</button>
+                        <button class="btn" style="padding: 2px 5px; font-size: 0.6rem; font-weight: 800;" onClick=${() => adjDwSpeed(+1.0)} disabled=${!state.connected || !isModeIndep}>+1s</button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
