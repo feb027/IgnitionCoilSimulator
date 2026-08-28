@@ -72,9 +72,9 @@ void PeripheralCoilPassive::begin() {
     pinMode(PIN_COIL_ISENSE, INPUT);
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler / LM358 on GPIO 26)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onPassiveSparkReturnInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onPassiveSparkReturnInterrupt, CHANGE);
     
     if (coil_passive_timer == NULL) {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -98,9 +98,19 @@ void PeripheralCoilPassive::update() {
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
-    s.coilFiredCount = isr_pass_firedCount;
-    s.coilSparkReturnCount = isr_pass_sparkReturnCount;
-    s.coilIgfCount = isr_pass_sparkReturnCount;
+    uint32_t fired = isr_pass_firedCount;
+    uint32_t confirmed = isr_pass_sparkReturnCount;
+    
+    // Multi-source fallback: If digital interrupt hasn't pulsed but analog spark/current confirms firing
+    if (confirmed == 0 && fired > 0 && s.isRunning) {
+        if (s.coilSparkCurrentmA >= 3.0f || s.coilPeakCurrentA >= 1.5f) {
+            confirmed = fired;
+        }
+    }
+    
+    s.coilFiredCount = fired;
+    s.coilSparkReturnCount = confirmed;
+    s.coilIgfCount = confirmed;
     s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     

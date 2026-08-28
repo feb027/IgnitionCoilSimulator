@@ -89,11 +89,11 @@ void PeripheralCoilActive4P::begin() {
     
     // Internal IGF Input Pin (GPIO 34) with Hardware Interrupt
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, CHANGE);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler / LM358 on GPIO 26)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, CHANGE);
     
     // External Spark Energy Analog Input (GPIO 39)
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
@@ -127,10 +127,22 @@ void PeripheralCoilActive4P::update() {
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
-    // Sync ISR counters to settings struct
-    s.coilFiredCount = isr_act4p_firedCount;
-    s.coilIgfCount = isr_act4p_igfCount;
-    s.coilSparkReturnCount = (isr_act4p_sparkCount > 0) ? isr_act4p_sparkCount : isr_act4p_igfCount;
+    uint32_t fired = isr_act4p_firedCount;
+    uint32_t igf = isr_act4p_igfCount;
+    uint32_t spark = isr_act4p_sparkCount;
+    uint32_t confirmed = (spark > 0) ? spark : igf;
+    
+    // Multi-source fallback: If digital IGF/Spark interrupts haven't pulsed but primary current confirms firing
+    if (confirmed == 0 && fired > 0 && s.isRunning) {
+        if (s.coilPeakCurrentA >= 1.5f || s.coilSparkCurrentmA >= 3.0f) {
+            confirmed = fired;
+            igf = fired;
+        }
+    }
+    
+    s.coilFiredCount = fired;
+    s.coilIgfCount = igf;
+    s.coilSparkReturnCount = confirmed;
     s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
