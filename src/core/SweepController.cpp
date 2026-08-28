@@ -43,9 +43,9 @@ bool SweepController::update() {
     uint32_t dt = now - _sweepLastUpdate;
     bool needsHardwareUpdate = false;
     
-    uint32_t sweepSec = s.sweepTimeSec;
-    if (sweepSec < 1) sweepSec = 1;
-    if (sweepSec > 60) sweepSec = 60;
+    float sweepSec = s.sweepTimeSec;
+    if (sweepSec < 0.2f) sweepSec = 0.2f;
+    if (sweepSec > 60.0f) sweepSec = 60.0f;
     
     if (dt >= 15) { // 15ms resolution for ultra-smooth frequency modulation
         float valPerMs = 1.0f / (sweepSec * 1000.0f);

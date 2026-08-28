@@ -38,7 +38,7 @@ struct AppSettings {
     int iscFreq;           // ISC 3-Pin PWM Frequency in Hz (50 - 500 Hz)
     PulseMode pulseMode;   // Which variable is locked/controlling
     CoilMode mode;         // Current operating mode
-    int sweepTimeSec;      // Time in seconds to reach sweep max
+    float sweepTimeSec;    // Time in seconds to reach sweep max (0.2s - 60.0s)
     int sweepMinRpm;       // Sweep start/lower limit in RPM (e.g. 500 RPM)
     int sweepMaxRpm;       // Sweep peak/upper limit in RPM (e.g. 6000 RPM)
     int pulsePerKm;        // Pulses per kilometer (calibration for speedo)

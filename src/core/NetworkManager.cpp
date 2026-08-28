@@ -440,7 +440,9 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             s.iscFreq = doc["value"].as<int>();
             changed = true;
         } else if (action == "setSweepTime") {
-            s.sweepTimeSec = doc["value"].as<int>();
+            s.sweepTimeSec = doc["value"].as<float>();
+            if (s.sweepTimeSec < 0.2f) s.sweepTimeSec = 0.2f;
+            if (s.sweepTimeSec > 60.0f) s.sweepTimeSec = 60.0f;
             changed = true;
         } else if (action == "setSweepMinRpm") {
             s.sweepMinRpm = doc["value"].as<int>();
