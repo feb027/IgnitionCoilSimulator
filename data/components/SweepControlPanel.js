@@ -39,7 +39,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
     };
 
     const adjustSweepSpeed = (delta) => {
-        const next = Math.max(0.2, Math.min(30.0, Number((localSpeed + delta).toFixed(1))));
+        const next = Math.max(0.1, Math.min(60.0, Number((localSpeed + delta).toFixed(1))));
         setLocalSpeed(next);
         sendAction('setSweepTime', next);
     };
@@ -57,13 +57,13 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
     const minPresets = [500, 800, 1000, 1500, 2000];
     const maxPresets = [4000, 6000, 8000, 12000, 16000];
     const speedPresets = [
-        { sec: 0.2, label: "⚡ 0.2s (MAX FAST)" },
-        { sec: 0.5, label: "⚡ 0.5s (ULTRA FAST)" },
-        { sec: 1.0, label: "🚀 1s (KILAT)" },
-        { sec: 2.0, label: "🏎️ 2s (SGT CEPAT)" },
-        { sec: 3.0, label: "🏎️ 3s (CEPAT)" },
-        { sec: 5.0, label: "⏱️ 5s (NORMAL)" },
-        { sec: 10.0, label: "🐢 10s (LAMBAT)" },
+        { sec: 0.1, label: "⚡ 0.1s RAPID" },
+        { sec: 0.2, label: "⚡ 0.2s" },
+        { sec: 0.5, label: "⚡ 0.5s" },
+        { sec: 1.0, label: "🚀 1s" },
+        { sec: 2.0, label: "🏎️ 2s" },
+        { sec: 5.0, label: "⏱️ 5s" },
+        { sec: 10.0, label: "🐢 10s" },
         { sec: 20.0, label: "🧘 20s" }
     ];
 
@@ -190,7 +190,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 </div>
             </div>
 
-            <!-- SLIDER 3: KECEPATAN SAPUAN (SWEEP SPEED / DURASI) DENGAN JUMP -5s & SUB-SECOND SPEEDS -->
+            <!-- SLIDER 3: KECEPATAN SAPUAN DENGAN JUMP -20s / -5s HINGGA 0.1s RAPID -->
             <div style="background: rgba(255, 214, 0, 0.03); border: 1px solid rgba(255, 214, 0, 0.3); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
                     <span style="font-size: 0.75rem; font-weight: 800; color: var(--neon-yellow);">⚡ KECEPATAN SAPUAN (DURASI SWEEP):</span>
@@ -214,14 +214,15 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     `)}
                 </div>
 
-                <!-- Fast Decrement Buttons (-5s, -1s, -0.2s) and Increment Buttons (+0.2s, +1s, +5s) -->
+                <!-- Fast Jump Buttons (-20s, -5s, -1s, -0.2s) and Increment (+0.2s, +1s, +5s, +20s) -->
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 900; background: rgba(255, 45, 85, 0.15); border-color: var(--neon-red); color: var(--neon-red);" onClick=${() => adjustSweepSpeed(-20.0)} disabled=${!state.connected} title="Lompat Ekstrem -20s">-20s</button>
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 900; background: rgba(255, 214, 0, 0.1); border-color: var(--neon-yellow); color: var(--neon-yellow);" onClick=${() => adjustSweepSpeed(-5.0)} disabled=${!state.connected} title="Lompat Cepat -5s">-5s</button>
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(-1.0)} disabled=${!state.connected}>-1s</button>
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(-0.2)} disabled=${!state.connected}>-0.2s</button>
-                    <div style="flex: 1; min-width: 120px; padding: 0 4px; display: flex; align-items: center;">
+                    <div style="flex: 1; min-width: 110px; padding: 0 4px; display: flex; align-items: center;">
                         <input 
-                            type="range" min="0.2" max="30.0" step="0.1" value=${localSpeed} 
+                            type="range" min="0.1" max="60.0" step="0.1" value=${localSpeed} 
                             style="width: 100%; height: 26px; accent-color: var(--neon-yellow); cursor: pointer;" 
                             onPointerDown=${() => { isDragSpeed.current = true; }}
                             onPointerUp=${() => { isDragSpeed.current = false; }}
@@ -236,6 +237,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+0.2)} disabled=${!state.connected}>+0.2s</button>
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+1.0)} disabled=${!state.connected}>+1s</button>
                     <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+5.0)} disabled=${!state.connected}>+5s</button>
+                    <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+20.0)} disabled=${!state.connected}>+20s</button>
                 </div>
             </div>
 

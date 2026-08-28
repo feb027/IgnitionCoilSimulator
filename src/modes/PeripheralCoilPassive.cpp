@@ -15,6 +15,7 @@ static volatile bool coil_pass_hasNewAdc = false;
 static volatile uint32_t isr_pass_firedCount = 0;
 static volatile uint32_t isr_pass_sparkReturnCount = 0;
 static volatile uint32_t isr_pass_missedCount = 0;
+static volatile uint32_t isr_pass_lastFireUs = 0;
 static volatile uint32_t isr_pass_lastSparkUs = 0;
 
 static void IRAM_ATTR onPassiveSparkReturnInterrupt() {
@@ -29,6 +30,7 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         // Turn IGBT Gate OFF (GPIO 33 LOW)
         GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
         isPassiveCoilOn = false;
+        isr_pass_lastFireUs = micros();
         isr_pass_firedCount++;
         
         if (coil_pass_pulsesRemaining > 0) {
@@ -45,8 +47,8 @@ static void IRAM_ATTR onPassiveCoilTimer() {
                             ? (coil_pass_periodTicks - coil_pass_dwellTicks) 
                             : 1000;
         if (offTicks < 400) offTicks = 400;
-        timerAlarmWrite(coil_passive_timer, offTicks, false);
         timerWrite(coil_passive_timer, 0);
+        timerAlarmWrite(coil_passive_timer, offTicks, true);
         timerAlarmEnable(coil_passive_timer);
     } else {
         // Turn IGBT Gate ON (GPIO 33 HIGH)
@@ -55,8 +57,8 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         
         uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
         if (onTicks < 100) onTicks = 100;
-        timerAlarmWrite(coil_passive_timer, onTicks, false);
         timerWrite(coil_passive_timer, 0);
+        timerAlarmWrite(coil_passive_timer, onTicks, true);
         timerAlarmEnable(coil_passive_timer);
     }
 }
@@ -118,6 +120,26 @@ void PeripheralCoilPassive::update() {
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
             updateTimerConfig();
+        }
+    }
+    
+    // Hardware Timer Glitch Auto-Recovery Watchdog
+    if (s.isRunning) {
+        uint32_t nowUs = micros();
+        uint32_t expectedPeriodUs = (coil_pass_periodTicks > 0) ? coil_pass_periodTicks : 20000;
+        uint32_t maxStallAllowedUs = (expectedPeriodUs * 3) + 20000;
+        if (nowUs - isr_pass_lastFireUs > maxStallAllowedUs) {
+            GPIO.out1_w1tc.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
+            isPassiveCoilOn = false;
+            isr_pass_lastFireUs = nowUs;
+            if (coil_passive_timer != NULL) {
+                timerAlarmDisable(coil_passive_timer);
+                timerWrite(coil_passive_timer, 0);
+                uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
+                timerAlarmWrite(coil_passive_timer, onTicks, true);
+                timerAlarmEnable(coil_passive_timer);
+                timerStart(coil_passive_timer);
+            }
         }
     }
 }

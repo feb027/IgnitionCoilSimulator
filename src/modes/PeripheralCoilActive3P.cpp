@@ -48,8 +48,8 @@ static void IRAM_ATTR onActive3pCoilTimer() {
                             ? (coil_act3p_periodTicks - coil_act3p_dwellTicks) 
                             : 1000;
         if (offTicks < 400) offTicks = 400;
-        timerAlarmWrite(coil_active3p_timer, offTicks, false);
         timerWrite(coil_active3p_timer, 0);
+        timerAlarmWrite(coil_active3p_timer, offTicks, true);
         timerAlarmEnable(coil_active3p_timer);
     } else {
         // Turn IGT Pin 25 HIGH (Direct register write)
@@ -58,8 +58,8 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         
         uint32_t onTicks = (coil_act3p_dwellTicks > 0) ? coil_act3p_dwellTicks : 1000;
         if (onTicks < 100) onTicks = 100;
-        timerAlarmWrite(coil_active3p_timer, onTicks, false);
         timerWrite(coil_active3p_timer, 0);
+        timerAlarmWrite(coil_active3p_timer, onTicks, true);
         timerAlarmEnable(coil_active3p_timer);
     }
 }
@@ -123,6 +123,26 @@ void PeripheralCoilActive3P::update() {
     if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
             updateTimerConfig();
+        }
+    }
+    
+    // Hardware Timer Glitch Auto-Recovery Watchdog
+    if (s.isRunning) {
+        uint32_t nowUs = micros();
+        uint32_t expectedPeriodUs = (coil_act3p_periodTicks > 0) ? coil_act3p_periodTicks : 20000;
+        uint32_t maxStallAllowedUs = (expectedPeriodUs * 3) + 20000;
+        if (nowUs - isr_act3p_lastFireUs > maxStallAllowedUs) {
+            GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
+            isActive3pCoilOn = false;
+            isr_act3p_lastFireUs = nowUs;
+            if (coil_active3p_timer != NULL) {
+                timerAlarmDisable(coil_active3p_timer);
+                timerWrite(coil_active3p_timer, 0);
+                uint32_t onTicks = (coil_act3p_dwellTicks > 0) ? coil_act3p_dwellTicks : 1000;
+                timerAlarmWrite(coil_active3p_timer, onTicks, true);
+                timerAlarmEnable(coil_active3p_timer);
+                timerStart(coil_active3p_timer);
+            }
         }
     }
 }

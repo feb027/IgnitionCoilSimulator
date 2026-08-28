@@ -47,8 +47,8 @@ static void IRAM_ATTR onActive4pCoilTimer() {
                             ? (coil_act4p_periodTicks - coil_act4p_dwellTicks) 
                             : 1000;
         if (offTicks < 400) offTicks = 400;
-        timerAlarmWrite(coil_active4p_timer, offTicks, false);
         timerWrite(coil_active4p_timer, 0);
+        timerAlarmWrite(coil_active4p_timer, offTicks, true);
         timerAlarmEnable(coil_active4p_timer);
     } else {
         // Turn IGT Pin 25 HIGH (Start Dwell charging)
@@ -57,8 +57,8 @@ static void IRAM_ATTR onActive4pCoilTimer() {
         
         uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
         if (onTicks < 100) onTicks = 100;
-        timerAlarmWrite(coil_active4p_timer, onTicks, false);
         timerWrite(coil_active4p_timer, 0);
+        timerAlarmWrite(coil_active4p_timer, onTicks, true);
         timerAlarmEnable(coil_active4p_timer);
     }
 }
@@ -153,6 +153,26 @@ void PeripheralCoilActive4P::update() {
     } else if (s.mode == MODE_SWEEP && s.isRunning) {
         if (_sweepController.update()) {
             updateTimerConfig();
+        }
+    }
+    
+    // Hardware Timer Glitch Auto-Recovery Watchdog
+    if (s.isRunning && !s.coilAutoDiagRunning) {
+        uint32_t nowUs = micros();
+        uint32_t expectedPeriodUs = (coil_act4p_periodTicks > 0) ? coil_act4p_periodTicks : 20000;
+        uint32_t maxStallAllowedUs = (expectedPeriodUs * 3) + 20000;
+        if (nowUs - isr_act4p_lastFireUs > maxStallAllowedUs) {
+            GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
+            isActive4pCoilOn = false;
+            isr_act4p_lastFireUs = nowUs;
+            if (coil_active4p_timer != NULL) {
+                timerAlarmDisable(coil_active4p_timer);
+                timerWrite(coil_active4p_timer, 0);
+                uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
+                timerAlarmWrite(coil_active4p_timer, onTicks, true);
+                timerAlarmEnable(coil_active4p_timer);
+                timerStart(coil_active4p_timer);
+            }
         }
     }
 }
