@@ -31,7 +31,7 @@ static void IRAM_ATTR onActive3pSparkReturnInterrupt() {
 static void IRAM_ATTR onActive3pCoilTimer() {
     if (isActive3pCoilOn) {
         // Turn IGT Pin 25 LOW (Spark Fired)
-        GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
+        GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = false;
         isr_act3p_lastFireUs = micros();
         isr_act3p_firedCount++;
@@ -55,7 +55,7 @@ static void IRAM_ATTR onActive3pCoilTimer() {
         timerAlarmEnable(coil_active3p_timer);
     } else {
         // Turn IGT Pin 25 HIGH (Direct register write)
-        GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+        GPIO.out_w1ts = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
         isActive3pCoilOn = true;
         
         uint32_t onTicks = (coil_act3p_dwellTicks > 0) ? coil_act3p_dwellTicks : 1000;
@@ -408,7 +408,8 @@ void PeripheralCoilActive3P::start() {
     }
     
     uint32_t onTicks = (coil_act3p_dwellTicks > 0) ? coil_act3p_dwellTicks : 1000;
-    GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+    pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
+    GPIO.out_w1ts = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
     isActive3pCoilOn = true;
     timerWrite(coil_active3p_timer, 0);
     timerAlarmWrite(coil_active3p_timer, onTicks, true);
@@ -423,7 +424,8 @@ void PeripheralCoilActive3P::stop() {
         timerAlarmDisable(coil_active3p_timer);
         timerStop(coil_active3p_timer);
     }
-    GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
+    GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
+    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     isActive3pCoilOn = false;
     coil_act3p_pulsesRemaining = 0;
     

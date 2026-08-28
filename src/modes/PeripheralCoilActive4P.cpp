@@ -26,7 +26,7 @@ static volatile uint32_t isr_act4p_windowUs = 3500;
 static void IRAM_ATTR onActive4pCoilTimer() {
     if (isActive4pCoilOn) {
         // Turn IGT Pin 25 LOW (Spark Fired)
-        GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
+        GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = false;
         isr_act4p_lastFireUs = micros();
         
@@ -52,7 +52,7 @@ static void IRAM_ATTR onActive4pCoilTimer() {
         timerAlarmEnable(coil_active4p_timer);
     } else {
         // Turn IGT Pin 25 HIGH (Start Dwell charging)
-        GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+        GPIO.out_w1ts = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
         isActive4pCoilOn = true;
         
         uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
@@ -107,7 +107,7 @@ void PeripheralCoilActive4P::begin() {
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
         coil_active4p_timer = timerBegin(1000000);
 #else
-        coil_active4p_timer = timerBegin(1, 80, true);
+        coil_active4p_timer = timerBegin(2, 80, true);
 #endif
         timerAttachInterrupt(coil_active4p_timer, &onActive4pCoilTimer, true);
     }
@@ -496,7 +496,8 @@ void PeripheralCoilActive4P::start() {
     }
     
     uint32_t onTicks = (coil_act4p_dwellTicks > 0) ? coil_act4p_dwellTicks : 1000;
-    GPIO.out_w1ts = (1 << PIN_COIL_ACTIVE_IGT);
+    pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
+    GPIO.out_w1ts = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
     isActive4pCoilOn = true;
     timerWrite(coil_active4p_timer, 0);
     timerAlarmWrite(coil_active4p_timer, onTicks, true);
@@ -511,7 +512,8 @@ void PeripheralCoilActive4P::stop() {
         timerAlarmDisable(coil_active4p_timer);
         timerStop(coil_active4p_timer);
     }
-    GPIO.out_w1tc = (1 << PIN_COIL_ACTIVE_IGT);
+    GPIO.out_w1tc = ((uint32_t)1 << PIN_COIL_ACTIVE_IGT);
+    digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     isActive4pCoilOn = false;
     coil_act4p_pulsesRemaining = 0;
     
