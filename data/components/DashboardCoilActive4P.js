@@ -1,6 +1,7 @@
 import { html, useState } from '../preact.js';
 import { Dial } from './Dial.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
+import { SweepControlPanel } from './SweepControlPanel.js';
 import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
 import { CoilDatabaseCard } from './CoilDatabaseCard.js';
 import { SafetyTriggerBar } from './SafetyTriggerBar.js';
@@ -68,33 +69,42 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
             `}
         </div>
 
-        <!-- ENGINE SPEED & DWELL TIME CONTROL ROW (DYNAMIC 0-100% SCALING ACCORDING TO LIMITS) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
-            <${Dial} 
-                compact=${true}
-                label=${isAutoDiag ? "AUTO DIAG..." : ((isSweep && state.isRunning) ? "SWEEPING..." : (isSweep ? "TARGET RPM" : "ENGINE SPEED"))}
-                value=${(isSweep && state.isRunning) ? state.currentRpm : state.rpm}
-                unit="RPM"
-                min="0"
-                max=${maxRpmLimit}
-                step=${state.rpmStep || 50}
-                onChange=${(val) => sendAction('setRpm', val)}
-                disabled=${!state.connected || (isSweep && state.isRunning) || isAutoDiag}
+        <!-- SWEEP MODE DUAL SLIDER OR STANDARD ENGINE SPEED & DWELL DIALS ROW -->
+        ${isSweep ? html`
+            <${SweepControlPanel} 
+                state=${state} 
+                sendAction=${sendAction} 
+                maxRpmLimit=${maxRpmLimit} 
+                maxDwellLimit=${maxDwellLimit} 
             />
-            
-            <${Dial} 
-                compact=${true}
-                label="DWELL TIME (IGT)"
-                value=${state.dwellMs}
-                unit="MS"
-                min="0.0"
-                max=${maxDwellLimit}
-                step="0.1"
-                subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
-                onChange=${(val) => sendAction('setDwell', val)}
-                disabled=${!state.connected || isAutoDiag}
-            />
-        </div>
+        ` : html`
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
+                <${Dial} 
+                    compact=${true}
+                    label=${isAutoDiag ? "AUTO DIAG..." : "ENGINE SPEED"}
+                    value=${state.rpm}
+                    unit="RPM"
+                    min="0"
+                    max=${maxRpmLimit}
+                    step=${state.rpmStep || 50}
+                    onChange=${(val) => sendAction('setRpm', val)}
+                    disabled=${!state.connected || isAutoDiag}
+                />
+                
+                <${Dial} 
+                    compact=${true}
+                    label="DWELL TIME (IGT)"
+                    value=${state.dwellMs}
+                    unit="MS"
+                    min="0.0"
+                    max=${maxDwellLimit}
+                    step="0.1"
+                    subInfo=${"Duty: " + (state.dutyCycle ? state.dutyCycle.toFixed(1) : "0.0") + "%"}
+                    onChange=${(val) => sendAction('setDwell', val)}
+                    disabled=${!state.connected || isAutoDiag}
+                />
+            </div>
+        `}
 
         <!-- ADVANCED RANGE LIMITS, CALIBRATION MATRIX & FINE TUNING -->
         <${AdvancedTuningPanel} 
