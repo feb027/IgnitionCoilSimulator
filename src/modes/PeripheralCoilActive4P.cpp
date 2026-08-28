@@ -22,6 +22,8 @@ static volatile uint32_t isr_act4p_lastFireUs = 0;
 static volatile uint32_t isr_act4p_lastSparkUs = 0;
 static volatile uint32_t isr_act4p_debounceUs = 1500;
 static volatile uint32_t isr_act4p_windowUs = 3500;
+static volatile uint32_t isr_act4p_lastIgfUs = 0;
+static volatile uint32_t isr_act4p_igfDebounceUs = 50;
 
 static void IRAM_ATTR onActive4pCoilTimer() {
     if (isActive4pCoilOn) {
@@ -66,8 +68,8 @@ static void IRAM_ATTR onActive4pCoilTimer() {
 // Hardware Interrupt for Internal IGF confirmation pulses from 4-Pin Smart Coil (GPIO 34)
 static void IRAM_ATTR onActive4pIgfInterrupt() {
     uint32_t nowUs = micros();
-    if (nowUs - isr_act4p_lastSparkUs < isr_act4p_debounceUs) return;
-    isr_act4p_lastSparkUs = nowUs;
+    if (nowUs - isr_act4p_lastIgfUs < isr_act4p_igfDebounceUs) return;
+    isr_act4p_lastIgfUs = nowUs;
     isr_act4p_igfCount++;
 }
 
@@ -496,6 +498,10 @@ void PeripheralCoilActive4P::updateTimerConfig() {
     coil_act4p_dwellTicks = desiredDwellTicks;
     
     s.dutyCycle = ((float)coil_act4p_dwellTicks / (float)coil_act4p_periodTicks) * 100.0f;
+    
+    isr_act4p_debounceUs = (uint32_t)(s.calCadenceDebounceMs * 1000.0f);
+    isr_act4p_windowUs = (uint32_t)(s.calCadenceWindowMs * 1000.0f);
+    isr_act4p_igfDebounceUs = (s.calIgfDebounceUs >= 5.0f) ? (uint32_t)s.calIgfDebounceUs : 50;
 }
 
 void PeripheralCoilActive4P::start() {

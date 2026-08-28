@@ -89,6 +89,9 @@ void SettingsManager::commitToNvs() {
     preferences.putFloat("c_tp_cut", _settings.calTempCutoff); preferences.putFloat("c_tp_off", _settings.calTempOffset);
     preferences.putFloat("c_vt_g", _settings.calVoltGain); preferences.putFloat("c_vt_o", _settings.calVoltOffset);
     preferences.putFloat("c_dc_g", _settings.calDcCurrentGain); preferences.putFloat("c_dc_o", _settings.calDcCurrentOffset);
+    preferences.putFloat("c_ig_p", _settings.calIgfPrima); preferences.putFloat("c_ig_b", _settings.calIgfBaik);
+    preferences.putFloat("c_ig_c", _settings.calIgfCukup); preferences.putFloat("c_ig_k", _settings.calIgfKurang);
+    preferences.putFloat("c_ig_db", _settings.calIgfDebounceUs); preferences.putFloat("c_ig_win", _settings.calIgfWindowMs);
     preferences.putInt("rn_min_r", _settings.randomMinRpm); preferences.putInt("rn_max_r", _settings.randomMaxRpm);
     preferences.putFloat("rn_min_d", _settings.randomMinDwell); preferences.putFloat("rn_max_d", _settings.randomMaxDwell);
     preferences.putFloat("rn_int_s", _settings.randomIntervalSec); preferences.putInt("rn_tr_m", _settings.randomTransitionMode);
@@ -233,10 +236,11 @@ void SettingsManager::load() {
     _settings.calTempPanas = preferences.getFloat("c_tp_h", 75.0f);
     _settings.calTempCutoff = preferences.getFloat("c_tp_cut", 85.0f);
     _settings.calTempOffset = preferences.getFloat("c_tp_off", 0.0f);
-    _settings.calVoltGain = preferences.getFloat("c_vt_g", 1.00f);
-    _settings.calVoltOffset = preferences.getFloat("c_vt_o", 0.0f);
-    _settings.calDcCurrentGain = preferences.getFloat("c_dc_g", 1.00f);
-    _settings.calDcCurrentOffset = preferences.getFloat("c_dc_o", 0.0f);
+    _settings.calVoltGain = preferences.getFloat("c_vt_g", 1.00f); _settings.calVoltOffset = preferences.getFloat("c_vt_o", 0.0f);
+    _settings.calDcCurrentGain = preferences.getFloat("c_dc_g", 1.00f); _settings.calDcCurrentOffset = preferences.getFloat("c_dc_o", 0.0f);
+    _settings.calIgfPrima = preferences.getFloat("c_ig_p", 98.0f); _settings.calIgfBaik = preferences.getFloat("c_ig_b", 90.0f);
+    _settings.calIgfCukup = preferences.getFloat("c_ig_c", 80.0f); _settings.calIgfKurang = preferences.getFloat("c_ig_k", 60.0f);
+    _settings.calIgfDebounceUs = preferences.getFloat("c_ig_db", 50.0f); _settings.calIgfWindowMs = preferences.getFloat("c_ig_win", 4.0f);
     
     _settings.supplyVoltage = 12.6f; _settings.realCurrentA = 0.0f;
     _settings.tempCoilC = 28.5f; _settings.tempDriverC = 29.0f;
@@ -289,5 +293,7 @@ void SettingsManager::resetToDefaults() {
     _settings.calTempCutoff = 85.0f; _settings.calTempOffset = 0.0f;
     _settings.calVoltGain = 1.00f; _settings.calVoltOffset = 0.0f;
     _settings.calDcCurrentGain = 1.00f; _settings.calDcCurrentOffset = 0.0f;
+    _settings.calIgfPrima = 98.0f; _settings.calIgfBaik = 90.0f; _settings.calIgfCukup = 80.0f; _settings.calIgfKurang = 60.0f;
+    _settings.calIgfDebounceUs = 50.0f; _settings.calIgfWindowMs = 4.0f;
     _savedSettings = _settings;
 }

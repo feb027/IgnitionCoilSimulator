@@ -225,6 +225,12 @@ void NetworkManager::broadcastState() {
     doc["calVoltOffset"] = s.calVoltOffset;
     doc["calDcCurrentGain"] = s.calDcCurrentGain;
     doc["calDcCurrentOffset"] = s.calDcCurrentOffset;
+    doc["calIgfPrima"] = s.calIgfPrima;
+    doc["calIgfBaik"] = s.calIgfBaik;
+    doc["calIgfCukup"] = s.calIgfCukup;
+    doc["calIgfKurang"] = s.calIgfKurang;
+    doc["calIgfDebounceUs"] = s.calIgfDebounceUs;
+    doc["calIgfWindowMs"] = s.calIgfWindowMs;
     doc["coilLeakSeverity"] = s.coilLeakSeverity;
     doc["coilCurrentStatus"] = s.coilCurrentStatus;
     doc["coilConnected"] = s.coilConnected;
@@ -805,6 +811,13 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             if (doc["dcCurrentGain"].is<float>()) s.calDcCurrentGain = doc["dcCurrentGain"].as<float>();
             if (doc["dcCurrentOffset"].is<float>()) s.calDcCurrentOffset = doc["dcCurrentOffset"].as<float>();
             
+            if (doc["igfPrima"].is<float>()) s.calIgfPrima = doc["igfPrima"].as<float>();
+            if (doc["igfBaik"].is<float>()) s.calIgfBaik = doc["igfBaik"].as<float>();
+            if (doc["igfCukup"].is<float>()) s.calIgfCukup = doc["igfCukup"].as<float>();
+            if (doc["igfKurang"].is<float>()) s.calIgfKurang = doc["igfKurang"].as<float>();
+            if (doc["igfDebounceUs"].is<float>()) s.calIgfDebounceUs = doc["igfDebounceUs"].as<float>();
+            if (doc["igfWindowMs"].is<float>()) s.calIgfWindowMs = doc["igfWindowMs"].as<float>();
+            
             if (doc["cutIn"].is<int>()) s.leakArcCutIn = doc["cutIn"].as<int>();
             if (doc["arc25"].is<int>()) s.leakArc25 = doc["arc25"].as<int>();
             if (doc["arc50"].is<int>()) s.leakArc50 = doc["arc50"].as<int>();
@@ -812,6 +825,16 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             if (doc["arc100"].is<int>()) s.leakArc100 = doc["arc100"].as<int>();
             if (doc["arcMax"].is<int>()) s.leakArcMax = doc["arcMax"].as<int>();
             
+            _settingsMgr.save(true);
+            broadcastState();
+            return;
+        } else if (action == "setIgfCalibration") {
+            if (doc["prima"].is<float>()) s.calIgfPrima = doc["prima"].as<float>();
+            if (doc["baik"].is<float>()) s.calIgfBaik = doc["baik"].as<float>();
+            if (doc["cukup"].is<float>()) s.calIgfCukup = doc["cukup"].as<float>();
+            if (doc["kurang"].is<float>()) s.calIgfKurang = doc["kurang"].as<float>();
+            if (doc["debounceUs"].is<float>()) s.calIgfDebounceUs = doc["debounceUs"].as<float>();
+            if (doc["windowMs"].is<float>()) s.calIgfWindowMs = doc["windowMs"].as<float>();
             _settingsMgr.save(true);
             broadcastState();
             return;

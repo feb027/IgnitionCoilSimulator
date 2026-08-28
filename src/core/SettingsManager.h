@@ -192,6 +192,14 @@ struct AppSettings {
     float calDcCurrentGain;     // Real DC current multiplier (default: 1.00)
     float calDcCurrentOffset;   // Real DC current offset in Amperes (default: 0.00)
 
+    // 4-Pin Coil IGF Sensor Calibration (NVS Persisted)
+    float calIgfPrima;          // Default 98.0 %
+    float calIgfBaik;           // Default 90.0 %
+    float calIgfCukup;          // Default 80.0 %
+    float calIgfKurang;         // Default 60.0 %
+    float calIgfDebounceUs;     // IGF pulse debounce filter (default: 50 us)
+    float calIgfWindowMs;       // IGF detection time window (default: 4.0 ms)
+
     // Auxiliary Sensors (ADS1115 ADC Voltmeter, Dual DS18B20 Temp & Real Current)
     float supplyVoltage;        // Battery supply voltage in Volts (e.g. 12.6V)
     float realCurrentA;         // Real continuous average/quiescent current in Amperes
