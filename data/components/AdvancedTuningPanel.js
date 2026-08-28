@@ -136,7 +136,7 @@ export function AdvancedTuningPanel({
                         step="1"
                         accentColor="var(--neon-purple)"
                         onChange=${(val) => sendAction('setSweepTime', val)}
-                        disabled=${!state.connected || isAutoDiag || (state.runMode === 3 && state.isRunning)}
+                        disabled=${!state.connected || isAutoDiag}
                     />
                     <${Dial} 
                         compact=${true}

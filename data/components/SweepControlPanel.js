@@ -1,4 +1,4 @@
-﻿import { html } from '../preact.js';
+﻿import { html, useState, useEffect, useRef } from '../preact.js';
 
 export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxDwellLimit = 5.0 }) {
     const isRunning = state.isRunning;
@@ -10,23 +10,43 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
     const duty = state.dutyCycle !== undefined ? state.dutyCycle.toFixed(1) : "0.0";
     const rpmPerSec = sweepSec > 0 ? Math.round(Math.abs(maxRpm - minRpm) / sweepSec) : 0;
 
+    // Smooth real-time local drag state tracking for 100% interactive responsiveness
+    const isDragMin = useRef(false);
+    const isDragMax = useRef(false);
+    const isDragSpeed = useRef(false);
+    const isDragDwell = useRef(false);
+
+    const [localMin, setLocalMin] = useState(minRpm);
+    const [localMax, setLocalMax] = useState(maxRpm);
+    const [localSpeed, setLocalSpeed] = useState(sweepSec);
+    const [localDwell, setLocalDwell] = useState(dwell);
+
+    useEffect(() => { if (!isDragMin.current) setLocalMin(minRpm); }, [minRpm]);
+    useEffect(() => { if (!isDragMax.current) setLocalMax(maxRpm); }, [maxRpm]);
+    useEffect(() => { if (!isDragSpeed.current) setLocalSpeed(sweepSec); }, [sweepSec]);
+    useEffect(() => { if (!isDragDwell.current) setLocalDwell(dwell); }, [dwell]);
+
     const adjustMinRpm = (delta) => {
-        const next = Math.max(200, Math.min(maxRpm - 200, minRpm + delta));
+        const next = Math.max(200, Math.min(localMax - 200, localMin + delta));
+        setLocalMin(next);
         sendAction('setSweepMinRpm', next);
     };
 
     const adjustMaxRpm = (delta) => {
-        const next = Math.max(minRpm + 200, Math.min(maxRpmLimit, maxRpm + delta));
+        const next = Math.max(localMin + 200, Math.min(maxRpmLimit, localMax + delta));
+        setLocalMax(next);
         sendAction('setSweepMaxRpm', next);
     };
 
     const adjustSweepSpeed = (delta) => {
-        const next = Math.max(1, Math.min(60, sweepSec + delta));
+        const next = Math.max(1, Math.min(60, localSpeed + delta));
+        setLocalSpeed(next);
         sendAction('setSweepTime', next);
     };
 
     const adjustDwell = (delta) => {
-        const next = Math.max(0.2, Math.min(maxDwellLimit, Number((dwell + delta).toFixed(2))));
+        const next = Math.max(0.2, Math.min(maxDwellLimit, Number((localDwell + delta).toFixed(2))));
+        setLocalDwell(next);
         sendAction('setDwell', next);
     };
 
@@ -50,25 +70,25 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 6px; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.88rem; font-weight: 900; letter-spacing: 0.05em; color: var(--neon-cyan);">
-                        🔄 KONTROL SAPUAN RPM (SWEEP CONTROLLER)
+                        🔄 KONTROL SAPUAN RPM (LIVE REAL-TIME)
                     </span>
                     <span class="status-badge" style="border-color: ${isRunning ? 'var(--neon-green)' : 'var(--neon-cyan)'}; color: ${isRunning ? 'var(--neon-green)' : 'var(--neon-cyan)'}; font-weight: 800; font-size: 0.68rem;">
                         ${isRunning ? `⚡ SWEEPING: ${liveRpm} RPM` : 'STANDBY'}
                     </span>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-muted);">
-                    Rentang Sapuan: <strong style="color: var(--neon-cyan);">${minRpm}</strong> s/d <strong style="color: var(--neon-green);">${maxRpm} RPM</strong>
+                    Rentang: <strong style="color: var(--neon-cyan);">${localMin}</strong> s/d <strong style="color: var(--neon-green);">${localMax} RPM</strong>
                 </div>
             </div>
 
             <!-- LIVE SWEEP VISUALIZER BAR -->
             <div style="background: rgba(0, 212, 255, 0.06); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 800; margin-bottom: 4px;">
-                    <span style="color: var(--neon-cyan);">📉 MIN: ${minRpm} RPM</span>
+                    <span style="color: var(--neon-cyan);">📉 MIN: ${localMin} RPM</span>
                     <span style="color: ${isRunning ? 'var(--neon-green)' : 'var(--text-muted)'}; font-variant-numeric: tabular-nums;">
                         ${isRunning ? `LIVE: ${liveRpm} RPM (${Math.round(liveSweepPct)}%)` : 'STANDBY (SIAP DISAPU)'}
                     </span>
-                    <span style="color: var(--neon-green);">📈 MAX: ${maxRpm} RPM</span>
+                    <span style="color: var(--neon-green);">📈 MAX: ${localMax} RPM</span>
                 </div>
                 <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; position: relative;">
                     <div style="width: ${liveSweepPct}%; height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff66); transition: width 0.08s linear;"></div>
@@ -83,7 +103,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
                         <span style="font-size: 0.72rem; font-weight: 800; color: var(--neon-cyan);">📉 BATAS BAWAH SAPUAN (MIN):</span>
                         <div style="font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--neon-cyan);">
-                            ${minRpm} <span style="font-size: 0.7rem; color: var(--text-muted);">RPM</span>
+                            ${localMin} <span style="font-size: 0.7rem; color: var(--text-muted);">RPM</span>
                         </div>
                     </div>
                     
@@ -91,10 +111,10 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <div style="display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;">
                         ${minPresets.map(p => html`
                             <button 
-                                class="btn ${minRpm === p ? 'btn-active' : ''}" 
-                                style="padding: 2px 6px; font-size: 0.65rem; border-color: ${minRpm === p ? 'var(--neon-cyan)' : 'var(--border-sharp)'}; background: ${minRpm === p ? 'rgba(0, 212, 255, 0.2)' : 'transparent'}; color: ${minRpm === p ? 'var(--neon-cyan)' : 'var(--text-muted)'};"
-                                onClick=${() => sendAction('setSweepMinRpm', p)}
-                                disabled=${!state.connected || isRunning}
+                                class="btn ${localMin === p ? 'btn-active' : ''}" 
+                                style="padding: 2px 6px; font-size: 0.65rem; border-color: ${localMin === p ? 'var(--neon-cyan)' : 'var(--border-sharp)'}; background: ${localMin === p ? 'rgba(0, 212, 255, 0.2)' : 'transparent'}; color: ${localMin === p ? 'var(--neon-cyan)' : 'var(--text-muted)'};"
+                                onClick=${() => { setLocalMin(p); sendAction('setSweepMinRpm', p); }}
+                                disabled=${!state.connected}
                             >
                                 ${p === 500 ? '500 (Idle)' : p}
                             </button>
@@ -102,16 +122,22 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     </div>
 
                     <div style="display: flex; gap: 4px; align-items: center;">
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMinRpm(-100)} disabled=${!state.connected || isRunning}>-100</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMinRpm(-100)} disabled=${!state.connected}>-100</button>
                         <div style="flex: 1; padding: 0 4px; display: flex; align-items: center;">
                             <input 
-                                type="range" min="200" max="8000" step="50" value=${minRpm} 
+                                type="range" min="200" max="8000" step="50" value=${localMin} 
                                 style="width: 100%; height: 24px; accent-color: var(--neon-cyan); cursor: pointer;" 
-                                onInput=${(e) => sendAction('setSweepMinRpm', parseInt(e.target.value))} 
-                                disabled=${!state.connected || isRunning}
+                                onPointerDown=${() => { isDragMin.current = true; }}
+                                onPointerUp=${() => { isDragMin.current = false; }}
+                                onInput=${(e) => {
+                                    const val = parseInt(e.target.value);
+                                    setLocalMin(val);
+                                    sendAction('setSweepMinRpm', val);
+                                }} 
+                                disabled=${!state.connected}
                             />
                         </div>
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMinRpm(+100)} disabled=${!state.connected || isRunning}>+100</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMinRpm(+100)} disabled=${!state.connected}>+100</button>
                     </div>
                 </div>
 
@@ -120,7 +146,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
                         <span style="font-size: 0.72rem; font-weight: 800; color: var(--neon-green);">📈 BATAS ATAS SAPUAN (MAX):</span>
                         <div style="font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--neon-green);">
-                            ${maxRpm} <span style="font-size: 0.7rem; color: var(--text-muted);">RPM</span>
+                            ${localMax} <span style="font-size: 0.7rem; color: var(--text-muted);">RPM</span>
                         </div>
                     </div>
                     
@@ -128,10 +154,10 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <div style="display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;">
                         ${maxPresets.map(p => html`
                             <button 
-                                class="btn ${maxRpm === p ? 'btn-active' : ''}" 
-                                style="padding: 2px 6px; font-size: 0.65rem; border-color: ${maxRpm === p ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${maxRpm === p ? 'rgba(0, 255, 102, 0.2)' : 'transparent'}; color: ${maxRpm === p ? 'var(--neon-green)' : 'var(--text-muted)'};"
-                                onClick=${() => sendAction('setSweepMaxRpm', p)}
-                                disabled=${!state.connected || isRunning}
+                                class="btn ${localMax === p ? 'btn-active' : ''}" 
+                                style="padding: 2px 6px; font-size: 0.65rem; border-color: ${localMax === p ? 'var(--neon-green)' : 'var(--border-sharp)'}; background: ${localMax === p ? 'rgba(0, 255, 102, 0.2)' : 'transparent'}; color: ${localMax === p ? 'var(--neon-green)' : 'var(--text-muted)'};"
+                                onClick=${() => { setLocalMax(p); sendAction('setSweepMaxRpm', p); }}
+                                disabled=${!state.connected}
                             >
                                 ${p}
                             </button>
@@ -139,18 +165,24 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     </div>
 
                     <div style="display: flex; gap: 4px; align-items: center;">
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(-500)} disabled=${!state.connected || isRunning}>-500</button>
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(-100)} disabled=${!state.connected || isRunning}>-100</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(-500)} disabled=${!state.connected}>-500</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(-100)} disabled=${!state.connected}>-100</button>
                         <div style="flex: 1; padding: 0 4px; display: flex; align-items: center;">
                             <input 
-                                type="range" min="1000" max=${maxRpmLimit} step="100" value=${maxRpm} 
+                                type="range" min="1000" max=${maxRpmLimit} step="100" value=${localMax} 
                                 style="width: 100%; height: 24px; accent-color: var(--neon-green); cursor: pointer;" 
-                                onInput=${(e) => sendAction('setSweepMaxRpm', parseInt(e.target.value))} 
-                                disabled=${!state.connected || isRunning}
+                                onPointerDown=${() => { isDragMax.current = true; }}
+                                onPointerUp=${() => { isDragMax.current = false; }}
+                                onInput=${(e) => {
+                                    const val = parseInt(e.target.value);
+                                    setLocalMax(val);
+                                    sendAction('setSweepMaxRpm', val);
+                                }} 
+                                disabled=${!state.connected}
                             />
                         </div>
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(+100)} disabled=${!state.connected || isRunning}>+100</button>
-                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(+500)} disabled=${!state.connected || isRunning}>+500</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(+100)} disabled=${!state.connected}>+100</button>
+                        <button class="btn" style="padding: 4px 6px; font-size: 0.68rem; font-weight: 800;" onClick=${() => adjustMaxRpm(+500)} disabled=${!state.connected}>+500</button>
                     </div>
                 </div>
             </div>
@@ -160,7 +192,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
                     <span style="font-size: 0.75rem; font-weight: 800; color: var(--neon-yellow);">⚡ KECEPATAN SAPUAN (DURASI SWEEP):</span>
                     <div style="font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--neon-yellow);">
-                        ${sweepSec} <span style="font-size: 0.72rem; color: var(--text-muted);">DETIK</span>
+                        ${localSpeed} <span style="font-size: 0.72rem; color: var(--text-muted);">DETIK</span>
                         <span style="font-size: 0.72rem; color: #A6FF00; margin-left: 8px; font-weight: normal;">(Laju: ~${rpmPerSec} RPM/dtk)</span>
                     </div>
                 </div>
@@ -169,10 +201,10 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 <div style="display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;">
                     ${speedPresets.map(sp => html`
                         <button 
-                            class="btn ${sweepSec === sp.sec ? 'btn-active' : ''}" 
-                            style="padding: 2px 6px; font-size: 0.65rem; border-color: ${sweepSec === sp.sec ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${sweepSec === sp.sec ? 'rgba(255, 214, 0, 0.2)' : 'transparent'}; color: ${sweepSec === sp.sec ? 'var(--neon-yellow)' : 'var(--text-muted)'};"
-                            onClick=${() => sendAction('setSweepTime', sp.sec)}
-                            disabled=${!state.connected || isRunning}
+                            class="btn ${localSpeed === sp.sec ? 'btn-active' : ''}" 
+                            style="padding: 2px 6px; font-size: 0.65rem; border-color: ${localSpeed === sp.sec ? 'var(--neon-yellow)' : 'var(--border-sharp)'}; background: ${localSpeed === sp.sec ? 'rgba(255, 214, 0, 0.2)' : 'transparent'}; color: ${localSpeed === sp.sec ? 'var(--neon-yellow)' : 'var(--text-muted)'};"
+                            onClick=${() => { setLocalSpeed(sp.sec); sendAction('setSweepTime', sp.sec); }}
+                            disabled=${!state.connected}
                         >
                             ${sp.label}
                         </button>
@@ -180,16 +212,22 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 </div>
 
                 <div style="display: flex; gap: 6px; align-items: center;">
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(-1)} disabled=${!state.connected || isRunning}>-1s (Lebih Cepat)</button>
+                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(-1)} disabled=${!state.connected}>-1s (Lebih Cepat)</button>
                     <div style="flex: 1; padding: 0 4px; display: flex; align-items: center;">
                         <input 
-                            type="range" min="1" max="60" step="1" value=${sweepSec} 
+                            type="range" min="1" max="60" step="1" value=${localSpeed} 
                             style="width: 100%; height: 26px; accent-color: var(--neon-yellow); cursor: pointer;" 
-                            onInput=${(e) => sendAction('setSweepTime', parseInt(e.target.value))} 
-                            disabled=${!state.connected || isRunning}
+                            onPointerDown=${() => { isDragSpeed.current = true; }}
+                            onPointerUp=${() => { isDragSpeed.current = false; }}
+                            onInput=${(e) => {
+                                const val = parseInt(e.target.value);
+                                setLocalSpeed(val);
+                                sendAction('setSweepTime', val);
+                            }} 
+                            disabled=${!state.connected}
                         />
                     </div>
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+1)} disabled=${!state.connected || isRunning}>+1s (Lebih Lambat)</button>
+                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; font-weight: 800;" onClick=${() => adjustSweepSpeed(+1)} disabled=${!state.connected}>+1s (Lebih Lambat)</button>
                 </div>
             </div>
 
@@ -198,7 +236,7 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
                     <span style="font-size: 0.75rem; font-weight: 800; color: var(--neon-purple);">⏱️ WAKTU PENGISIAN DWELL TIME:</span>
                     <div style="font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--neon-purple);">
-                        ${dwell.toFixed(1)} <span style="font-size: 0.72rem; color: var(--text-muted);">MS</span> 
+                        ${localDwell.toFixed(1)} <span style="font-size: 0.72rem; color: var(--text-muted);">MS</span> 
                         <span style="font-size: 0.72rem; color: var(--neon-cyan); margin-left: 6px;">(Duty ${duty}%)</span>
                     </div>
                 </div>
@@ -208,9 +246,15 @@ export function SweepControlPanel({ state, sendAction, maxRpmLimit = 16000, maxD
                     <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; font-weight: 800;" onClick=${() => adjustDwell(-0.1)} disabled=${!state.connected}>-0.1</button>
                     <div style="flex: 1; padding: 0 4px; display: flex; align-items: center;">
                         <input 
-                            type="range" min="0.2" max=${maxDwellLimit} step="0.05" value=${dwell} 
+                            type="range" min="0.2" max=${maxDwellLimit} step="0.05" value=${localDwell} 
                             style="width: 100%; height: 26px; accent-color: var(--neon-purple); cursor: pointer;" 
-                            onInput=${(e) => sendAction('setDwell', parseFloat(e.target.value))} 
+                            onPointerDown=${() => { isDragDwell.current = true; }}
+                            onPointerUp=${() => { isDragDwell.current = false; }}
+                            onInput=${(e) => {
+                                const val = parseFloat(e.target.value);
+                                setLocalDwell(val);
+                                sendAction('setDwell', val);
+                            }} 
                             disabled=${!state.connected}
                         />
                     </div>
