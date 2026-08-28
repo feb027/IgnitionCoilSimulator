@@ -128,6 +128,15 @@ void NetworkManager::broadcastState() {
     doc["dwellMaxMs"] = s.dwellMaxMs;
     doc["dwellSweepTimeSec"] = s.dwellSweepTimeSec;
     doc["currentDwellMs"] = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
+    doc["randomMinRpm"] = s.randomMinRpm;
+    doc["randomMaxRpm"] = s.randomMaxRpm;
+    doc["randomMinDwell"] = s.randomMinDwell;
+    doc["randomMaxDwell"] = s.randomMaxDwell;
+    doc["randomIntervalSec"] = s.randomIntervalSec;
+    doc["randomTransitionMode"] = s.randomTransitionMode;
+    doc["randomCurrentRpm"] = s.randomCurrentRpm;
+    doc["randomCurrentDwell"] = s.randomCurrentDwell;
+    doc["randomTimeLeftSec"] = s.randomTimeLeftSec;
     doc["pulsePerKm"] = s.pulsePerKm;
     doc["stepperSpeed"] = s.stepperSpeed;
     doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -284,6 +293,9 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["dwellMaxMs"] = s.dwellMaxMs;
         doc["dwellSweepTimeSec"] = s.dwellSweepTimeSec;
         doc["currentDwellMs"] = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
+        doc["randomCurrentRpm"] = s.randomCurrentRpm;
+        doc["randomCurrentDwell"] = s.randomCurrentDwell;
+        doc["randomTimeLeftSec"] = s.randomTimeLeftSec;
         doc["pulsePerKm"] = s.pulsePerKm;
         doc["stepperSpeed"] = s.stepperSpeed;
         doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -478,6 +490,34 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             s.dwellSweepTimeSec = doc["value"].as<float>();
             if (s.dwellSweepTimeSec < 0.01f) s.dwellSweepTimeSec = 0.01f;
             if (s.dwellSweepTimeSec > 60.0f) s.dwellSweepTimeSec = 60.0f;
+            changed = true;
+        } else if (action == "setRandomMinRpm") {
+            s.randomMinRpm = doc["value"].as<int>();
+            if (s.randomMinRpm < 200) s.randomMinRpm = 200;
+            if (s.randomMinRpm > 16000) s.randomMinRpm = 16000;
+            changed = true;
+        } else if (action == "setRandomMaxRpm") {
+            s.randomMaxRpm = doc["value"].as<int>();
+            if (s.randomMaxRpm < 500) s.randomMaxRpm = 500;
+            if (s.randomMaxRpm > 16000) s.randomMaxRpm = 16000;
+            changed = true;
+        } else if (action == "setRandomMinDwell") {
+            s.randomMinDwell = doc["value"].as<float>();
+            if (s.randomMinDwell < 0.2f) s.randomMinDwell = 0.2f;
+            if (s.randomMinDwell > 5.0f) s.randomMinDwell = 5.0f;
+            changed = true;
+        } else if (action == "setRandomMaxDwell") {
+            s.randomMaxDwell = doc["value"].as<float>();
+            if (s.randomMaxDwell < 0.5f) s.randomMaxDwell = 0.5f;
+            if (s.randomMaxDwell > 5.0f) s.randomMaxDwell = 5.0f;
+            changed = true;
+        } else if (action == "setRandomIntervalSec") {
+            s.randomIntervalSec = doc["value"].as<float>();
+            if (s.randomIntervalSec < 0.5f) s.randomIntervalSec = 0.5f;
+            if (s.randomIntervalSec > 10.0f) s.randomIntervalSec = 10.0f;
+            changed = true;
+        } else if (action == "setRandomTransitionMode") {
+            s.randomTransitionMode = doc["value"].as<int>();
             changed = true;
         } else if (action == "setRpmStep") {
             s.rpmStep = doc["value"].as<int>();

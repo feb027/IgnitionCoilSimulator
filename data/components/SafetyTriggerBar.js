@@ -1,4 +1,4 @@
-﻿import { html, useState, useEffect } from '../preact.js';
+import { html, useState, useEffect } from '../preact.js';
 
 export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4Pin = false, isLocked: extLocked, onToggleLock: extToggleLock }) {
     const isRunning = state.isRunning;
@@ -131,11 +131,13 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
                                 ? '🚨 EMERGENCY STOP (OFF) - KLIK UNTUK MATIKAN' 
                                 : (isLocked 
                                     ? '🛡️ TRIGGER TERKUNCI (KLIK BUKA KUNCI DI SAMPING)' 
-                                    : (state.runMode === 2 
-                                        ? '⚡ FIRE SINGLE PULSE' 
-                                        : (state.runMode === 1 
-                                            ? '⚡ FIRE BURST (10x PULSES)' 
-                                            : `⚡ ${label}: OFF (STANDBY - KLIK UNTUK HIDUPKAN)`)))}
+                                    : (state.runMode === 4
+                                        ? '🔀 START SIMULASI OTOMATIS ACAK'
+                                        : (state.runMode === 2 
+                                            ? '⚡ FIRE SINGLE PULSE' 
+                                            : (state.runMode === 1 
+                                                ? '⚡ FIRE BURST (10x PULSES)' 
+                                                : `⚡ ${label}: OFF (STANDBY - KLIK UNTUK HIDUPKAN)`))))}
                         </button>
 
                         ${!isRunning ? html`

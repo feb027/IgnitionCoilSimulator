@@ -150,7 +150,7 @@ void PeripheralCoilActive4P::update() {
     // Auto Diagnostic Routine State Machine
     if (s.coilAutoDiagRunning) {
         updateAutoDiag();
-    } else if (s.mode == MODE_SWEEP && s.isRunning) {
+    } else if ((s.mode == MODE_SWEEP || s.mode == MODE_RANDOM) && s.isRunning) {
         if (_sweepController.update()) {
             updateTimerConfig();
         }
@@ -477,14 +477,14 @@ void PeripheralCoilActive4P::syncHardware() {
 
 void PeripheralCoilActive4P::updateTimerConfig() {
     AppSettings& s = _settingsMgr.getSettings();
-    int activeRpm = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentRpm : s.rpm;
+    int activeRpm = ((s.mode == MODE_SWEEP || s.mode == MODE_RANDOM) && s.isRunning) ? s.currentRpm : s.rpm;
     if (activeRpm > 16000) activeRpm = 16000;
     if (activeRpm < 200) activeRpm = 200; 
     
     coil_act4p_periodTicks = 60000000 / activeRpm;
     if (coil_act4p_periodTicks < 3750) coil_act4p_periodTicks = 3750;
     
-    float dwell = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
+    float dwell = ((s.mode == MODE_SWEEP || s.mode == MODE_RANDOM) && s.isRunning) ? s.currentDwellMs : s.dwellMs;
     if (dwell > 5.0f) dwell = 5.0f;
     if (dwell < 0.2f) dwell = 0.2f;
     
@@ -521,6 +521,9 @@ void PeripheralCoilActive4P::start() {
         coil_act4p_pulsesRemaining = 10;
     } else if (s.mode == MODE_SWEEP) {
         _sweepController.beginSweep();
+        coil_act4p_pulsesRemaining = 0;
+    } else if (s.mode == MODE_RANDOM) {
+        _sweepController.beginRandom();
         coil_act4p_pulsesRemaining = 0;
     } else {
         coil_act4p_pulsesRemaining = 0;
@@ -709,14 +712,15 @@ const char* PeripheralCoilActive4P::getModeString() {
         case MODE_BURST: return "BURST";
         case MODE_SINGLE: return "SINGLE";
         case MODE_SWEEP: return "SWEEP";
+        case MODE_RANDOM: return "RANDOM";
         default: return "UNKNOWN";
     }
 }
 
 void PeripheralCoilActive4P::cycleRunMode(AppSettings& s, int direction) {
     int next = (int)s.mode + direction;
-    if (next > 3) next = 0;
-    if (next < 0) next = 3;
+    if (next > 4) next = 0;
+    if (next < 0) next = 4;
     s.mode = (CoilMode)next;
 }
 
@@ -724,7 +728,7 @@ void PeripheralCoilActive4P::handleDashboardEncoder(int diff, AppSettings& s) {
     s.rpm += (diff * s.rpmStep);
     if (s.rpm < 0) s.rpm = 0;
     if (s.rpm > 16000) s.rpm = 16000;
-    if (s.mode != MODE_SWEEP || !s.isRunning) s.currentRpm = s.rpm;
+    if ((s.mode != MODE_SWEEP && s.mode != MODE_RANDOM) || !s.isRunning) s.currentRpm = s.rpm;
     _settingsMgr.save();
     if (s.isRunning) trigger();
     else updateTimerConfig();

@@ -2,12 +2,14 @@ import { html, useState } from '../preact.js';
 import { Dial } from './Dial.js';
 import { SparkCadenceCard } from './SparkCadenceCard.js';
 import { SweepControlPanel } from './SweepControlPanel.js';
+import { AutoRandomPanel } from './AutoRandomPanel.js';
 import { AdvancedTuningPanel } from './AdvancedTuningPanel.js';
 import { CoilDatabaseCard } from './CoilDatabaseCard.js';
 import { SafetyTriggerBar } from './SafetyTriggerBar.js';
 
 export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const isSweep = state.runMode === 3;
+    const isRandom = state.runMode === 4;
     const isAutoDiag = state.coilAutoDiagRunning;
     const verdict = state.coilDiagVerdict || "READY";
 
@@ -72,8 +74,34 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
             `}
         </div>
 
-        <!-- SWEEP MODE DUAL SLIDER OR STANDARD ENGINE SPEED & DWELL DIALS ROW -->
-        ${isSweep ? html`
+        <!-- MODE SELECTION TOOLBAR -->
+        <div style="display: flex; gap: 4px; grid-column: 1 / -1; margin-top: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 6px; border: 1px solid var(--border-sharp); overflow-x: auto;">
+            <button class="btn ${state.runMode === 0 ? 'btn-active' : ''}" style="flex: 1; padding: 4px 8px; font-size: 0.72rem; font-weight: 800; min-width: 80px;" onClick=${() => sendAction('setRunMode', 0)} disabled=${isAutoDiag}>
+                ⚡ KONTINU
+            </button>
+            <button class="btn ${state.runMode === 3 ? 'btn-active' : ''}" style="flex: 1; padding: 4px 8px; font-size: 0.72rem; font-weight: 800; min-width: 80px;" onClick=${() => sendAction('setRunMode', 3)} disabled=${isAutoDiag}>
+                📈 SAPUAN
+            </button>
+            <button class="btn ${state.runMode === 4 ? 'btn-active' : ''}" style="flex: 1; padding: 4px 8px; font-size: 0.72rem; font-weight: 800; min-width: 110px; border-color: ${state.runMode === 4 ? '#c084fc' : 'var(--border-sharp)'}; color: ${state.runMode === 4 ? '#fff' : '#c084fc'};" onClick=${() => sendAction('setRunMode', 4)} disabled=${isAutoDiag}>
+                🔀 SIMULASI ACAK
+            </button>
+            <button class="btn ${state.runMode === 1 ? 'btn-active' : ''}" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 800;" onClick=${() => sendAction('setRunMode', 1)} disabled=${isAutoDiag}>
+                📦 BURST
+            </button>
+            <button class="btn ${state.runMode === 2 ? 'btn-active' : ''}" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 800;" onClick=${() => sendAction('setRunMode', 2)} disabled=${isAutoDiag}>
+                🎯 SINGLE
+            </button>
+        </div>
+
+        <!-- AUTO-RANDOM / SWEEP MODE DUAL SLIDER / STANDARD ENGINE SPEED & DWELL DIALS ROW -->
+        ${isRandom ? html`
+            <${AutoRandomPanel} 
+                state=${state} 
+                sendAction=${sendAction} 
+                maxRpmLimit=${maxRpmLimit} 
+                maxDwellLimit=${maxDwellLimit} 
+            />
+        ` : (isSweep ? html`
             <${SweepControlPanel} 
                 state=${state} 
                 sendAction=${sendAction} 
@@ -81,7 +109,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                 maxDwellLimit=${maxDwellLimit} 
             />
         ` : html`
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 4px;">
                 <${Dial} 
                     compact=${true}
                     label=${isAutoDiag ? "AUTO DIAG..." : "ENGINE SPEED"}
@@ -107,7 +135,7 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
                     disabled=${!state.connected || isAutoDiag}
                 />
             </div>
-        `}
+        `)}
 
         <!-- ADVANCED RANGE LIMITS, CALIBRATION MATRIX & FINE TUNING -->
         <${AdvancedTuningPanel} 

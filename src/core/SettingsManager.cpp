@@ -89,6 +89,9 @@ void SettingsManager::commitToNvs() {
     preferences.putFloat("c_tp_cut", _settings.calTempCutoff); preferences.putFloat("c_tp_off", _settings.calTempOffset);
     preferences.putFloat("c_vt_g", _settings.calVoltGain); preferences.putFloat("c_vt_o", _settings.calVoltOffset);
     preferences.putFloat("c_dc_g", _settings.calDcCurrentGain); preferences.putFloat("c_dc_o", _settings.calDcCurrentOffset);
+    preferences.putInt("rn_min_r", _settings.randomMinRpm); preferences.putInt("rn_max_r", _settings.randomMaxRpm);
+    preferences.putFloat("rn_min_d", _settings.randomMinDwell); preferences.putFloat("rn_max_d", _settings.randomMaxDwell);
+    preferences.putFloat("rn_int_s", _settings.randomIntervalSec); preferences.putInt("rn_tr_m", _settings.randomTransitionMode);
     _savedSettings = _settings;
 }
 
@@ -120,6 +123,18 @@ void SettingsManager::load() {
     if (_settings.dwellSweepTimeSec < 0.01f) _settings.dwellSweepTimeSec = 0.01f;
     if (_settings.dwellSweepTimeSec > 60.0f) _settings.dwellSweepTimeSec = 60.0f;
     _settings.currentDwellMs = _settings.dwellMs;
+    
+    _settings.randomMinRpm = preferences.getInt("rn_min_r", 600);
+    _settings.randomMaxRpm = preferences.getInt("rn_max_r", 9000);
+    _settings.randomMinDwell = preferences.getFloat("rn_min_d", 1.5f);
+    _settings.randomMaxDwell = preferences.getFloat("rn_max_d", 4.2f);
+    _settings.randomIntervalSec = preferences.getFloat("rn_int_s", 2.0f);
+    if (_settings.randomIntervalSec < 0.5f) _settings.randomIntervalSec = 0.5f;
+    if (_settings.randomIntervalSec > 10.0f) _settings.randomIntervalSec = 10.0f;
+    _settings.randomTransitionMode = preferences.getInt("rn_tr_m", 0);
+    _settings.randomCurrentRpm = _settings.randomMinRpm;
+    _settings.randomCurrentDwell = _settings.randomMinDwell;
+    _settings.randomTimeLeftSec = _settings.randomIntervalSec;
     
     _settings.pulsePerKm = preferences.getInt("s_ppk", 4000);
     _settings.speedoKmh = preferences.getInt("s_kmh", 120);
@@ -238,6 +253,9 @@ void SettingsManager::resetToDefaults() {
     _settings.sweepTimeSec = 5; _settings.sweepMinRpm = 500; _settings.sweepMaxRpm = 6000;
     _settings.dwellSweepMode = DWELL_SWEEP_FIXED; _settings.dwellMinMs = 1.0f; _settings.dwellMaxMs = 4.5f;
     _settings.dwellSweepTimeSec = 5.0f; _settings.currentDwellMs = 3.0f;
+    _settings.randomMinRpm = 600; _settings.randomMaxRpm = 9000; _settings.randomMinDwell = 1.5f; _settings.randomMaxDwell = 4.2f;
+    _settings.randomIntervalSec = 2.0f; _settings.randomTransitionMode = 0;
+    _settings.randomCurrentRpm = 600; _settings.randomCurrentDwell = 3.0f; _settings.randomTimeLeftSec = 2.0f;
     _settings.pulsePerKm = 4000; _settings.speedoKmh = 120; _settings.speedoRpm = 4000;
     _settings.speedoTempPercent = 50; _settings.speedoFuelPercent = 50; _settings.speedoRpmStep = 500;
     _settings.speedoKmhStep = 10; _settings.speedoTempStep = 5; _settings.speedoFuelStep = 5;
@@ -247,41 +265,29 @@ void SettingsManager::resetToDefaults() {
     _settings.speedoFuelCalMin = 0; _settings.speedoFuelCalMid = 50; _settings.speedoFuelCalMax = 100;
     _settings.speedoDacFuelFound = false; _settings.speedoDacTempFound = false; _settings.stepperSpeed = 50;
     _settings.stepperSpinDir = 0; _settings.isRunning = false; _settings.lastFiredMs = 0;
-    
     _settings.injectorMs = 3.0f; _settings.injectorRpm = 1500; _settings.injectorFlowPulses = 100;
-    _settings.injectorPulsesLeft = 0; _settings.injectorFlowRunning = false;
-    _settings.injectorPeakCurrentA = 0.0f; _settings.injectorResistanceOhm = 0.0f;
+    _settings.injectorPulsesLeft = 0; _settings.injectorFlowRunning = false; _settings.injectorPeakCurrentA = 0.0f; _settings.injectorResistanceOhm = 0.0f;
     _settings.injectorAutoDiagRunning = false; _settings.injectorDiagPhase = 0; _settings.injectorDiagProgress = 0;
     strncpy(_settings.injectorDiagVerdict, "READY", sizeof(_settings.injectorDiagVerdict));
-    
     _settings.iacvTargetSteps = 50; _settings.iacvCurrentSteps = 0; _settings.iacvAutoCalibrating = false;
-    
     _settings.hallDacVoltage = 2.50f; _settings.hallDacFreqHz = 50; _settings.hallDacWaveform = 0;
     _settings.hallDacProfile = 0; _settings.hallDacDomain = 0; _settings.hallDacConnected = false;
-    
     _settings.coilFiredCount = 0; _settings.coilIgfCount = 0; _settings.coilMissedCount = 0;
     _settings.coilHealthPercent = 100.0f; _settings.coilPeakCurrentA = 0.0f;
     _settings.coilAutoDiagRunning = false; _settings.coilDiagPhase = 0; _settings.coilDiagProgress = 0;
     strncpy(_settings.coilDiagVerdict, "READY", sizeof(_settings.coilDiagVerdict));
-    
     _settings.coilLeakCount = 0; _settings.coilLeakRate = 0; _settings.coilLeakDetected = false;
     _settings.coilLeakSensitivity = 1; _settings.coilLeakThreshold = 4; _settings.coilLeakDebounceMs = 3.0f;
     _settings.leakArcCutIn = 10; _settings.leakArc25 = 20; _settings.leakArc50 = 30;
     _settings.leakArc75 = 40; _settings.leakArc100 = 50; _settings.leakArcMax = 50; _settings.coilLeakPercent = 0;
-    
-    _settings.calSparkPrima = 45.0f; _settings.calSparkBaik = 35.0f; _settings.calSparkCukup = 25.0f; _settings.calSparkKurang = 15.0f;
-    _settings.calSparkGain = 1.00f;
-    
+    _settings.calSparkPrima = 45.0f; _settings.calSparkBaik = 35.0f; _settings.calSparkCukup = 25.0f; _settings.calSparkKurang = 15.0f; _settings.calSparkGain = 1.00f;
     _settings.calCadencePrima = 98.0f; _settings.calCadenceBaik = 90.0f; _settings.calCadenceCukup = 80.0f; _settings.calCadenceKurang = 60.0f;
     _settings.calCadenceDebounceMs = 1.5f; _settings.calCadenceWindowMs = 3.5f;
-    
     _settings.calCurrentPrima = 6.5f; _settings.calCurrentBaik = 5.5f; _settings.calCurrentCukup = 4.5f; _settings.calCurrentKurang = 3.0f;
     _settings.calCurrentMax = 11.5f; _settings.calCurrentZeroVolt = 1.85f;
-    
     _settings.calTempPrima = 45.0f; _settings.calTempBaik = 55.0f; _settings.calTempCukup = 65.0f; _settings.calTempPanas = 75.0f;
     _settings.calTempCutoff = 85.0f; _settings.calTempOffset = 0.0f;
     _settings.calVoltGain = 1.00f; _settings.calVoltOffset = 0.0f;
     _settings.calDcCurrentGain = 1.00f; _settings.calDcCurrentOffset = 0.0f;
-    
     _savedSettings = _settings;
 }

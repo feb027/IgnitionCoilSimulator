@@ -8,7 +8,8 @@ enum CoilMode {
     MODE_CONTINUOUS,
     MODE_BURST,
     MODE_SINGLE,
-    MODE_SWEEP
+    MODE_SWEEP,
+    MODE_RANDOM
 };
 
 enum DwellSweepMode : uint8_t {
@@ -53,6 +54,15 @@ struct AppSettings {
     float dwellMaxMs;      // Dwell upper limit in ms (2.0ms - 5.0ms, default 4.5ms)
     float dwellSweepTimeSec; // Dwell independent sweep time in seconds (0.01s - 20.0s)
     float currentDwellMs;  // Live modulated dwell in ms during sweep
+    int randomMinRpm;      // Auto-random min RPM (default: 600)
+    int randomMaxRpm;      // Auto-random max RPM (default: 9000)
+    float randomMinDwell;  // Auto-random min Dwell (default: 1.5ms)
+    float randomMaxDwell;  // Auto-random max Dwell (default: 4.2ms)
+    float randomIntervalSec; // Auto-random step interval in seconds (1.0s - 10.0s, default: 2.0s)
+    int randomTransitionMode; // 0: Instant Step, 1: Fast Ramp
+    int randomCurrentRpm;  // Live active random RPM
+    float randomCurrentDwell; // Live active random Dwell in ms
+    float randomTimeLeftSec; // Seconds left until next random change
     int pulsePerKm;        // Pulses per kilometer (calibration for speedo)
     int speedoKmh;         // Target km/h for speedometer (and sweep max)
     int speedoRpm;         // Target RPM for speedometer (and sweep max)
