@@ -1,4 +1,5 @@
 #include "services/TempSensorService.h"
+#include "core/SettingsManager.h"
 
 #define DS18B20_CMD_SKIP_ROM    0xCC
 #define DS18B20_CMD_CONVERT_T   0x44
@@ -9,6 +10,7 @@ TempSensorService::TempSensorService()
       _detectedCount(0),
       _lastPollMs(0),
       _conversionPending(false),
+      _calOffset(0.0f),
       _coilTempC(28.5f),
       _driverTempC(29.0f) {}
 
@@ -83,7 +85,8 @@ bool TempSensorService::readScratchpad(float &tempOut) {
     return (tempOut > -50.0f && tempOut < 125.0f);
 }
 
-void TempSensorService::update() {
+void TempSensorService::update(float calOffset) {
+    if (calOffset != 0.0f) _calOffset = calOffset;
     uint32_t now = millis();
     if (now - _lastPollMs < 1000) return; // Run once per second
     _lastPollMs = now;
@@ -100,9 +103,8 @@ void TempSensorService::update() {
     } else {
         float tempVal = 0.0f;
         if (readScratchpad(tempVal)) {
-            _coilTempC = tempVal;
-            // Simulated driver temp tracking or dual probe offset
-            _driverTempC = _coilTempC + 1.5f; 
+            _coilTempC = tempVal + _calOffset;
+            _driverTempC = _coilTempC + 0.5f; 
         }
         _conversionPending = false;
     }

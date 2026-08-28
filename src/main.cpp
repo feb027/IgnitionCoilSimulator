@@ -97,7 +97,7 @@ void loop() {
     
     // Process auxiliary services (ADC Voltmeter, Joystick & Temp sensors)
     Ads1115Service::getInstance().update();
-    TempSensorService::getInstance().update();
+    TempSensorService::getInstance().update(settingsMgr.getSettings().calTempOffset);
     settingsMgr.update();
 
     // Process peripheral state (Core 1 loop)

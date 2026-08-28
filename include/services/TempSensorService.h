@@ -12,7 +12,8 @@ public:
     }
 
     void begin(uint8_t pin = PIN_DS18B20_1WIRE);
-    void update(); // Polls non-blocking every 1000ms
+    void update(float calOffset = 0.0f); // Polls non-blocking every 1000ms
+    void setCalOffset(float offset) { _calOffset = offset; }
 
     bool isConnected() const { return _detectedCount > 0; }
     uint8_t getSensorCount() const { return _detectedCount; }
@@ -34,6 +35,7 @@ private:
     uint8_t _detectedCount;
     uint32_t _lastPollMs;
     bool _conversionPending;
+    float _calOffset;
 
     float _coilTempC;
     float _driverTempC;
