@@ -89,13 +89,13 @@ void PeripheralCoilActive4P::begin() {
     pinMode(PIN_COIL_ACTIVE_IGT, OUTPUT);
     digitalWrite(PIN_COIL_ACTIVE_IGT, LOW);
     
-    // Internal IGF Input Pin (GPIO 34) with Hardware Interrupt
+    // Internal IGF Input Pin (GPIO 34) with Hardware Interrupt (Falling Edge for 1:1 pulse)
     pinMode(PIN_COIL_ACTIVE_IGF, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_ACTIVE_IGF), onActive4pIgfInterrupt, FALLING);
     
-    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler / LM358 on GPIO 26)
+    // Dedicated External Spark Pulse Interrupt (4N35 Optocoupler on GPIO 26 - Falling Edge for 1:1 pulse)
     pinMode(PIN_COIL_SPARK_PULSE, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_COIL_SPARK_PULSE), onActive4pSparkInterrupt, FALLING);
     
     // External Spark Energy Analog Input (GPIO 39)
     pinMode(PIN_COIL_SPARK_SENSE, INPUT);
@@ -125,20 +125,11 @@ void PeripheralCoilActive4P::update() {
     isr_act4p_windowUs = (uint32_t)(s.calCadenceWindowMs * 1000.0f);
     if (isr_act4p_windowUs < 500) isr_act4p_windowUs = 500;
     
-    // Sample primary current
+    // Sample primary current & secondary spark intensity
     samplePrimaryCurrent();
     CoilLeakSensor::update(s);
     
     uint32_t fired = isr_act4p_firedCount;
-    
-    // Multi-source tracking: If digital IGF/Spark interrupts haven't pulsed, update counters in lockstep
-    if (isr_act4p_sparkCount < fired && isr_act4p_igfCount < fired && s.isRunning) {
-        if (s.coilPeakCurrentA >= 1.5f || s.coilSparkCurrentmA >= 3.0f) {
-            isr_act4p_sparkCount = fired;
-            isr_act4p_igfCount = fired;
-        }
-    }
-    
     uint32_t igf = isr_act4p_igfCount;
     uint32_t spark = isr_act4p_sparkCount;
     uint32_t confirmed = (spark > 0) ? spark : igf;
@@ -146,8 +137,8 @@ void PeripheralCoilActive4P::update() {
     s.coilFiredCount = fired;
     s.coilIgfCount = igf;
     s.coilSparkReturnCount = confirmed;
-    s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
-    s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
+    s.coilMissedCount = (s.coilFiredCount > confirmed) ? (s.coilFiredCount - confirmed) : 0;
+    s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)confirmed * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
     // Auto Diagnostic Routine State Machine
     if (s.coilAutoDiagRunning) {
@@ -230,6 +221,12 @@ void PeripheralCoilActive4P::probeCoil() {
         if (peakAmps > 25.0f) peakAmps = 25.0f;
         if (peakAmps > maxPeakAmps) maxPeakAmps = peakAmps;
         
+        int rawSpark = analogRead(PIN_COIL_SPARK_SENSE);
+        float sparkV = ((float)rawSpark / 4095.0f) * 3.3f;
+        float sparkmA = sparkV * 25.0f * s.calSparkGain;
+        if (sparkmA > 100.0f) sparkmA = 100.0f;
+        if (sparkmA > s.coilSparkCurrentmA) s.coilSparkCurrentmA = sparkmA;
+        
         isr_act4p_firedCount++;
         if (p < numPulses - 1) {
             delay(50); // 50ms off-time between pulses
@@ -310,6 +307,24 @@ void PeripheralCoilActive4P::samplePrimaryCurrent() {
                 s.coilPeakCurrentA = amps;
             }
             s.coilConnected = (s.coilPeakCurrentA > 0.5f || s.coilFiredCount > 0);
+            
+            // Sample Secondary Spark Intensity via LM358 ADC Pin 39
+            int rawSparkAdc = analogRead(PIN_COIL_SPARK_SENSE);
+            float sparkV = ((float)rawSparkAdc / 4095.0f) * 3.3f;
+            float sparkmA = sparkV * 25.0f * s.calSparkGain;
+            if (sparkmA > 100.0f) sparkmA = 100.0f;
+            
+            if (sparkmA >= 3.0f) {
+                if (sparkmA > s.coilSparkCurrentmA) {
+                    s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.2f) + (sparkmA * 0.8f);
+                } else {
+                    s.coilSparkCurrentmA = (s.coilSparkCurrentmA * 0.97f) + (sparkmA * 0.03f);
+                }
+                _sumSparkmA += s.coilSparkCurrentmA;
+                _sampleCountSpark++;
+            } else if (s.coilFiredCount > 0 && s.coilSparkCurrentmA < 1.0f) {
+                s.coilSparkCurrentmA = sparkmA;
+            }
             
             // Real-time Dual Confirmation Status for 4-Pin
             if (s.coilFiredCount >= 10) {
@@ -564,6 +579,9 @@ void PeripheralCoilActive4P::stop() {
     // Latch the true test session mathematical average on STOP
     if (_sampleCountAmps > 0) {
         s.coilPeakCurrentA = _sumPeakAmps / (float)_sampleCountAmps;
+    }
+    if (_sampleCountSpark > 0) {
+        s.coilSparkCurrentmA = _sumSparkmA / (float)_sampleCountSpark;
     }
     
     if (s.mode == MODE_SWEEP) {

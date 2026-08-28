@@ -21,11 +21,17 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
         sendAction('runCheckCoil');
     };
 
-    const fired = state.coilFiredCount || 0, confirmed = state.coilSparkReturnCount || state.coilIgfCount || 0;
-    const missed = state.coilMissedCount || Math.max(0, fired - confirmed), sparkmA = state.coilSparkCurrentmA || 0.0;
+    const fired = state.coilFiredCount || 0;
+    const igfCount = state.coilIgfCount || 0;
+    const sparkCount = state.coilSparkReturnCount || 0;
+    const confirmed = is4Pin ? (sparkCount > 0 ? sparkCount : igfCount) : sparkCount;
+    const missed = state.coilMissedCount || Math.max(0, fired - confirmed);
+    const sparkmA = state.coilSparkCurrentmA || 0.0;
     const currentA = state.coilPeakCurrentA ? state.coilPeakCurrentA.toFixed(1) : "0.0";
-    const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00", vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
-    const tempCoil = state.tempCoilC !== undefined ? state.tempCoilC.toFixed(1) : "28.5", tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
+    const realA = state.realCurrentA !== undefined ? state.realCurrentA.toFixed(2) : "0.00";
+    const vBat = state.supplyVoltage !== undefined ? state.supplyVoltage.toFixed(2) : "12.60";
+    const tempCoil = state.tempCoilC !== undefined ? state.tempCoilC.toFixed(1) : "28.5";
+    const tempDriver = state.tempDriverC !== undefined ? state.tempDriverC.toFixed(1) : "29.0";
 
     const spP = state.calSparkPrima || 45.0, spB = state.calSparkBaik || 35.0, spC = state.calSparkCukup || 25.0, spK = state.calSparkKurang || 15.0;
     const cdP = state.calCadencePrima || 98.0, cdB = state.calCadenceBaik || 90.0, cdC = state.calCadenceCukup || 80.0, cdK = state.calCadenceKurang || 60.0;
@@ -35,9 +41,9 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
 
     const isStandby = (fired === 0 && !state.isRunning);
     const cadenceRate = fired > 0 ? Math.min(100, Math.max(0, (confirmed / fired) * 100)) : 0;
-    const igfCount = state.coilIgfCount || 0, igfRate = fired > 0 ? Math.min(100, Math.max(0, (igfCount / fired) * 100)) : 0;
-    const igfMissed = fired > 0 ? Math.max(0, fired - igfCount) : 0;
-    const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0, energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / spP)) : 1.0;
+    const igfRate = fired > 0 ? Math.min(100, Math.max(0, (igfCount / fired) * 100)) : 0;
+    const arrhythmiaRate = fired > 0 ? (100 - cadenceRate) : 0;
+    const energyFactor = sparkmA > 0 ? Math.min(1.0, Math.max(0.0, sparkmA / spP)) : 1.0;
 
     const isLeaking = state.coilLeakDetected, leakCount = state.coilLeakCount || 0, leakRate = state.coilLeakRate || 0, leakPercent = state.coilLeakPercent || 0;
     let insulationFactor = 1.0, leakBadgeColor = "var(--neon-green)", leakStatusText = state.coilLeakSeverity || "ISOLASI UTUH (0%)";
@@ -94,9 +100,9 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
     const canRunCheck = state.connected && !state.isRunning && !isLocked && !isPreFlightLocked;
 
     return html`
-        <div class="panel ${isAlarm ? 'pulse-alarm-red' : ''}" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor}; box-sizing: border-box;">
-            <!-- SCANNER-STYLE LIVE VOLTMETER & TEMPERATURE STRIP -->
-            <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.72rem; margin-bottom: 8px;">
+        <div class="panel ${isAlarm ? 'pulse-alarm-red' : ''}" style="margin-top: 4px; grid-column: 1 / -1; border-color: ${healthColor}; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;">
+            <!-- TOP SCANNER STRIP -->
+            <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-sharp); border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.72rem;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <span>🔋 SUPPLY: <strong style="color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; font-variant-numeric: tabular-nums;">${vBat} V</strong></span>
                     <span class="status-badge" style="padding: 1px 6px; font-size: 0.65rem; border-color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : 'var(--neon-orange)'}; color: ${parseFloat(vBat) >= 11.5 ? 'var(--neon-green)' : 'var(--neon-orange)'};">${parseFloat(vBat) >= 11.5 ? 'VOLTAGE OK' : 'LOW VOLT'}</span>
@@ -106,51 +112,46 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                     <span>🌡️ IGBT: <strong style="color: var(--neon-purple);">${tempDriver} °C</strong></span>
                     <span>⚡ Arus DC: <strong style="color: var(--neon-green);">${realA} A</strong></span>
                 </div>
-            </div>
-
-            <!-- HEADER -->
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-sharp); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                <span style="font-weight: 800; letter-spacing: 0.05em; color: ${healthColor};">⚡ ${title}</span>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.08);" onClick=${handleFullReset} disabled=${!state.connected}>🔄 RESET</button>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button class="btn" style="padding: 2px 8px; font-size: 0.68rem; font-weight: 700;" onClick=${handleFullReset} disabled=${!state.connected}>🔄 RESET</button>
                     <span class="status-badge" style="border-color: ${healthColor}; color: ${healthColor}; font-weight: 800;">${healthBadge}</span>
                 </div>
             </div>
 
-            <!-- LIVE GAUGES: 2 GAUGES FOR 3P/PASSIVE, 3 GAUGES FOR 4-PIN (INCL IGF) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 8px;">
+            <!-- ===================== BARIS 1: GAUGES MONITOR ===================== -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
                 <!-- GAUGE 1: SPARK CURRENT mA -->
-                <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g1Color}; border-radius: 6px; padding: 8px 12px; min-height: 92px; height: 92px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; font-weight: 700; color: var(--neon-cyan);">
-                        <span>⚡ ARUS API SEKUNDER</span><span style="font-size: 0.68rem; color: var(--text-muted);">>45 mA</span>
+                <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g1Color}; border-radius: 6px; padding: 8px 12px; min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 700; color: var(--neon-cyan);">
+                        <span>⚡ ARUS API SEKUNDER</span><span style="font-size: 0.65rem; color: var(--text-muted);">>45 mA</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                        <div style="font-size: 1.7rem; font-weight: 900; color: ${g1Color}">${isStandby ? '--' : sparkmA.toFixed(1)} <span style="font-size: 0.8rem; color: var(--text-muted);">mA</span></div>
+                        <div style="font-size: 1.65rem; font-weight: 900; color: ${g1Color}">${isStandby ? '--' : sparkmA.toFixed(1)} <span style="font-size: 0.78rem; color: var(--text-muted);">mA</span></div>
                         <div style="font-size: 0.72rem; font-weight: 800; color: ${g1Color}">${g1Text}</div>
                     </div>
                     <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;"><div style="width: ${g1W}%; height: 100%; background: ${g1Color}; transition: width 0.2s;"></div></div>
                 </div>
 
                 <!-- GAUGE 2: SPARK CADENCE % -->
-                <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g2Color}; border-radius: 6px; padding: 8px 12px; min-height: 92px; height: 92px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; font-weight: 700; color: var(--neon-purple);">
-                        <span>🎯 SINKRONISASI API</span><span style="font-size: 0.68rem; color: var(--text-muted);">100%</span>
+                <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g2Color}; border-radius: 6px; padding: 8px 12px; min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 700; color: var(--neon-purple);">
+                        <span>🎯 SINKRONISASI API</span><span style="font-size: 0.65rem; color: var(--text-muted);">100%</span>
                     </div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                        <div style="font-size: 1.7rem; font-weight: 900; color: ${g2Color}">${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.8rem; color: var(--text-muted);">%</span></div>
+                        <div style="font-size: 1.65rem; font-weight: 900; color: ${g2Color}">${isStandby ? '--' : cadenceRate.toFixed(1)} <span style="font-size: 0.78rem; color: var(--text-muted);">%</span></div>
                         <div style="font-size: 0.72rem; font-weight: 800; color: ${g2Color}">${g2Text}</div>
                     </div>
                     <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;"><div style="width: ${g2W}%; height: 100%; background: ${g2Color}; transition: width 0.2s;"></div></div>
                 </div>
 
-                <!-- GAUGE 3: IGF MONITOR (ONLY FOR 4-PIN COIL) -->
+                <!-- GAUGE 3: IGF MONITOR (KHUSUS KOIL 4-PIN) -->
                 ${is4Pin ? html`
-                    <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g3Color}; border-radius: 6px; padding: 8px 12px; min-height: 92px; height: 92px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; font-weight: 700; color: #c084fc;">
-                            <span>🔌 SENSOR IGF (PIN 34)</span><span style="font-size: 0.68rem; color: var(--text-muted);">Feedback</span>
+                    <div style="background: rgba(0,0,0,0.35); border: 2px solid ${g3Color}; border-radius: 6px; padding: 8px 12px; min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 700; color: #c084fc;">
+                            <span>🔌 SENSOR IGF (PIN 34)</span><span style="font-size: 0.65rem; color: var(--text-muted);">Feedback</span>
                         </div>
                         <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                            <div style="font-size: 1.7rem; font-weight: 900; color: ${g3Color}">${isStandby ? '--' : igfRate.toFixed(1)} <span style="font-size: 0.8rem; color: var(--text-muted);">%</span></div>
+                            <div style="font-size: 1.65rem; font-weight: 900; color: ${g3Color}">${isStandby ? '--' : igfRate.toFixed(1)} <span style="font-size: 0.78rem; color: var(--text-muted);">%</span></div>
                             <div style="font-size: 0.72rem; font-weight: 800; color: ${g3Color}">${g3Text}</div>
                         </div>
                         <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;"><div style="width: ${g3W}%; height: 100%; background: ${g3Color}; transition: width 0.2s;"></div></div>
@@ -158,49 +159,54 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                 ` : ''}
             </div>
 
-            <!-- METRIC CARDS STRIP -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 6px; margin-top: 8px;">
-                <div style="background: rgba(0,229,255,0.06); border: 2px solid #00E5FF; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">TOTAL IGT</div><div style="font-size: 1.35rem; font-weight: 900; color: var(--neon-cyan);">${fired}</div><div style="font-size: 0.6rem; color: var(--neon-cyan);">Terpicu</div>
-                </div>
-                ${is4Pin ? html`
-                    <div style="background: rgba(192,132,252,0.06); border: 2px solid #c084fc; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">RESPON IGF</div><div style="font-size: 1.35rem; font-weight: 900; color: #c084fc;">${igfCount}</div><div style="font-size: 0.6rem; color: #c084fc;">${igfRate.toFixed(0)}% Pin 34</div>
+            <!-- ===================== BARIS 2: UNIFIED METRICS & DIAGNOSIS ===================== -->
+            <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-sharp); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
+                <!-- METRIC CHIPS STRIP -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px;">
+                    <div style="background: rgba(0,229,255,0.06); border: 1px solid #00E5FF; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                        <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">TOTAL IGT</div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--neon-cyan);">${fired}</div>
                     </div>
-                ` : ''}
-                <div style="background: rgba(0,255,102,0.06); border: 2px solid #00FF66; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">RESPON API</div><div style="font-size: 1.35rem; font-weight: 900; color: var(--neon-green);">${confirmed}</div><div style="font-size: 0.6rem; color: var(--neon-green);">${cadenceRate.toFixed(0)}% Konfirmasi</div>
+                    ${is4Pin ? html`
+                        <div style="background: rgba(192,132,252,0.06); border: 1px solid #c084fc; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                            <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">RESPON IGF (34)</div>
+                            <div style="font-size: 1.15rem; font-weight: 900; color: #c084fc;">${igfCount} <span style="font-size: 0.65rem;">(${igfRate.toFixed(0)}%)</span></div>
+                        </div>
+                    ` : ''}
+                    <div style="background: rgba(0,255,102,0.06); border: 1px solid #00FF66; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                        <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">RESPON API</div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--neon-green);">${confirmed} <span style="font-size: 0.65rem;">(${cadenceRate.toFixed(0)}%)</span></div>
+                    </div>
+                    <div style="background: ${missed > 0 ? 'rgba(255,45,85,0.12)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${missed > 0 ? '#FF3333' : '#444444'}; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                        <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">MISSED</div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div>
+                    </div>
+                    <div style="background: rgba(0,229,255,0.06); border: 1px solid #00E5FF; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                        <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">ARUS PEAK</div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--neon-cyan);">${isStandby ? '--' : currentA}A</div>
+                    </div>
+                    <div style="background: rgba(255,149,0,0.05); border: 1px solid #FF9900; border-radius: 4px; padding: 4px 6px; text-align: center;">
+                        <div style="font-size: 0.62rem; color: var(--text-muted); font-weight: 700;">SUHU KOIL</div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--neon-orange);">${tempCoil}°C</div>
+                    </div>
                 </div>
-                <div style="background: ${missed > 0 ? 'rgba(255,45,85,0.12)' : 'rgba(255,255,255,0.03)'}; border: 2px solid ${missed > 0 ? '#FF3333' : '#444444'}; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">MISSED</div><div style="font-size: 1.35rem; font-weight: 900; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${missed}</div><div style="font-size: 0.6rem; color: ${missed > 0 ? 'var(--neon-red)' : 'var(--text-muted)'};">${arrhythmiaRate.toFixed(0)}% Hilang</div>
-                </div>
-                <div style="background: rgba(0,229,255,0.06); border: 2px solid #00E5FF; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">ARUS PEAK</div><div style="font-size: 1.35rem; font-weight: 900; color: var(--neon-cyan);">${isStandby ? '--' : currentA}A</div><div style="font-size: 0.6rem; color: var(--neon-cyan);">ACS712</div>
-                </div>
-                <div style="background: rgba(255,149,0,0.05); border: 2px solid #FF9900; border-radius: 6px; padding: 6px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.64rem; color: var(--text-muted); font-weight: 700;">SUHU KOIL</div><div style="font-size: 1.35rem; font-weight: 900; color: var(--neon-orange);">${tempCoil}°C</div><div style="font-size: 0.6rem; color: var(--neon-orange);">DS18B20</div>
+
+                <!-- DIAGNOSTIC CONCLUSION STRIP -->
+                <div style="background: rgba(0,0,0,0.3); border-top: 1px dashed var(--border-sharp); padding-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 800;">📋 HASIL UJI:</span>
+                        <strong style="font-size: 0.85rem; color: ${healthColor};">${isStandby ? 'STANDBY (SIAP PENGUJIAN)' : (state.coilCurrentStatus || healthBadge + ' - ' + healthDesc)}</strong>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 800;">SKOR:</span>
+                        <strong style="font-size: 1.1rem; color: ${healthColor};">${isStandby ? '--' : Math.round(totalHealthScore)}%</strong>
+                    </div>
                 </div>
             </div>
 
-            <!-- DIAGNOSTIC CONCLUSION BANNER -->
-            <div style="background: rgba(0,0,0,0.55); border: 2px solid ${healthColor}; border-radius: 6px; padding: 8px 12px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 14px ${healthColor}33; flex-wrap: wrap; gap: 6px;">
-                <div>
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 800;">📋 KESIMPULAN HASIL UJI KOIL:</div>
-                    <div style="font-size: 1.0rem; font-weight: 900; color: ${healthColor}; margin-top: 2px;">
-                        ${isStandby ? 'STANDBY (SIAP PENGUJIAN)' : (state.coilCurrentStatus || healthBadge + ' - ' + healthDesc)}
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 800;">SKOR KESEHATAN:</div>
-                    <div style="font-size: 1.4rem; font-weight: 900; color: ${healthColor}; line-height: 1.1;">
-                        ${isStandby ? '--' : Math.round(totalHealthScore)}%
-                    </div>
-                </div>
-            </div>
-
-            <!-- DUAL ROW: KEBOCORAN BODI & PRE-FLIGHT CHECK COIL (STRICT INTERLOCK) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 8px;">
-                <!-- LEFT: KEBOCORAN BODI -->
+            <!-- ===================== BARIS 3: KEBOCORAN BODI & PRE-FLIGHT ===================== -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
+                <!-- KIRI: KEBOCORAN BODI -->
                 <div style="background: rgba(0,0,0,0.3); border: 2px solid ${leakBadgeColor}; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 72px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.74rem; font-weight: 800; color: ${leakBadgeColor};">🛡️ KEBOCORAN BODI (PIN 36):</span>
@@ -212,7 +218,7 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                     </div>
                 </div>
 
-                <!-- RIGHT: PRE-FLIGHT CHECK COIL -->
+                <!-- KANAN: PRE-FLIGHT CHECK COIL -->
                 <div style="background: rgba(0,0,0,0.3); border: 2px solid ${isLocked ? 'rgba(255, 45, 85, 0.4)' : (isPreFlightLocked ? 'rgba(255, 149, 0, 0.4)' : 'rgba(0, 255, 102, 0.5)')}; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 72px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; gap: 4px; align-items: center;">
