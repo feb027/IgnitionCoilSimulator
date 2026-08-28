@@ -18,6 +18,8 @@ public:
     bool update();
     
     bool isSweepingUp() const { return _sweepUp; }
+    float getRpmSweepProgress() const { return _currentSweepVal; }
+    float getDwellSweepProgress() const { return _currentDwellSweepVal; }
 
 private:
     SettingsManager& _settingsMgr;
@@ -26,6 +28,8 @@ private:
     uint32_t _lastHardwareUpdate;
     float _currentSweepVal;
     bool _sweepUp;
+    float _currentDwellSweepVal;
+    bool _dwellSweepUp;
     
     int _targetKmh;
     int _targetRpm;

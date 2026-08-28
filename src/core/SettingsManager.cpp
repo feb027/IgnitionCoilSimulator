@@ -51,6 +51,9 @@ void SettingsManager::commitToNvs() {
     preferences.putUChar("mode", static_cast<uint8_t>(_settings.mode));
     preferences.putFloat("s_time", _settings.sweepTimeSec); preferences.putInt("s_ppk", _settings.pulsePerKm);
     preferences.putInt("sw_min", _settings.sweepMinRpm); preferences.putInt("sw_max", _settings.sweepMaxRpm);
+    preferences.putUChar("dw_mode", static_cast<uint8_t>(_settings.dwellSweepMode));
+    preferences.putFloat("dw_min", _settings.dwellMinMs); preferences.putFloat("dw_max", _settings.dwellMaxMs);
+    preferences.putFloat("dw_time", _settings.dwellSweepTimeSec);
     preferences.putInt("s_kmh", _settings.speedoKmh); preferences.putInt("s_rpm", _settings.speedoRpm);
     preferences.putInt("s_tmp", _settings.speedoTempPercent); preferences.putInt("s_fuel", _settings.speedoFuelPercent);
     preferences.putInt("s_rpm_s", _settings.speedoRpmStep); preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
@@ -105,6 +108,18 @@ void SettingsManager::load() {
     if (_settings.sweepMinRpm < 200) _settings.sweepMinRpm = 200;
     _settings.sweepMaxRpm = preferences.getInt("sw_max", 6000);
     if (_settings.sweepMaxRpm < 500) _settings.sweepMaxRpm = 500;
+    
+    _settings.dwellSweepMode = static_cast<DwellSweepMode>(preferences.getUChar("dw_mode", DWELL_SWEEP_FIXED));
+    _settings.dwellMinMs = preferences.getFloat("dw_min", 1.0f);
+    if (_settings.dwellMinMs < 0.2f) _settings.dwellMinMs = 0.2f;
+    if (_settings.dwellMinMs > 4.0f) _settings.dwellMinMs = 4.0f;
+    _settings.dwellMaxMs = preferences.getFloat("dw_max", 4.5f);
+    if (_settings.dwellMaxMs < 1.0f) _settings.dwellMaxMs = 1.0f;
+    if (_settings.dwellMaxMs > 5.0f) _settings.dwellMaxMs = 5.0f;
+    _settings.dwellSweepTimeSec = preferences.getFloat("dw_time", 5.0f);
+    if (_settings.dwellSweepTimeSec < 0.01f) _settings.dwellSweepTimeSec = 0.01f;
+    if (_settings.dwellSweepTimeSec > 60.0f) _settings.dwellSweepTimeSec = 60.0f;
+    _settings.currentDwellMs = _settings.dwellMs;
     
     _settings.pulsePerKm = preferences.getInt("s_ppk", 4000);
     _settings.speedoKmh = preferences.getInt("s_kmh", 120);
@@ -220,7 +235,10 @@ void SettingsManager::load() {
 void SettingsManager::resetToDefaults() {
     _settings.rpm = 600; _settings.rpmStep = 10; _settings.dwellMs = 3.0f; _settings.dutyCycle = 50.0f;
     _settings.iscDuty = 50.0f; _settings.iscFreq = 250; _settings.pulseMode = PULSE_DWELL; _settings.mode = MODE_CONTINUOUS;
-    _settings.sweepTimeSec = 5; _settings.pulsePerKm = 4000; _settings.speedoKmh = 120; _settings.speedoRpm = 4000;
+    _settings.sweepTimeSec = 5; _settings.sweepMinRpm = 500; _settings.sweepMaxRpm = 6000;
+    _settings.dwellSweepMode = DWELL_SWEEP_FIXED; _settings.dwellMinMs = 1.0f; _settings.dwellMaxMs = 4.5f;
+    _settings.dwellSweepTimeSec = 5.0f; _settings.currentDwellMs = 3.0f;
+    _settings.pulsePerKm = 4000; _settings.speedoKmh = 120; _settings.speedoRpm = 4000;
     _settings.speedoTempPercent = 50; _settings.speedoFuelPercent = 50; _settings.speedoRpmStep = 500;
     _settings.speedoKmhStep = 10; _settings.speedoTempStep = 5; _settings.speedoFuelStep = 5;
     _settings.speedoEnableRpm = true; _settings.speedoEnableKmh = true; _settings.speedoEnableTemp = true; _settings.speedoEnableFuel = true;

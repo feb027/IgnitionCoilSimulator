@@ -11,6 +11,13 @@ enum CoilMode {
     MODE_SWEEP
 };
 
+enum DwellSweepMode : uint8_t {
+    DWELL_SWEEP_FIXED = 0,        // Dwell remains constant
+    DWELL_SWEEP_INDEPENDENT = 1,  // Dwell sweeps independently with its own speed
+    DWELL_SWEEP_SYNC = 2,         // Dwell increases with RPM (In-phase / proportional)
+    DWELL_SWEEP_INVERTED = 3      // Dwell decreases with RPM (Anti-phase / automotive map)
+};
+
 enum PulseMode {
     PULSE_COIL_PASSIVE = 0,    // 0: Coil Pasif 2-Pin (Driver IGBT on Pin 33)
     PULSE_COIL_ACTIVE_3P = 1,  // 1: Coil Aktif 3-Pin (Logic IGT on Pin 25)
@@ -38,9 +45,14 @@ struct AppSettings {
     int iscFreq;           // ISC 3-Pin PWM Frequency in Hz (50 - 500 Hz)
     PulseMode pulseMode;   // Which variable is locked/controlling
     CoilMode mode;         // Current operating mode
-    float sweepTimeSec;    // Time in seconds to reach sweep max (0.2s - 60.0s)
+    float sweepTimeSec;    // Time in seconds to reach sweep max (0.01s - 60.0s)
     int sweepMinRpm;       // Sweep start/lower limit in RPM (e.g. 500 RPM)
     int sweepMaxRpm;       // Sweep peak/upper limit in RPM (e.g. 6000 RPM)
+    DwellSweepMode dwellSweepMode; // Dwell sweep mode (0: Fixed, 1: Indep, 2: Sync, 3: Invert)
+    float dwellMinMs;      // Dwell lower limit in ms (0.2ms - 3.0ms, default 1.0ms)
+    float dwellMaxMs;      // Dwell upper limit in ms (2.0ms - 5.0ms, default 4.5ms)
+    float dwellSweepTimeSec; // Dwell independent sweep time in seconds (0.01s - 20.0s)
+    float currentDwellMs;  // Live modulated dwell in ms during sweep
     int pulsePerKm;        // Pulses per kilometer (calibration for speedo)
     int speedoKmh;         // Target km/h for speedometer (and sweep max)
     int speedoRpm;         // Target RPM for speedometer (and sweep max)

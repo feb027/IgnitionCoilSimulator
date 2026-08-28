@@ -123,6 +123,11 @@ void NetworkManager::broadcastState() {
     doc["sweepTimeSec"] = s.sweepTimeSec;
     doc["sweepMinRpm"] = s.sweepMinRpm;
     doc["sweepMaxRpm"] = s.sweepMaxRpm;
+    doc["dwellSweepMode"] = (int)s.dwellSweepMode;
+    doc["dwellMinMs"] = s.dwellMinMs;
+    doc["dwellMaxMs"] = s.dwellMaxMs;
+    doc["dwellSweepTimeSec"] = s.dwellSweepTimeSec;
+    doc["currentDwellMs"] = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
     doc["pulsePerKm"] = s.pulsePerKm;
     doc["stepperSpeed"] = s.stepperSpeed;
     doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -274,6 +279,11 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["sweepTimeSec"] = s.sweepTimeSec;
         doc["sweepMinRpm"] = s.sweepMinRpm;
         doc["sweepMaxRpm"] = s.sweepMaxRpm;
+        doc["dwellSweepMode"] = (int)s.dwellSweepMode;
+        doc["dwellMinMs"] = s.dwellMinMs;
+        doc["dwellMaxMs"] = s.dwellMaxMs;
+        doc["dwellSweepTimeSec"] = s.dwellSweepTimeSec;
+        doc["currentDwellMs"] = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
         doc["pulsePerKm"] = s.pulsePerKm;
         doc["stepperSpeed"] = s.stepperSpeed;
         doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -450,6 +460,24 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
         } else if (action == "setSweepMaxRpm") {
             s.sweepMaxRpm = doc["value"].as<int>();
             s.rpm = s.sweepMaxRpm;
+            changed = true;
+        } else if (action == "setDwellSweepMode") {
+            s.dwellSweepMode = static_cast<DwellSweepMode>(doc["value"].as<int>());
+            changed = true;
+        } else if (action == "setDwellMinMs") {
+            s.dwellMinMs = doc["value"].as<float>();
+            if (s.dwellMinMs < 0.2f) s.dwellMinMs = 0.2f;
+            if (s.dwellMinMs > 5.0f) s.dwellMinMs = 5.0f;
+            changed = true;
+        } else if (action == "setDwellMaxMs") {
+            s.dwellMaxMs = doc["value"].as<float>();
+            if (s.dwellMaxMs < 0.5f) s.dwellMaxMs = 0.5f;
+            if (s.dwellMaxMs > 5.0f) s.dwellMaxMs = 5.0f;
+            changed = true;
+        } else if (action == "setDwellSweepTime") {
+            s.dwellSweepTimeSec = doc["value"].as<float>();
+            if (s.dwellSweepTimeSec < 0.01f) s.dwellSweepTimeSec = 0.01f;
+            if (s.dwellSweepTimeSec > 60.0f) s.dwellSweepTimeSec = 60.0f;
             changed = true;
         } else if (action == "setRpmStep") {
             s.rpmStep = doc["value"].as<int>();

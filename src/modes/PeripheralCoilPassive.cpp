@@ -389,12 +389,12 @@ void PeripheralCoilPassive::updateTimerConfig() {
     coil_pass_periodTicks = 60000000 / activeRpm;
     if (coil_pass_periodTicks < 5000) coil_pass_periodTicks = 5000;
     
-    float dwell = s.dwellMs;
+    float dwell = (s.mode == MODE_SWEEP && s.isRunning) ? s.currentDwellMs : s.dwellMs;
     if (dwell > 5.0f) dwell = 5.0f;
     if (dwell < 0.2f) dwell = 0.2f;
     
     uint32_t desiredDwellTicks = (uint32_t)(dwell * 1000.0f);
-    uint32_t maxDwellTicks = (coil_pass_periodTicks > 600) ? (coil_pass_periodTicks - 500) : 100;
+    uint32_t maxDwellTicks = (coil_pass_periodTicks > 500) ? (coil_pass_periodTicks - 400) : 100;
     if (desiredDwellTicks > maxDwellTicks) {
         desiredDwellTicks = maxDwellTicks;
     }

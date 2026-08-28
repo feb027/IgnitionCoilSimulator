@@ -41,6 +41,13 @@ function App() {
         currentSpeedoKmh: 0,
         dutyCycle: 15.0,
         sweepTimeSec: 5,
+        sweepMinRpm: 500,
+        sweepMaxRpm: 6000,
+        dwellSweepMode: 0,
+        dwellMinMs: 1.0,
+        dwellMaxMs: 4.5,
+        dwellSweepTimeSec: 5.0,
+        currentDwellMs: 3.0,
         pulsePerKm: 4000,
         rpmStep: 100,
         stepperSpeed: 50,
@@ -161,6 +168,10 @@ function App() {
             if (action === 'setSweepTime') setState(s => ({ ...s, sweepTimeSec: value }));
             if (action === 'setSweepMinRpm') setState(s => ({ ...s, sweepMinRpm: value }));
             if (action === 'setSweepMaxRpm') setState(s => ({ ...s, sweepMaxRpm: value, rpm: value }));
+            if (action === 'setDwellSweepMode') setState(s => ({ ...s, dwellSweepMode: value }));
+            if (action === 'setDwellMinMs') setState(s => ({ ...s, dwellMinMs: value }));
+            if (action === 'setDwellMaxMs') setState(s => ({ ...s, dwellMaxMs: value }));
+            if (action === 'setDwellSweepTime') setState(s => ({ ...s, dwellSweepTimeSec: value }));
             if (action === 'setIscDuty') setState(s => ({ ...s, iscDuty: value }));
             if (action === 'setIscFreq') setState(s => ({ ...s, iscFreq: value }));
             if (action === 'setSpeedoKmh') setState(s => ({ ...s, speedoKmh: value }));

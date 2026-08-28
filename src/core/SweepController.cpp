@@ -2,7 +2,8 @@
 
 SweepController::SweepController(SettingsManager& settingsMgr)
     : _settingsMgr(settingsMgr), _sweepLastUpdate(0), _lastHardwareUpdate(0),
-      _currentSweepVal(0.0f), _sweepUp(true), 
+      _currentSweepVal(0.0f), _sweepUp(true),
+      _currentDwellSweepVal(0.0f), _dwellSweepUp(true),
       _targetKmh(0), _targetRpm(0), _targetTemp(0), _targetFuel(0), _targetRpmNormal(0) {
 }
 
@@ -20,6 +21,8 @@ void SweepController::beginSweep() {
     
     _currentSweepVal = 0.0f;
     _sweepUp = true;
+    _currentDwellSweepVal = 0.0f;
+    _dwellSweepUp = true;
     _sweepLastUpdate = millis();
     _lastHardwareUpdate = millis();
 }
@@ -33,6 +36,7 @@ void SweepController::reset() {
         s.currentSpeedoFuelPercent = _targetFuel;
     } else {
         s.currentRpm = _targetRpmNormal;
+        s.currentDwellMs = s.dwellMs;
     }
 }
 
@@ -75,11 +79,53 @@ bool SweepController::update() {
                 _lastHardwareUpdate = now;
             }
         } else {
-            // Sweep range: from Batas Bawah (sweepMinRpm) to Batas Atas (sweepMaxRpm)
+            // 1. RPM Modulation
             int minRpm = (s.sweepMinRpm >= 200) ? s.sweepMinRpm : 500;
             int maxRpm = (s.sweepMaxRpm > minRpm) ? s.sweepMaxRpm : ((s.rpm > minRpm) ? s.rpm : (minRpm + 1000));
             if (maxRpm > 16000) maxRpm = 16000;
             s.currentRpm = minRpm + (int)(_currentSweepVal * (maxRpm - minRpm));
+            
+            // 2. Dwell Modulation (4 Modes)
+            float minDwell = (s.dwellMinMs >= 0.2f) ? s.dwellMinMs : 1.0f;
+            float maxDwell = (s.dwellMaxMs > minDwell) ? s.dwellMaxMs : (minDwell + 1.0f);
+            if (maxDwell > 5.0f) maxDwell = 5.0f;
+            
+            switch (s.dwellSweepMode) {
+                case DWELL_SWEEP_INDEPENDENT: {
+                    float dwSec = s.dwellSweepTimeSec;
+                    if (dwSec < 0.01f) dwSec = 0.01f;
+                    if (dwSec > 60.0f) dwSec = 60.0f;
+                    float dwValPerMs = 1.0f / (dwSec * 1000.0f);
+                    if (_dwellSweepUp) {
+                        _currentDwellSweepVal += (dwValPerMs * dt);
+                        if (_currentDwellSweepVal >= 1.0f) {
+                            _currentDwellSweepVal = 1.0f;
+                            _dwellSweepUp = false;
+                        }
+                    } else {
+                        _currentDwellSweepVal -= (dwValPerMs * dt);
+                        if (_currentDwellSweepVal <= 0.0f) {
+                            _currentDwellSweepVal = 0.0f;
+                            _dwellSweepUp = true;
+                        }
+                    }
+                    s.currentDwellMs = minDwell + (_currentDwellSweepVal * (maxDwell - minDwell));
+                    break;
+                }
+                case DWELL_SWEEP_SYNC:
+                    // Mode 3: In-Phase (Searah RPM: RPM Naik -> Dwell Naik)
+                    s.currentDwellMs = minDwell + (_currentSweepVal * (maxDwell - minDwell));
+                    break;
+                case DWELL_SWEEP_INVERTED:
+                    // Mode 4: Anti-Phase (Berlawanan RPM: RPM Naik -> Dwell Turun)
+                    s.currentDwellMs = maxDwell - (_currentSweepVal * (maxDwell - minDwell));
+                    break;
+                case DWELL_SWEEP_FIXED:
+                default:
+                    // Mode 1: Dwell Tetap
+                    s.currentDwellMs = s.dwellMs;
+                    break;
+            }
             needsHardwareUpdate = true;
         }
         _sweepLastUpdate = now;
