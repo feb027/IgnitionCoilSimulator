@@ -596,4 +596,11 @@ header {
     animation: pulse-alarm-orange 1.6s infinite ease-in-out !important;
 }
 
+input[type="range"] {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
 
