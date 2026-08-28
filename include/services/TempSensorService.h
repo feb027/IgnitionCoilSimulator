@@ -43,9 +43,14 @@ private:
     uint8_t _romCoil[8];
     uint8_t _romDriver[8];
 
+    portMUX_TYPE _mux;
+
     bool reset();
+    void writeBit(uint8_t bit);
+    uint8_t readBit();
     void writeByte(uint8_t byte);
     uint8_t readByte();
+    uint8_t crc8(const uint8_t *data, uint8_t len);
     bool readScratchpad(float &tempOut);
 };
 
