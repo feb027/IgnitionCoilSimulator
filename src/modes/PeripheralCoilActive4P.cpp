@@ -128,17 +128,18 @@ void PeripheralCoilActive4P::update() {
     CoilLeakSensor::update(s);
     
     uint32_t fired = isr_act4p_firedCount;
+    
+    // Multi-source tracking: If digital IGF/Spark interrupts haven't pulsed, update counters in lockstep
+    if (isr_act4p_sparkCount < fired && isr_act4p_igfCount < fired && s.isRunning) {
+        if (s.coilPeakCurrentA >= 1.5f || s.coilSparkCurrentmA >= 3.0f) {
+            isr_act4p_sparkCount = fired;
+            isr_act4p_igfCount = fired;
+        }
+    }
+    
     uint32_t igf = isr_act4p_igfCount;
     uint32_t spark = isr_act4p_sparkCount;
     uint32_t confirmed = (spark > 0) ? spark : igf;
-    
-    // Multi-source fallback: If digital IGF/Spark interrupts haven't pulsed but primary current confirms firing
-    if (confirmed == 0 && fired > 0 && s.isRunning) {
-        if (s.coilPeakCurrentA >= 1.5f || s.coilSparkCurrentmA >= 3.0f) {
-            confirmed = fired;
-            igf = fired;
-        }
-    }
     
     s.coilFiredCount = fired;
     s.coilIgfCount = igf;

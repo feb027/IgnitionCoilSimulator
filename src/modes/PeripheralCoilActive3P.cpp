@@ -104,14 +104,15 @@ void PeripheralCoilActive3P::update() {
     CoilLeakSensor::update(s);
     
     uint32_t fired = isr_act3p_firedCount;
-    uint32_t confirmed = isr_act3p_sparkReturnCount;
     
-    // Multi-source fallback: If digital interrupt hasn't pulsed but analog spark/current confirms firing
-    if (confirmed == 0 && fired > 0 && s.isRunning) {
+    // Multi-source tracking: If digital interrupt hasn't pulsed, update isr_act3p_sparkReturnCount in lockstep
+    if (isr_act3p_sparkReturnCount < fired && s.isRunning) {
         if (s.coilSparkCurrentmA >= 3.0f || s.coilPeakCurrentA >= 1.5f) {
-            confirmed = fired;
+            isr_act3p_sparkReturnCount = fired;
         }
     }
+    
+    uint32_t confirmed = isr_act3p_sparkReturnCount;
     
     s.coilFiredCount = fired;
     s.coilSparkReturnCount = confirmed;

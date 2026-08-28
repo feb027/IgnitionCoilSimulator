@@ -99,14 +99,15 @@ void PeripheralCoilPassive::update() {
     CoilLeakSensor::update(s);
     
     uint32_t fired = isr_pass_firedCount;
-    uint32_t confirmed = isr_pass_sparkReturnCount;
     
-    // Multi-source fallback: If digital interrupt hasn't pulsed but analog spark/current confirms firing
-    if (confirmed == 0 && fired > 0 && s.isRunning) {
+    // Multi-source tracking: If digital interrupt hasn't pulsed, update isr_pass_sparkReturnCount in lockstep
+    if (isr_pass_sparkReturnCount < fired && s.isRunning) {
         if (s.coilSparkCurrentmA >= 3.0f || s.coilPeakCurrentA >= 1.5f) {
-            confirmed = fired;
+            isr_pass_sparkReturnCount = fired;
         }
     }
+    
+    uint32_t confirmed = isr_pass_sparkReturnCount;
     
     s.coilFiredCount = fired;
     s.coilSparkReturnCount = confirmed;
