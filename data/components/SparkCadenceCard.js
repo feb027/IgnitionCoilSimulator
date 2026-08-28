@@ -281,10 +281,10 @@ export function SparkCadenceCard({ state, sendAction, title = "IGNITION & INSULA
                         </div>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 6px;">
-                        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 900; background: ${isLocked ? 'rgba(255,255,255,0.06)' : '#FFE600'}; color: ${isLocked ? 'var(--text-muted)' : '#000'}; border-color: ${isLocked ? 'var(--border-sharp)' : '#FFE600'}; cursor: ${isLocked ? 'not-allowed' : 'pointer'};" 
-                            onClick=${() => { if (!isLocked) sendAction('runCheckCoil'); }} 
-                            disabled=${!state.connected || state.isRunning || isLocked}>
-                            ${isLocked ? '🔒 TERKUNCI' : `⚡ RUN (${checkPulses}x)`}
+                        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 900; background: #FFE600; color: #000; border-color: #FFE600; cursor: pointer;" 
+                            onClick=${() => { if (isLocked && onToggleLock) onToggleLock(); sendAction('runCheckCoil'); }} 
+                            disabled=${!state.connected || state.isRunning}>
+                            ⚡ RUN (${checkPulses}x)
                         </button>
                         <span style="font-size: 0.72rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${checkVerdict.includes('PASS') || checkVerdict.includes('PERFECT') ? 'var(--neon-green)' : (checkVerdict.includes('DANGER') || checkVerdict.includes('SHORT') ? 'var(--neon-red)' : 'var(--neon-yellow)')};">
                             ${checkVerdict}

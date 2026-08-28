@@ -45,8 +45,8 @@ static void IRAM_ATTR onPassiveCoilTimer() {
                             ? (coil_pass_periodTicks - coil_pass_dwellTicks) 
                             : 1000;
         if (offTicks < 400) offTicks = 400;
+        timerAlarmWrite(coil_passive_timer, offTicks, false);
         timerWrite(coil_passive_timer, 0);
-        timerAlarmWrite(coil_passive_timer, offTicks, true);
         timerAlarmEnable(coil_passive_timer);
     } else {
         // Turn IGBT Gate ON (GPIO 33 HIGH)
@@ -55,8 +55,8 @@ static void IRAM_ATTR onPassiveCoilTimer() {
         
         uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
         if (onTicks < 100) onTicks = 100;
+        timerAlarmWrite(coil_passive_timer, onTicks, false);
         timerWrite(coil_passive_timer, 0);
-        timerAlarmWrite(coil_passive_timer, onTicks, true);
         timerAlarmEnable(coil_passive_timer);
     }
 }
@@ -82,7 +82,7 @@ void PeripheralCoilPassive::begin() {
 #else
         coil_passive_timer = timerBegin(0, 80, true);
 #endif
-        timerAttachInterrupt(coil_passive_timer, &onPassiveCoilTimer, true);
+        timerAttachInterrupt(coil_passive_timer, &onPassiveCoilTimer, false);
     }
 }
 
@@ -400,8 +400,8 @@ void PeripheralCoilPassive::start() {
     uint32_t onTicks = (coil_pass_dwellTicks > 0) ? coil_pass_dwellTicks : 1000;
     GPIO.out1_w1ts.val = (1 << (PIN_COIL_PASSIVE_IGBT - 32));
     isPassiveCoilOn = true;
+    timerAlarmWrite(coil_passive_timer, onTicks, false);
     timerWrite(coil_passive_timer, 0);
-    timerAlarmWrite(coil_passive_timer, onTicks, true);
     timerAlarmEnable(coil_passive_timer);
     timerStart(coil_passive_timer);
     s.isRunning = true;

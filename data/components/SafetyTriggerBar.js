@@ -1,4 +1,4 @@
-﻿import { html, useState, useEffect } from '../preact.js';
+import { html, useState, useEffect } from '../preact.js';
 
 export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4Pin = false, isLocked: extLocked, onToggleLock: extToggleLock }) {
     const isRunning = state.isRunning;
@@ -39,10 +39,10 @@ export function SafetyTriggerBar({ state, sendAction, label = "IGT TRIGGER", is4
             sendAction('toggleRun');
         } else {
             if (isLocked) {
-                return;
-            } else {
-                sendAction('toggleRun');
+                if (extToggleLock) extToggleLock();
+                else setLocalLocked(false);
             }
+            sendAction('toggleRun');
         }
     };
 
