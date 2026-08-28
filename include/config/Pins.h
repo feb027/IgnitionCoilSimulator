@@ -52,7 +52,7 @@
 #define ADS1115_I2C_ADDR 0x48     // Default ADS1115 I2C ADC address (ADDR to GND)
 
 // --- Dual Temperature Sensor (Dallas 1-Wire DS18B20) ---
-#define PIN_DS18B20_1WIRE 13      // 1-Wire Data Line for Coil & Driver Temp (GPIO 13)
+#define PIN_DS18B20_1WIRE 5       // 1-Wire Data Line for Coil & Driver Temp (GPIO 5 / D10)
 
 // --- TFT Display (SPI) - Reserved for future ---
 // Standard ESP32 VSPI pins
