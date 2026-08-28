@@ -14,7 +14,10 @@ export function DashboardCoilActive4P({ state, sendAction, modeSelector }) {
     const [maxRpmLimit, setMaxRpmLimit] = useState(16000);
     const [maxDwellLimit, setMaxDwellLimit] = useState(5.0);
     const [isLocked, setIsLocked] = useState(true);
-    const handleToggleLock = () => setIsLocked(!isLocked);
+    const handleToggleLock = (val) => {
+        if (typeof val === 'boolean') setIsLocked(val);
+        else setIsLocked(prev => !prev);
+    };
 
     const handleMaxRpmChange = (newMax) => {
         setMaxRpmLimit(newMax);
