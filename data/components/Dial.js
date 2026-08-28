@@ -100,9 +100,8 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         if (trackRef.current) {
             trackRef.current.setPointerCapture(e.pointerId);
         }
-        const newVal = calculateValueFromPointer(e);
-        setDragVal(newVal);
-        emitChange(newVal);
+        // Retain exact initial value on touch down without jumping
+        setDragVal(startValRef.current);
     };
 
     const handlePointerMove = (e) => {
@@ -110,10 +109,10 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         e.preventDefault();
         e.stopPropagation();
 
-        // Check Touch Deadband (at least 4 pixels movement to eliminate micro-jitter)
+        // Check Touch Deadband (at least 6 pixels movement to eliminate touch micro-jitter)
         const dx = Math.abs(e.clientX - startPointerXRef.current);
-        if (!hasMovedBeyondDeadbandRef.current && dx < 4) {
-            return; // Hold value rigidly still
+        if (!hasMovedBeyondDeadbandRef.current && dx < 6) {
+            return; // Hold value rigidly still at initial value
         }
         hasMovedBeyondDeadbandRef.current = true;
 
@@ -131,9 +130,14 @@ export function Dial({ label, value, unit, min, max, step, onChange, disabled, s
         if (trackRef.current && trackRef.current.hasPointerCapture(e.pointerId)) {
             trackRef.current.releasePointerCapture(e.pointerId);
         }
-        const finalVal = calculateValueFromPointer(e);
-        setDragVal(finalVal);
-        emitChange(finalVal, true);
+        if (hasMovedBeyondDeadbandRef.current) {
+            const finalVal = calculateValueFromPointer(e);
+            setDragVal(finalVal);
+            emitChange(finalVal, true);
+        } else {
+            // Finger touched and released without dragging: preserve original value
+            setDragVal(startValRef.current);
+        }
     };
 
     return html`
