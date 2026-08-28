@@ -39,6 +39,8 @@ struct AppSettings {
     PulseMode pulseMode;   // Which variable is locked/controlling
     CoilMode mode;         // Current operating mode
     int sweepTimeSec;      // Time in seconds to reach sweep max
+    int sweepMinRpm;       // Sweep start/lower limit in RPM (e.g. 500 RPM)
+    int sweepMaxRpm;       // Sweep peak/upper limit in RPM (e.g. 6000 RPM)
     int pulsePerKm;        // Pulses per kilometer (calibration for speedo)
     int speedoKmh;         // Target km/h for speedometer (and sweep max)
     int speedoRpm;         // Target RPM for speedometer (and sweep max)

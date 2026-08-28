@@ -121,6 +121,8 @@ void NetworkManager::broadcastState() {
     doc["iscDuty"] = s.iscDuty;
     doc["iscFreq"] = s.iscFreq;
     doc["sweepTimeSec"] = s.sweepTimeSec;
+    doc["sweepMinRpm"] = s.sweepMinRpm;
+    doc["sweepMaxRpm"] = s.sweepMaxRpm;
     doc["pulsePerKm"] = s.pulsePerKm;
     doc["stepperSpeed"] = s.stepperSpeed;
     doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -270,6 +272,8 @@ void NetworkManager::onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClie
         doc["iscDuty"] = s.iscDuty;
         doc["iscFreq"] = s.iscFreq;
         doc["sweepTimeSec"] = s.sweepTimeSec;
+        doc["sweepMinRpm"] = s.sweepMinRpm;
+        doc["sweepMaxRpm"] = s.sweepMaxRpm;
         doc["pulsePerKm"] = s.pulsePerKm;
         doc["stepperSpeed"] = s.stepperSpeed;
         doc["stepperSpinDir"] = s.stepperSpinDir;
@@ -437,6 +441,13 @@ void NetworkManager::handleWebSocketMessage(void *arg, uint8_t *data, size_t len
             changed = true;
         } else if (action == "setSweepTime") {
             s.sweepTimeSec = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSweepMinRpm") {
+            s.sweepMinRpm = doc["value"].as<int>();
+            changed = true;
+        } else if (action == "setSweepMaxRpm") {
+            s.sweepMaxRpm = doc["value"].as<int>();
+            s.rpm = s.sweepMaxRpm;
             changed = true;
         } else if (action == "setRpmStep") {
             s.rpmStep = doc["value"].as<int>();

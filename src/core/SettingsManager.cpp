@@ -50,6 +50,7 @@ void SettingsManager::commitToNvs() {
     preferences.putUChar("pmode", static_cast<uint8_t>(_settings.pulseMode));
     preferences.putUChar("mode", static_cast<uint8_t>(_settings.mode));
     preferences.putInt("s_time", _settings.sweepTimeSec); preferences.putInt("s_ppk", _settings.pulsePerKm);
+    preferences.putInt("sw_min", _settings.sweepMinRpm); preferences.putInt("sw_max", _settings.sweepMaxRpm);
     preferences.putInt("s_kmh", _settings.speedoKmh); preferences.putInt("s_rpm", _settings.speedoRpm);
     preferences.putInt("s_tmp", _settings.speedoTempPercent); preferences.putInt("s_fuel", _settings.speedoFuelPercent);
     preferences.putInt("s_rpm_s", _settings.speedoRpmStep); preferences.putInt("s_kmh_s", _settings.speedoKmhStep);
@@ -100,6 +101,10 @@ void SettingsManager::load() {
     _settings.sweepTimeSec = preferences.getInt("s_time", 5);
     if (_settings.sweepTimeSec < 1) _settings.sweepTimeSec = 1;
     if (_settings.sweepTimeSec > 60) _settings.sweepTimeSec = 60;
+    _settings.sweepMinRpm = preferences.getInt("sw_min", 500);
+    if (_settings.sweepMinRpm < 200) _settings.sweepMinRpm = 200;
+    _settings.sweepMaxRpm = preferences.getInt("sw_max", 6000);
+    if (_settings.sweepMaxRpm < 500) _settings.sweepMaxRpm = 500;
     
     _settings.pulsePerKm = preferences.getInt("s_ppk", 4000);
     _settings.speedoKmh = preferences.getInt("s_kmh", 120);

@@ -158,6 +158,9 @@ function App() {
             if (action === 'setDwell') setState(s => ({ ...s, dwellMs: value }));
             if (action === 'setMode') setState(s => ({ ...s, pulseMode: value, isRunning: false }));
             if (action === 'setRunMode') setState(s => ({ ...s, runMode: value, isRunning: false }));
+            if (action === 'setSweepTime') setState(s => ({ ...s, sweepTimeSec: value }));
+            if (action === 'setSweepMinRpm') setState(s => ({ ...s, sweepMinRpm: value }));
+            if (action === 'setSweepMaxRpm') setState(s => ({ ...s, sweepMaxRpm: value, rpm: value }));
             if (action === 'setIscDuty') setState(s => ({ ...s, iscDuty: value }));
             if (action === 'setIscFreq') setState(s => ({ ...s, iscFreq: value }));
             if (action === 'setSpeedoKmh') setState(s => ({ ...s, speedoKmh: value }));

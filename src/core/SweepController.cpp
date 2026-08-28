@@ -12,7 +12,11 @@ void SweepController::beginSweep() {
     _targetRpm = s.speedoRpm;
     _targetTemp = s.speedoTempPercent;
     _targetFuel = s.speedoFuelPercent;
-    _targetRpmNormal = (s.rpm >= 600) ? s.rpm : 6000;
+    
+    int minR = (s.sweepMinRpm >= 200) ? s.sweepMinRpm : 500;
+    int maxR = (s.sweepMaxRpm > minR) ? s.sweepMaxRpm : ((s.rpm > minR) ? s.rpm : (minR + 2000));
+    if (maxR > 16000) maxR = 16000;
+    _targetRpmNormal = maxR;
     
     _currentSweepVal = 0.0f;
     _sweepUp = true;
@@ -71,10 +75,10 @@ bool SweepController::update() {
                 _lastHardwareUpdate = now;
             }
         } else {
-            // Sweep range: from 500 RPM (idle) up to set Target RPM (e.g. 6000 RPM)
-            int minRpm = 500;
-            int maxRpm = _targetRpmNormal;
-            if (maxRpm <= minRpm) maxRpm = minRpm + 1000;
+            // Sweep range: from Batas Bawah (sweepMinRpm) to Batas Atas (sweepMaxRpm)
+            int minRpm = (s.sweepMinRpm >= 200) ? s.sweepMinRpm : 500;
+            int maxRpm = (s.sweepMaxRpm > minRpm) ? s.sweepMaxRpm : ((s.rpm > minRpm) ? s.rpm : (minRpm + 1000));
+            if (maxRpm > 16000) maxRpm = 16000;
             s.currentRpm = minRpm + (int)(_currentSweepVal * (maxRpm - minRpm));
             needsHardwareUpdate = true;
         }
