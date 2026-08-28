@@ -62,17 +62,22 @@ export function CalibrationMatrixPanel({ state = {}, sendAction }) {
     const [dcGain, setDcGain] = useState(state.calDcCurrentGain || 1.00), [dcOffset, setDcOffset] = useState(state.calDcCurrentOffset || 0.00);
     const [msg, setMsg] = useState('');
 
+    const [initialized, setInitialized] = useState(false);
+
     useEffect(() => {
-        const s = state;
-        if (s.calSparkPrima !== undefined) { setSpPrima(s.calSparkPrima); setSpBaik(s.calSparkBaik); setSpCukup(s.calSparkCukup); setSpKurang(s.calSparkKurang); setSpGain(s.calSparkGain); }
-        if (s.calCadencePrima !== undefined) { setCdPrima(s.calCadencePrima); setCdBaik(s.calCadenceBaik); setCdCukup(s.calCadenceCukup); setCdKurang(s.calCadenceKurang); setCdDebounce(s.calCadenceDebounceMs); setCdWindow(s.calCadenceWindowMs); }
-        if (s.calCurrentPrima !== undefined) { setCrPrima(s.calCurrentPrima); setCrBaik(s.calCurrentBaik); setCrCukup(s.calCurrentCukup); setCrKurang(s.calCurrentKurang); setCrMax(s.calCurrentMax); setCrZero(s.calCurrentZeroVolt); }
-        if (s.calTempPrima !== undefined) { setTpPrima(s.calTempPrima); setTpBaik(s.calTempBaik); setTpCukup(s.calTempCukup); setTpPanas(s.calTempPanas); setTpCutoff(s.calTempCutoff); setTpOffset(s.calTempOffset); }
-        if (s.leakArcCutIn !== undefined) { setCutIn(s.leakArcCutIn); setArc25(s.leakArc25); setArc50(s.leakArc50); setArc75(s.leakArc75); setArc100(s.leakArc100); }
-        if (s.coilLeakThreshold !== undefined) setLocalTh(s.coilLeakThreshold);
-        if (s.coilLeakDebounceMs !== undefined) setLocalDb(Number(s.coilLeakDebounceMs).toFixed(1));
-        if (s.calVoltGain !== undefined) { setVtGain(s.calVoltGain); setVtOffset(s.calVoltOffset); setDcGain(s.calDcCurrentGain); setDcOffset(s.calDcCurrentOffset); }
-    }, [state]);
+        if (!initialized && state.calSparkPrima !== undefined) {
+            const s = state;
+            setSpPrima(s.calSparkPrima); setSpBaik(s.calSparkBaik); setSpCukup(s.calSparkCukup); setSpKurang(s.calSparkKurang); setSpGain(s.calSparkGain);
+            setCdPrima(s.calCadencePrima); setCdBaik(s.calCadenceBaik); setCdCukup(s.calCadenceCukup); setCdKurang(s.calCadenceKurang); setCdDebounce(s.calCadenceDebounceMs); setCdWindow(s.calCadenceWindowMs);
+            setCrPrima(s.calCurrentPrima); setCrBaik(s.calCurrentBaik); setCrCukup(s.calCurrentCukup); setCrKurang(s.calCurrentKurang); setCrMax(s.calCurrentMax); setCrZero(s.calCurrentZeroVolt);
+            setTpPrima(s.calTempPrima); setTpBaik(s.calTempBaik); setTpCukup(s.calTempCukup); setTpPanas(s.calTempPanas); setTpCutoff(s.calTempCutoff); setTpOffset(s.calTempOffset);
+            setCutIn(s.leakArcCutIn); setArc25(s.leakArc25); setArc50(s.leakArc50); setArc75(s.leakArc75); setArc100(s.leakArc100);
+            if (s.coilLeakThreshold !== undefined) setLocalTh(s.coilLeakThreshold);
+            if (s.coilLeakDebounceMs !== undefined) setLocalDb(Number(s.coilLeakDebounceMs).toFixed(1));
+            setVtGain(s.calVoltGain); setVtOffset(s.calVoltOffset); setDcGain(s.calDcCurrentGain); setDcOffset(s.calDcCurrentOffset);
+            setInitialized(true);
+        }
+    }, [state.calSparkPrima, initialized]);
 
     const getPayload = (d = {}) => ({
         sparkPrima: d.spPrima ?? parseFloat(spPrima), sparkBaik: d.spBaik ?? parseFloat(spBaik), sparkCukup: d.spCukup ?? parseFloat(spCukup), sparkKurang: d.spKurang ?? parseFloat(spKurang), sparkGain: d.spGain ?? parseFloat(spGain),

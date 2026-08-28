@@ -67,7 +67,6 @@ static void IRAM_ATTR onActive4pCoilTimer() {
 static void IRAM_ATTR onActive4pIgfInterrupt() {
     uint32_t nowUs = micros();
     if (nowUs - isr_act4p_lastSparkUs < isr_act4p_debounceUs) return;
-    if (nowUs - isr_act4p_lastFireUs > isr_act4p_windowUs) return;
     isr_act4p_lastSparkUs = nowUs;
     isr_act4p_igfCount++;
 }
@@ -76,7 +75,6 @@ static void IRAM_ATTR onActive4pIgfInterrupt() {
 static void IRAM_ATTR onActive4pSparkInterrupt() {
     uint32_t nowUs = micros();
     if (nowUs - isr_act4p_lastSparkUs < isr_act4p_debounceUs) return; // Anti-ringing dead-time filter
-    if (nowUs - isr_act4p_lastFireUs > isr_act4p_windowUs) return; // Time-gate coincidence window
     isr_act4p_lastSparkUs = nowUs;
     isr_act4p_sparkCount++;
 }
@@ -132,7 +130,7 @@ void PeripheralCoilActive4P::update() {
     // Sync ISR counters to settings struct
     s.coilFiredCount = isr_act4p_firedCount;
     s.coilIgfCount = isr_act4p_igfCount;
-    s.coilSparkReturnCount = isr_act4p_sparkCount;
+    s.coilSparkReturnCount = (isr_act4p_sparkCount > 0) ? isr_act4p_sparkCount : isr_act4p_igfCount;
     s.coilMissedCount = (s.coilFiredCount > s.coilSparkReturnCount) ? (s.coilFiredCount - s.coilSparkReturnCount) : 0;
     s.coilHealthPercent = (s.coilFiredCount > 0) ? ((float)s.coilSparkReturnCount * 100.0f / (float)s.coilFiredCount) : 100.0f;
     
